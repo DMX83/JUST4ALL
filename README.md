@@ -93,8 +93,8 @@ Para trabajar JUST4ALL y JUST4CONVERT en Xcode al mismo tiempo, se recomienda un
 ./scripts/clean_artifacts.sh
 ```
 
-El DMG de JUST4ALL incluye las subapps como instaladores locales en
-Sources/JUST4ALL/Resources/Downloads, para poder abrirlas sin depender de URLs.
+Los DMG de las subapps se distribuyen via **GitHub Releases** como assets versionados
+(por ejemplo `JUST4PDF-0.1.0.dmg`). JUST4ALL descarga esos DMG a `~/Downloads` y los abre.
 
 ## App maestra
 

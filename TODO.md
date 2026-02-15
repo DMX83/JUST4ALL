@@ -18,10 +18,8 @@
 
 ## Fase 2 - Distribucion local y empaquetado
 
-- [x] Crear carpeta de DMGs en Sources/JUST4ALL/Resources/Downloads.
-- [x] Publicar DMGs de JUST4PDF y JUST4CONVERT dentro de esa carpeta.
-- [x] Ajustar botones de descarga para usar DMGs locales y URLs reales cuando existan.
-- [x] Verificar que JUST4ALL pueda abrir los DMG locales desde Resources/Downloads (sin depender de enlaces).
+- [x] Publicar DMGs en GitHub Releases como assets versionados (ej: `JUST4PDF-0.1.0.dmg`).
+- [x] Ajustar JUST4ALL para descargar los DMG desde GitHub Releases a `~/Downloads` y abrirlos.
 - [ ] Build reproducible por subapp (versionado, release notes, checksum).
 - [ ] Empaquetado final por subapp (DMG, icono, info.plist, firma).
 
