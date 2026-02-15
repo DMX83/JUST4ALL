@@ -12,7 +12,6 @@ APP_NAME="JUST4ALL"
 DERIVED_DIR="build"
 DIST_DIR="dist"
 BUNDLE_ID="com.dmx83.just4all"
-DOWNLOADS_DIR="Sources/JUST4ALL/Resources/Downloads"
 
 xcodebuild -scheme "$APP_NAME" -configuration Release -destination 'platform=macOS' -derivedDataPath "$DERIVED_DIR" \
   INFOPLIST_FILE="$REPO_ROOT/Sources/JUST4ALL/Resources/Info.plist"
@@ -66,22 +65,9 @@ EOF
   fi
 fi
 
-if [ -d "Sources/JUST4ALL/Resources/Downloads" ]; then
-  mkdir -p "$APP_PATH/Contents/Resources/Downloads"
-  cp -R "Sources/JUST4ALL/Resources/Downloads"/* "$APP_PATH/Contents/Resources/Downloads/"
-fi
-
-if [ ! -d "$DOWNLOADS_DIR" ]; then
-  echo "Downloads folder missing: $DOWNLOADS_DIR"
-  exit 1
-fi
-
-for dmg in JUST4PDF.dmg JUST4CONVERT.dmg; do
-  if [ ! -f "$DOWNLOADS_DIR/$dmg" ]; then
-    echo "Missing DMG: $DOWNLOADS_DIR/$dmg"
-    exit 1
-  fi
-done
+#
+# Subapp DMGs are distributed via GitHub Releases (not bundled into JUST4ALL).
+#
 
 mkdir -p "$DIST_DIR"
 DMG_PATH="$DIST_DIR/$APP_NAME.dmg"

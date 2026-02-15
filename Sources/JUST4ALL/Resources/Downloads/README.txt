@@ -1,4 +1,8 @@
-Place subapp DMG files here so JUST4ALL can open them locally.
-Expected names:
-- JUST4PDF.dmg
-- JUST4CONVERT.dmg
+Subapp DMGs now live in GitHub Releases (versioned assets).
+
+Download from:
+https://github.com/DMX83/JUST4ALL/releases
+
+Example asset names:
+- JUST4PDF-0.1.0.dmg
+- JUST4CONVERT-0.1.0.dmg

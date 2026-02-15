@@ -77,6 +77,9 @@ struct SubAppLink: Identifiable, Hashable {
 }
 
 enum SubAppsCatalog {
+    private static let releaseTag = "v0.1.0"
+    private static let releaseBaseUrl = "https://github.com/DMX83/JUST4ALL/releases/download/"
+
     static let items: [SubApp] = [
         SubApp(
             name: "JUST4PDF",
@@ -92,8 +95,8 @@ enum SubAppsCatalog {
                 "MVP con lectura y utilidades basicas",
                 "Instalacion local desde JUST4ALL"
             ],
-            downloadUrl: "Downloads/JUST4PDF.dmg",
-            downloadFileName: "JUST4PDF.dmg",
+            downloadUrl: releaseBaseUrl + releaseTag + "/JUST4PDF-0.1.0.dmg",
+            downloadFileName: "JUST4PDF-0.1.0.dmg",
             logoName: "Assets/JUST4PDF/logo.png",
             screenshots: [
                 "Assets/JUST4PDF/screen-1.png",
@@ -114,8 +117,8 @@ enum SubAppsCatalog {
                 "MVP nativo con conversion basica",
                 "Cola simple y presets iniciales"
             ],
-            downloadUrl: "Downloads/JUST4CONVERT.dmg",
-            downloadFileName: "JUST4CONVERT.dmg",
+            downloadUrl: releaseBaseUrl + releaseTag + "/JUST4CONVERT-0.1.0.dmg",
+            downloadFileName: "JUST4CONVERT-0.1.0.dmg",
             logoName: "Assets/JUST4CONVERT/logo.png",
             screenshots: [
                 "Assets/JUST4CONVERT/screen-1.png",
