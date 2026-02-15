@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var selectedApp: SubApp? = SubAppsCatalog.items.first
     @State private var showInstallSheet = false
     @State private var installingApp: SubApp? = nil
+    @StateObject private var downloadManager = DownloadManager()
 
     private let apps = SubAppsCatalog.items
     private let historyStore = SubAppHistoryStore()
@@ -137,17 +138,36 @@ struct ContentView: View {
     }
 
     private func openDownload(_ app: SubApp) {
-        guard let url = resolveDownloadURL(for: app) else {
-            alertMessage = "No se encontro link de descarga para \(app.name)."
-            showAlert = true
-            statusMessage = "Sin descarga"
-            return
-        }
-        NSWorkspace.shared.open(url)
-        historyStore.record(.downloaded, for: app)
-        statusMessage = "Descarga abierta"
         installingApp = app
         showInstallSheet = true
+
+        Task { @MainActor in
+            // If a previous download exists, just open the DMG.
+            if let downloaded = alreadyDownloadedFileURL(for: app) {
+                NSWorkspace.shared.open(downloaded)
+                historyStore.record(.downloaded, for: app)
+                statusMessage = "DMG listo"
+                return
+            }
+
+            guard let url = URL(string: app.downloadUrl), url.scheme != nil else {
+                alertMessage = "No se encontro link de descarga para \(app.name)."
+                showAlert = true
+                statusMessage = "Sin descarga"
+                return
+            }
+
+            statusMessage = "Descargando \(app.name)..."
+            if let fileURL = await downloadManager.downloadToDownloadsFolder(from: url, fileName: app.downloadFileName, appName: app.name) {
+                historyStore.record(.downloaded, for: app)
+                statusMessage = "Descarga lista"
+                NSWorkspace.shared.open(fileURL)
+            } else {
+                alertMessage = "No se pudo descargar \(app.name). Si el repo es privado, GitHub bloquea descargas desde apps sin login."
+                showAlert = true
+                statusMessage = "Error al descargar"
+            }
+        }
     }
 
     private func detailSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -406,39 +426,17 @@ struct ContentView: View {
         }
     }
 
-    private func resolveDownloadURL(for app: SubApp) -> URL? {
-        if let url = URL(string: app.downloadUrl), url.scheme != nil {
-            return url
-        }
-
-        if let resourceURL = Bundle.main.resourceURL?.appendingPathComponent(app.downloadUrl),
-           FileManager.default.fileExists(atPath: resourceURL.path) {
-            return resourceURL
-        }
-
-        if let bundledURL = Bundle.main.url(forResource: app.downloadUrl, withExtension: nil) {
-            return bundledURL
-        }
-
-        return nil
+    private func isBundledDownloadAvailable(for app: SubApp) -> Bool {
+        // DMGs are not bundled anymore.
+        return false
     }
 
-    private func isBundledDownloadAvailable(for app: SubApp) -> Bool {
-        if let url = URL(string: app.downloadUrl), url.scheme != nil {
-            return false
+    private func alreadyDownloadedFileURL(for app: SubApp) -> URL? {
+        guard let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first else {
+            return nil
         }
-
-        if let resourceURL = Bundle.main.resourceURL?.appendingPathComponent(app.downloadUrl),
-           FileManager.default.fileExists(atPath: resourceURL.path) {
-            return true
-        }
-
-        if let bundledURL = Bundle.main.url(forResource: app.downloadUrl, withExtension: nil),
-           FileManager.default.fileExists(atPath: bundledURL.path) {
-            return true
-        }
-
-        return false
+        let dmgUrl = downloads.appendingPathComponent(app.downloadFileName)
+        return FileManager.default.fileExists(atPath: dmgUrl.path) ? dmgUrl : nil
     }
 
     private func historyLabel(for entry: SubAppHistoryEntry) -> String {
@@ -466,6 +464,25 @@ struct ContentView: View {
             Text(installingApp?.name ?? "Instalacion")
                 .font(.custom("Avenir Next", size: 20).weight(.bold))
 
+            switch downloadManager.state {
+            case .downloading(let appName, let progress):
+                Text("Descargando \(appName)...")
+                    .font(.custom("Avenir Next", size: 12).weight(.semibold))
+                if let progress {
+                    ProgressView(value: progress)
+                        .progressViewStyle(.linear)
+                } else {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                }
+            case .failed(let message):
+                Text(message)
+                    .font(.custom("Avenir Next", size: 12))
+                    .foregroundColor(.secondary)
+            default:
+                EmptyView()
+            }
+
             Text("Pasos de instalacion")
                 .font(.custom("Avenir Next", size: 12).weight(.semibold))
 
@@ -487,6 +504,10 @@ struct ContentView: View {
                     openDownloadedDmg()
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled({
+                    guard let app = installingApp else { return true }
+                    return alreadyDownloadedFileURL(for: app) == nil
+                }())
             }
 
             Spacer()

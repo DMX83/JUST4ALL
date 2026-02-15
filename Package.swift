@@ -14,7 +14,9 @@ let package = Package(
             name: "JUST4ALL",
             path: "Sources/JUST4ALL",
             resources: [
-                .process("Resources")
+                // Do not bundle the app Info.plist; it's used by Xcode/build scripts.
+                .copy("Resources/Assets"),
+                .copy("Resources/Downloads")
             ]
         )
     ]
