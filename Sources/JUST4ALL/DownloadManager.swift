@@ -4,7 +4,7 @@ import Foundation
 final class DownloadManager: NSObject, ObservableObject {
     enum State: Equatable {
         case idle
-        case downloading(appName: String, progress: Double?)
+        case downloading(appName: String, progress: Double?, bytesWritten: Int64, bytesExpected: Int64?)
         case finished(fileURL: URL)
         case failed(message: String)
     }
@@ -15,6 +15,7 @@ final class DownloadManager: NSObject, ObservableObject {
         let appName: String
         let destination: URL
         let tmp: URL
+        let expectedSha256: String?
         let continuation: CheckedContinuation<URL?, Never>
         var finished: Bool
     }
@@ -27,7 +28,7 @@ final class DownloadManager: NSObject, ObservableObject {
         return URLSession(configuration: config, delegate: self, delegateQueue: nil)
     }()
 
-    func downloadToDownloadsFolder(from url: URL, fileName: String, appName: String) async -> URL? {
+    func downloadToDownloadsFolder(from url: URL, fileName: String, appName: String, expectedSha256: String?) async -> URL? {
         let downloadsDir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
         guard let downloadsDir else {
             state = .failed(message: "No se pudo encontrar la carpeta Descargas.")
@@ -39,11 +40,24 @@ final class DownloadManager: NSObject, ObservableObject {
 
         // If already downloaded, reuse it.
         if FileManager.default.fileExists(atPath: destination.path) {
-            state = .finished(fileURL: destination)
-            return destination
+            if let expectedSha256 {
+                do {
+                    let actual = try SHA256File.hexDigest(of: destination)
+                    if actual.lowercased() == expectedSha256.lowercased() {
+                        state = .finished(fileURL: destination)
+                        return destination
+                    }
+                    _ = try? FileManager.default.removeItem(at: destination)
+                } catch {
+                    _ = try? FileManager.default.removeItem(at: destination)
+                }
+            } else {
+                state = .finished(fileURL: destination)
+                return destination
+            }
         }
 
-        state = .downloading(appName: appName, progress: nil)
+        state = .downloading(appName: appName, progress: nil, bytesWritten: 0, bytesExpected: nil)
 
         var request = URLRequest(url: url)
         request.setValue("JUST4ALL", forHTTPHeaderField: "User-Agent")
@@ -55,6 +69,7 @@ final class DownloadManager: NSObject, ObservableObject {
                 appName: appName,
                 destination: destination,
                 tmp: tmp,
+                expectedSha256: expectedSha256,
                 continuation: continuation,
                 finished: false
             )
@@ -75,9 +90,9 @@ extension DownloadManager: URLSessionDownloadDelegate {
             guard let ctx = contextsByTaskId[downloadTask.taskIdentifier] else { return }
             if totalBytesExpectedToWrite > 0 {
                 let p = min(max(Double(totalBytesWritten) / Double(totalBytesExpectedToWrite), 0.0), 1.0)
-                state = .downloading(appName: ctx.appName, progress: p)
+                state = .downloading(appName: ctx.appName, progress: p, bytesWritten: totalBytesWritten, bytesExpected: totalBytesExpectedToWrite)
             } else {
-                state = .downloading(appName: ctx.appName, progress: nil)
+                state = .downloading(appName: ctx.appName, progress: nil, bytesWritten: totalBytesWritten, bytesExpected: nil)
             }
         }
     }
@@ -99,8 +114,20 @@ extension DownloadManager: URLSessionDownloadDelegate {
                 try FileManager.default.moveItem(at: location, to: ctx.tmp)
                 try FileManager.default.moveItem(at: ctx.tmp, to: ctx.destination)
 
-                state = .finished(fileURL: ctx.destination)
-                ctx.continuation.resume(returning: ctx.destination)
+                if let expected = ctx.expectedSha256 {
+                    let actual = try SHA256File.hexDigest(of: ctx.destination)
+                    if actual.lowercased() != expected.lowercased() {
+                        _ = try? FileManager.default.removeItem(at: ctx.destination)
+                        state = .failed(message: "Checksum SHA256 invalido (esperado no coincide).")
+                        ctx.continuation.resume(returning: nil)
+                    } else {
+                        state = .finished(fileURL: ctx.destination)
+                        ctx.continuation.resume(returning: ctx.destination)
+                    }
+                } else {
+                    state = .finished(fileURL: ctx.destination)
+                    ctx.continuation.resume(returning: ctx.destination)
+                }
             } catch {
                 _ = try? FileManager.default.removeItem(at: ctx.tmp)
                 state = .failed(message: error.localizedDescription)
@@ -124,4 +151,3 @@ extension DownloadManager: URLSessionDownloadDelegate {
         }
     }
 }
-

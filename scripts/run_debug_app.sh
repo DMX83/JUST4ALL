@@ -7,6 +7,8 @@ APP_NAME="JUST4ALL"
 DERIVED_DIR="build"
 BUNDLE_ID="com.dmx83.just4all"
 
+. "$(dirname "$0")/app_env.sh"
+
 xcodebuild -scheme "$APP_NAME" -configuration Debug -destination 'platform=macOS' -derivedDataPath "$DERIVED_DIR"
 
 APP_PATH=$(find "$DERIVED_DIR" -name "$APP_NAME.app" -type d | head -n 1)
@@ -38,11 +40,11 @@ if [ -z "$APP_PATH" ]; then
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>$APP_VERSION</string>
   <key>CFBundleVersion</key>
-  <string>0.1.0</string>
+  <string>$APP_VERSION</string>
   <key>LSMinimumSystemVersion</key>
-  <string>13.0</string>
+  <string>$MIN_MACOS_VERSION</string>
 </dict>
 </plist>
 EOF

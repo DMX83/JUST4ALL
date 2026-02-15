@@ -1,10 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
 from pathlib import Path
 
 project_root = Path.cwd()
 app_path = project_root / "src" / "just4pdf" / "app.py"
 
 block_cipher = None
+app_version = os.environ.get("APP_VERSION", "0.1.0")
+min_macos = os.environ.get("MIN_MACOS_VERSION", "13.0")
 
 
 a = Analysis(
@@ -64,9 +67,9 @@ app = BUNDLE(
         "CFBundleDisplayName": "JUST4PDF",
         "CFBundleName": "JUST4PDF",
         "CFBundleIdentifier": "com.dmx83.just4pdf",
-        "CFBundleShortVersionString": "0.1.0",
-        "CFBundleVersion": "0.1.0",
-        "LSMinimumSystemVersion": "11.0",
+        "CFBundleShortVersionString": app_version,
+        "CFBundleVersion": app_version,
+        "LSMinimumSystemVersion": min_macos,
         "CFBundleDocumentTypes": [
             {
                 "CFBundleTypeName": "PDF document",

@@ -4,6 +4,7 @@ struct SubAppCard: View {
     let app: SubApp
     let isSelected: Bool
     let isInstalled: Bool
+    let hasUpdate: Bool
     let onSelect: () -> Void
 
     var body: some View {
@@ -25,6 +26,16 @@ struct SubAppCard: View {
                                 .frame(width: 8, height: 8)
                             Text(app.name)
                                 .font(.system(size: 16, weight: .bold))
+                            if hasUpdate {
+                                Text("Update")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        Capsule().fill(Color.yellow.opacity(0.25))
+                                    )
+                                    .foregroundColor(.primary)
+                            }
                         }
                         Text(app.subtitle)
                             .font(.system(size: 12))

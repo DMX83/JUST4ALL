@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var showInstallSheet = false
     @State private var installingApp: SubApp? = nil
     @StateObject private var downloadManager = DownloadManager()
+    @StateObject private var releaseStore = ReleaseStore()
 
     private let apps = SubAppsCatalog.items
     private let historyStore = SubAppHistoryStore()
@@ -30,7 +31,11 @@ struct ContentView: View {
                             SubAppCard(
                                 app: app,
                                 isSelected: selectedApp == app,
-                                isInstalled: isInstalled(app)
+                                isInstalled: isInstalled(app),
+                                hasUpdate: {
+                                    guard let latest = latestReleaseAsset(for: app) else { return false }
+                                    return isUpdateAvailable(for: app, latest: latest.version)
+                                }()
                             ) {
                                 selectedApp = app
                                 statusMessage = "Seleccionada: \(app.name)"
@@ -52,6 +57,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showInstallSheet) {
             installSheet
+        }
+        .task {
+            await releaseStore.refresh()
         }
     }
 
@@ -143,27 +151,32 @@ struct ContentView: View {
 
         Task { @MainActor in
             // If a previous download exists, just open the DMG.
-            if let downloaded = alreadyDownloadedFileURL(for: app) {
+            if let downloaded = alreadyDownloadedFileURL(for: app, fileName: currentDownloadFileName(for: app)) {
                 NSWorkspace.shared.open(downloaded)
-                historyStore.record(.downloaded, for: app)
+                historyStore.record(.downloaded, for: app, version: currentDownloadVersionString(for: app))
                 statusMessage = "DMG listo"
                 return
             }
 
-            guard let url = URL(string: app.downloadUrl), url.scheme != nil else {
-                alertMessage = "No se encontro link de descarga para \(app.name)."
+            guard let download = currentDownloadAsset(for: app) else {
+                alertMessage = "No se encontro descarga para \(app.name)."
                 showAlert = true
                 statusMessage = "Sin descarga"
                 return
             }
 
             statusMessage = "Descargando \(app.name)..."
-            if let fileURL = await downloadManager.downloadToDownloadsFolder(from: url, fileName: app.downloadFileName, appName: app.name) {
-                historyStore.record(.downloaded, for: app)
+            if let fileURL = await downloadManager.downloadToDownloadsFolder(
+                from: download.url,
+                fileName: download.fileName,
+                appName: app.name,
+                expectedSha256: download.sha256
+            ) {
+                historyStore.record(.downloaded, for: app, version: download.version)
                 statusMessage = "Descarga lista"
                 NSWorkspace.shared.open(fileURL)
             } else {
-                alertMessage = "No se pudo descargar \(app.name). Si el repo es privado, GitHub bloquea descargas desde apps sin login."
+                alertMessage = "No se pudo descargar/verificar \(app.name)."
                 showAlert = true
                 statusMessage = "Error al descargar"
             }
@@ -310,9 +323,23 @@ struct ContentView: View {
             }
 
             detailSection(title: "Version") {
-                Text(app.version)
-                    .font(.custom("Avenir Next", size: 12))
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Incluida: \(app.version)")
+                        .font(.custom("Avenir Next", size: 12))
+                        .foregroundColor(.secondary)
+
+                    if let latest = latestReleaseAsset(for: app) {
+                        let latestStr = latest.version.description
+                        let updateAvailable = isUpdateAvailable(for: app, latest: latest.version)
+                        Text(updateAvailable ? "Disponible: \(latestStr) (update)" : "Disponible: \(latestStr)")
+                            .font(.custom("Avenir Next", size: 12))
+                            .foregroundColor(updateAvailable ? .primary : .secondary)
+                    } else if let err = releaseStore.lastError {
+                        Text("Releases: \(err)")
+                            .font(.custom("Avenir Next", size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
 
             detailSection(title: "Changelog") {
@@ -370,16 +397,23 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!isInstalled(app))
 
-                Button("Descargar \(app.name)") {
+                Button(downloadButtonTitle(for: app)) {
                     openDownload(app)
                 }
                 .buttonStyle(.bordered)
+                .disabled(latestReleaseAsset(for: app) == nil)
             }
 
-            if isBundledDownloadAvailable(for: app) {
-                Text("Instalacion local sin internet")
-                    .font(.custom("Avenir Next", size: 11))
-                    .foregroundColor(.secondary)
+            Text("Descarga desde GitHub Releases")
+                .font(.custom("Avenir Next", size: 11))
+                .foregroundColor(.secondary)
+
+            if latestReleaseAsset(for: app) == nil {
+                Button("Refrescar Releases") {
+                    Task { await releaseStore.refresh() }
+                }
+                .buttonStyle(.bordered)
+                .font(.custom("Avenir Next", size: 11))
             }
         }
     }
@@ -426,17 +460,55 @@ struct ContentView: View {
         }
     }
 
-    private func isBundledDownloadAvailable(for app: SubApp) -> Bool {
-        // DMGs are not bundled anymore.
-        return false
-    }
-
-    private func alreadyDownloadedFileURL(for app: SubApp) -> URL? {
+    private func alreadyDownloadedFileURL(for app: SubApp, fileName: String) -> URL? {
         guard let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first else {
             return nil
         }
-        let dmgUrl = downloads.appendingPathComponent(app.downloadFileName)
+        let dmgUrl = downloads.appendingPathComponent(fileName)
         return FileManager.default.fileExists(atPath: dmgUrl.path) ? dmgUrl : nil
+    }
+
+    private func latestReleaseAsset(for app: SubApp) -> SubAppReleaseAsset? {
+        releaseStore.assetsByPrefix[app.assetPrefix]
+    }
+
+    private func isUpdateAvailable(for app: SubApp, latest: SemVer) -> Bool {
+        guard let current = SemVer(app.version) else { return false }
+        return latest > current
+    }
+
+    private func downloadButtonTitle(for app: SubApp) -> String {
+        if let latest = latestReleaseAsset(for: app), isUpdateAvailable(for: app, latest: latest.version) {
+            return "Actualizar \(app.name)"
+        }
+        return "Descargar \(app.name)"
+    }
+
+    private struct DownloadAsset {
+        let url: URL
+        let fileName: String
+        let version: String
+        let sha256: String?
+    }
+
+    private func currentDownloadAsset(for app: SubApp) -> DownloadAsset? {
+        if let latest = latestReleaseAsset(for: app) {
+            return DownloadAsset(
+                url: latest.downloadURL,
+                fileName: latest.fileName,
+                version: latest.version.description,
+                sha256: latest.sha256
+            )
+        }
+        return nil
+    }
+
+    private func currentDownloadFileName(for app: SubApp) -> String {
+        currentDownloadAsset(for: app)?.fileName ?? SubAppsCatalog.pinnedFileName(for: app)
+    }
+
+    private func currentDownloadVersionString(for app: SubApp) -> String {
+        currentDownloadAsset(for: app)?.version ?? app.version
     }
 
     private func historyLabel(for entry: SubAppHistoryEntry) -> String {
@@ -465,20 +537,33 @@ struct ContentView: View {
                 .font(.custom("Avenir Next", size: 20).weight(.bold))
 
             switch downloadManager.state {
-            case .downloading(let appName, let progress):
+            case .downloading(let appName, let progress, let bytesWritten, let bytesExpected):
                 Text("Descargando \(appName)...")
                     .font(.custom("Avenir Next", size: 12).weight(.semibold))
                 if let progress {
                     ProgressView(value: progress)
+                        .progressViewStyle(.linear)
+                    Text("\(Int(progress * 100))%")
+                        .font(.custom("Avenir Next", size: 11))
+                        .foregroundColor(.secondary)
+                } else if let bytesExpected, bytesExpected > 0 {
+                    let p = Double(bytesWritten) / Double(bytesExpected)
+                    ProgressView(value: p)
                         .progressViewStyle(.linear)
                 } else {
                     ProgressView()
                         .progressViewStyle(.circular)
                 }
             case .failed(let message):
-                Text(message)
-                    .font(.custom("Avenir Next", size: 12))
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(message)
+                        .font(.custom("Avenir Next", size: 12))
+                        .foregroundColor(.secondary)
+                    if let app = installingApp {
+                        Button("Reintentar") { openDownload(app) }
+                            .buttonStyle(.bordered)
+                    }
+                }
             default:
                 EmptyView()
             }
@@ -506,7 +591,7 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled({
                     guard let app = installingApp else { return true }
-                    return alreadyDownloadedFileURL(for: app) == nil
+                    return alreadyDownloadedFileURL(for: app, fileName: currentDownloadFileName(for: app)) == nil
                 }())
             }
 
@@ -525,8 +610,9 @@ struct ContentView: View {
                 "Vuelve a JUST4ALL y presiona Abrir."
             ]
         }
+        let fileName = currentDownloadFileName(for: app)
         return [
-            "Descarga \(app.downloadFileName).",
+            "Descarga \(fileName).",
             "Abre el DMG.",
             "Arrastra \(app.name) a Applications.",
             "Vuelve a JUST4ALL y presiona Abrir."
@@ -546,7 +632,7 @@ struct ContentView: View {
             return
         }
 
-        let dmgUrl = downloads.appendingPathComponent(app.downloadFileName)
+        let dmgUrl = downloads.appendingPathComponent(currentDownloadFileName(for: app))
         if FileManager.default.fileExists(atPath: dmgUrl.path) {
             NSWorkspace.shared.open(dmgUrl)
         } else {
