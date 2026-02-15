@@ -1,0 +1,21 @@
+// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "JUST4ALL",
+    platforms: [
+        .macOS(.v13)
+    ],
+    products: [
+        .executable(name: "JUST4ALL", targets: ["JUST4ALL"])
+    ],
+    targets: [
+        .executableTarget(
+            name: "JUST4ALL",
+            path: "Sources/JUST4ALL",
+            resources: [
+                .process("Resources")
+            ]
+        )
+    ]
+)

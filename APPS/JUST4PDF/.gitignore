@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.dist/
+.build/
+venv/
+.venv/
+.env
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+dist/
+
+# Releases
+releases/*.dmg

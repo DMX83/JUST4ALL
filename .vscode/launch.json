@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:JUST4ALL}",
+            "name": "Debug JUST4ALL",
+            "target": "JUST4ALL",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug JUST4ALL"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:JUST4ALL}",
+            "name": "Release JUST4ALL",
+            "target": "JUST4ALL",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release JUST4ALL"
+        }
+    ]
+}

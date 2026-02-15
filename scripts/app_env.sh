@@ -1,0 +1,4 @@
+#!/bin/sh
+
+APP_VERSION="0.1.0"
+MIN_MACOS_VERSION="13.0"

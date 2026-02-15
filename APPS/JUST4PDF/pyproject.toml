@@ -1,0 +1,24 @@
+[project]
+name = "just4pdf"
+version = "0.1.0"
+description = "JUST4PDF: app macOS open source para leer PDFs y convertir PDF↔imágenes"
+readme = "readme.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "DMX83" }
+]
+
+dependencies = [
+  "PySide6>=6.6",
+  "PyMuPDF>=1.23",
+  "Pillow>=10.0",
+  "img2pdf>=0.5"
+]
+
+[project.scripts]
+just4pdf = "just4pdf.app:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"

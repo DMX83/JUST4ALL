@@ -1,0 +1,3 @@
+#!/bin/sh
+# Simple CLI for Quick Actions: open app with file arguments
+open -a "JUST4PDF" "$@"
