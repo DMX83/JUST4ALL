@@ -31,5 +31,11 @@ update_cfg_version() {
 update_toml_version "$REPO_ROOT/APPS/JUST4PDF/pyproject.toml"
 update_cfg_version "$REPO_ROOT/APPS/JUST4PDF/setup.cfg"
 
-echo "Synced versions to $SUITE_VERSION"
+# Update packaging Info.plist for JUST4PDF (for manual builds/debugging).
+PDF_PLIST="$REPO_ROOT/APPS/JUST4PDF/packaging/macos/Info.plist"
+if [ -f "$PDF_PLIST" ]; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SUITE_VERSION" "$PDF_PLIST" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $SUITE_VERSION" "$PDF_PLIST" 2>/dev/null || true
+fi
 
+echo "Synced versions to $SUITE_VERSION"
