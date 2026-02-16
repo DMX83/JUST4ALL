@@ -13,23 +13,20 @@ DERIVED_DIR="build"
 DIST_DIR="dist"
 BUNDLE_ID="com.dmx83.just4all"
 
-xcodebuild -scheme "$APP_NAME" -configuration Release -destination 'platform=macOS' -derivedDataPath "$DERIVED_DIR" \
-  INFOPLIST_FILE="$REPO_ROOT/Sources/JUST4ALL/Resources/Info.plist"
+swift build -c release
 
-APP_PATH=$(find "$DERIVED_DIR" -name "$APP_NAME.app" -type d | head -n 1)
-if [ -z "$APP_PATH" ]; then
-  APP_BIN="$DERIVED_DIR/Build/Products/Release/$APP_NAME"
-  APP_PATH="$DERIVED_DIR/Build/Products/Release/$APP_NAME.app"
+APP_BIN="$REPO_ROOT/.build/release/$APP_NAME"
+APP_PATH="$REPO_ROOT/$DERIVED_DIR/Build/Products/Release/$APP_NAME.app"
 
-  if [ ! -f "$APP_BIN" ]; then
-    echo "App executable not found."
-    exit 1
-  fi
+if [ ! -f "$APP_BIN" ]; then
+  echo "App executable not found."
+  exit 1
+fi
 
-  mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
-  cp "$APP_BIN" "$APP_PATH/Contents/MacOS/$APP_NAME"
+mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
+cp "$APP_BIN" "$APP_PATH/Contents/MacOS/$APP_NAME"
 
-  cat > "$APP_PATH/Contents/Info.plist" <<EOF
+cat > "$APP_PATH/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -56,13 +53,12 @@ if [ -z "$APP_PATH" ]; then
 </plist>
 EOF
 
-  if [ -d "Sources/JUST4ALL/Resources" ]; then
-    cp -R "Sources/JUST4ALL/Resources"/* "$APP_PATH/Contents/Resources/"
-  fi
+if [ -d "Sources/JUST4ALL/Resources" ]; then
+  cp -R "Sources/JUST4ALL/Resources"/* "$APP_PATH/Contents/Resources/"
+fi
 
-  if [ -f "Sources/JUST4ALL/Resources/Assets/JUST4ALL/icon.icns" ]; then
-    cp "Sources/JUST4ALL/Resources/Assets/JUST4ALL/icon.icns" "$APP_PATH/Contents/Resources/icon.icns"
-  fi
+if [ -f "Sources/JUST4ALL/Resources/Assets/JUST4ALL/icon.icns" ]; then
+  cp "Sources/JUST4ALL/Resources/Assets/JUST4ALL/icon.icns" "$APP_PATH/Contents/Resources/icon.icns"
 fi
 
 #

@@ -50,6 +50,13 @@
 - [x] Diagnostico basico de errores por item (mensaje visible).
 - [x] Reintento rapido por item fallido.
 - [x] Opcion de aceleracion/codec (H.264 vs HEVC, bitrate objetivo, resolucion/fps).
+- [x] Lista de seleccion con ScrollView/LazyVStack y altura maxima (evitar overflow UI).
+- [x] Throttling de progreso/ETA para evitar congelar la UI (200ms/1% delta).
+- [x] Progreso global + contadores (completados/restantes) visibles.
+- [x] Procesamiento en background (UI responsiva durante conversion).
+- [x] Paralelismo configurable (default 80% de nucleos disponibles).
+- [x] Tiempo por item (mostrar duracion individual de conversion).
+- [x] Tiempo total de la cola (mostrar duracion acumulada desde inicio).
 - [ ] Bitrate efectivo en export (pipeline AVAssetReader/Writer).
 - [x] Panel de historial (ultimos outputs con abrir/revelar en Finder).
 - [x] Entrada mixta por item (auto-detectar tipo y elegir formato de salida por item).
@@ -60,6 +67,7 @@
 - [ ] Formatos: mapear cada formato a presets AVFoundation/ImageIO y validar compatibilidad por extension.
 - [ ] Presets por item: almacenar presets en modelo de cola y permitir editar desde la lista.
 - [ ] Progreso: mostrar barra por item + estado global y evitar bloquear UI.
+- [ ] Concurrencia: limitar workers (p. ej. 80% de nucleos) y exponer preferencia.
 - [ ] Nombres: reglas simples (ej: nombre_original + preset + fecha) y opcion de auto-incremento.
 - [ ] Carpetas: lectura recursiva con limite de profundidad configurable.
 - [ ] Errores: conservar causa y stack compacto; boton "Copiar error".

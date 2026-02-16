@@ -13,6 +13,9 @@ let package = Package(
         .executableTarget(
             name: "JUST4ALL",
             path: "Sources/JUST4ALL",
+            exclude: [
+                "Resources/Info.plist"
+            ],
             resources: [
                 // Do not bundle the app Info.plist; it's used by Xcode/build scripts.
                 .copy("Resources/Assets"),

@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO_ROOT="$(cd "$PROJECT_ROOT/../.." && pwd)"
 
+APP_ENV_SCRIPT_DIR="$REPO_ROOT/scripts"
 . "$REPO_ROOT/scripts/app_env.sh"
 
 export APP_VERSION

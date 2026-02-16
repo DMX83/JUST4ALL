@@ -191,25 +191,37 @@ struct ContentView: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 6) {
-                    ForEach(selectedFiles, id: \.self) { file in
-                        HStack(spacing: 8) {
-                            Image(systemName: "doc.fill")
-                                .foregroundColor(.secondary)
-                                .font(.system(size: 10))
-                            Text(file.lastPathComponent)
-                                .font(.system(size: 11))
-                                .lineLimit(1)
-                            Spacer()
-                            Button(action: {
-                                selectedFiles.removeAll { $0 == file }
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.secondary)
-                                    .font(.system(size: 10))
+                    HStack {
+                        Text("Seleccionados: \(selectedFiles.count)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 6) {
+                            ForEach(selectedFiles, id: \.self) { file in
+                                HStack(spacing: 8) {
+                                    Image(systemName: "doc.fill")
+                                        .foregroundColor(.secondary)
+                                        .font(.system(size: 10))
+                                    Text(file.lastPathComponent)
+                                        .font(.system(size: 11))
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Button(action: {
+                                        selectedFiles.removeAll { $0 == file }
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.secondary)
+                                            .font(.system(size: 10))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
-                            .buttonStyle(.plain)
                         }
                     }
+                    .frame(maxHeight: 160)
                     
                     Button("+ Agregar más archivos") {
                         showImporter = true
@@ -294,6 +306,22 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Cola de conversion (\(conversionQueue.items.count))")
                 .font(.system(size: 12, weight: .semibold))
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 12) {
+                    Text("Completados: \(conversionQueue.completedCount)")
+                    Text("Restantes: \(conversionQueue.remainingCount)")
+                    Text("Paralelo: \(conversionQueue.maxConcurrent)x")
+                }
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                
+                if let totalDuration = conversionQueue.totalDurationDisplay {
+                    Text("Tiempo total: \(totalDuration)")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+            }
             
             if conversionQueue.isProcessing {
                 ProgressView(value: conversionQueue.totalProgress)
@@ -322,9 +350,16 @@ struct ContentView: View {
                     Text(item.displayName)
                         .font(.system(size: 11, weight: .medium))
                         .lineLimit(1)
-                    Text("\(item.status.displayName) • \(item.conversionFormat.rawValue.uppercased())")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Text("\(item.status.displayName) • \(item.conversionFormat.rawValue.uppercased())")
+                        if let duration = item.durationDisplay {
+                            Text("• \(duration)")
+                                .fontWeight(.semibold)
+                                .foregroundColor(.green)
+                        }
+                    }
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
                 }
                 
                 Spacer()
