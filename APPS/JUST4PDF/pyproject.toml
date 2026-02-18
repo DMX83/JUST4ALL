@@ -2,7 +2,7 @@
 name = "just4pdf"
 version = "0.1.0"
 description = "JUST4PDF: app macOS open source para leer PDFs y convertir PDF↔imágenes"
-readme = "readme.md"
+readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [

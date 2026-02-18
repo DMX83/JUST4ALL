@@ -1,10 +1,16 @@
 # TODO — JUST4PDF (MVP)
 
+## Documentacion relacionada
+
+- Plan del modulo: `README.md`
+- Hub principal: `../../README.md`
+- Roadmap general: `../../TODO.md`
+
 ## 0) Base del proyecto
 
 - [x] Crear estructura `src/just4pdf/`
 - [x] Crear `pyproject.toml`
-- [ ] Crear `README.md` (si luego queremos mover/limpiar el contenido actual)
+- [x] Crear `README.md`
 - [x] Crear `LICENSE` (MIT)
 - [x] Crear `.gitignore`
 

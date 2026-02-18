@@ -1,5 +1,11 @@
 # JUST4PDF (macOS) — Plan de desarrollo (Senior)
 
+## Documentacion relacionada
+
+- Hub principal: `../../README.md`
+- Roadmap general: `../../TODO.md`
+- Tareas de este modulo: `TODO.md`
+
 ## Objetivo
 
 Crear **JUST4PDF**, una app **desktop macOS** open source que:
