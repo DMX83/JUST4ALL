@@ -72,10 +72,10 @@
 - [x] README/TODO del modulo + script de build DMG.
 - [x] Plan completo v1.0 documentado en `APPS/JUST4FOLDERS/ROADMAP_V1.md`.
 - [x] Estructura modular inicial: `J4FCore`, `J4FFileSystem`, `J4FOps`, `J4FUI`.
-- [ ] Migrar UI principal a AppKit-first (2 paneles).
-- [ ] Implementar sandbox con security-scoped bookmarks.
-- [ ] Implementar motor de operaciones v1 (queue + scheduler + budget 512MB).
-- [ ] Completar productividad commander (tabs, shortcuts, search).
+- [x] Migrar UI principal a AppKit-first (2 paneles).
+- [x] Implementar sandbox con security-scoped bookmarks.
+- [x] Implementar motor de operaciones v1 (queue + scheduler + budget 512MB).
+- [x] Completar productividad commander (tabs, shortcuts, search).
 - [ ] Pulido App Store y release v1.0.0.
 
 ### Detalles de implementacion sugeridos
