@@ -74,6 +74,12 @@ swift run
   - renombra por URL objetivo capturada (no depende de seleccion post-modal),
   - mismo nombre se trata como no-op sin error.
 - Columna izquierda migrada a arbol del directorio activo.
+- Variante actual del arbol:
+  - anclado estable al Home (o volumen cuando aplica),
+  - nodo `..` para subir nivel,
+  - conserva expansion/seleccion por panel.
+- Toolbar con boton `Home`.
+- Barra de ruta con autocompletado basico de rutas.
 - Accion explicita para `Info carpeta actual` (toolbar y sidebar).
 - Menu contextual ampliado con `Nueva carpeta`.
 - Pegado (`Cmd+V` / `Pegar item`) encola job de copia para mostrar progreso y usar motor J4FOps.

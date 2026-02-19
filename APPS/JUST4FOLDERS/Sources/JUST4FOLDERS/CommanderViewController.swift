@@ -41,11 +41,15 @@ private struct FileRow {
 
 private final class DirectoryTreeNode {
     let url: URL
+    weak var parent: DirectoryTreeNode?
+    let isParentShortcut: Bool
     var children: [DirectoryTreeNode] = []
     var isLoaded = false
 
-    init(url: URL) {
+    init(url: URL, parent: DirectoryTreeNode? = nil, isParentShortcut: Bool = false) {
         self.url = url
+        self.parent = parent
+        self.isParentShortcut = isParentShortcut
     }
 }
 
@@ -96,11 +100,12 @@ private final class FileIconCache {
 
 private let sharedFileIconCache = FileIconCache()
 
-final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate, NSOutlineViewDataSource, NSOutlineViewDelegate, NSToolbarItemValidation {
+final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSearchFieldDelegate, NSControlTextEditingDelegate, NSTableViewDataSource, NSTableViewDelegate, NSOutlineViewDataSource, NSOutlineViewDelegate, NSToolbarItemValidation {
     private enum ToolbarID {
         static let root = NSToolbar.Identifier("j4f.toolbar.main")
         static let back = NSToolbarItem.Identifier("j4f.toolbar.back")
         static let forward = NSToolbarItem.Identifier("j4f.toolbar.forward")
+        static let home = NSToolbarItem.Identifier("j4f.toolbar.home")
         static let newTab = NSToolbarItem.Identifier("j4f.toolbar.newTab")
         static let copy = NSToolbarItem.Identifier("j4f.toolbar.copy")
         static let move = NSToolbarItem.Identifier("j4f.toolbar.move")
@@ -153,6 +158,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private var activeJobIds: Set<UUID> = []
     private var preferences = J4FPreferences.load()
     private var directoryTreeRoot: DirectoryTreeNode?
+    private var isUpdatingDirectoryTreeSelection = false
+    private lazy var homeDirectoryURL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).standardizedFileURL
+    private var expandedTreePathsBySide: [PanelSide: Set<String>] = [.left: [], .right: []]
+    private var selectedTreePathBySide: [PanelSide: String] = [:]
 
     override func loadView() {
         view = NSView()
@@ -166,7 +175,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         applyPreferences(initial: true)
         loadSidebarLocations()
         updatePathFieldFromActivePanel()
-        reloadDirectoryTree(root: activePanel.currentDirectoryURL)
+        syncDirectoryTreeToActivePanel()
         NotificationCenter.default.addObserver(self, selector: #selector(focusPathBar), name: .j4fFocusPathBar, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onPreferencesChanged), name: .j4fPreferencesChanged, object: nil)
     }
@@ -199,6 +208,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         pathField.isEditable = true
         pathField.isSelectable = true
         pathField.isBezeled = true
+        pathField.delegate = self
         pathField.target = self
         pathField.action = #selector(commitPathField)
         pathField.setAccessibilityLabel("Barra de ruta")
@@ -370,7 +380,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             self?.updatePathFieldFromActivePanel()
             self?.updateWatcher(for: .left, directory: url)
             if self?.activeSide == .left {
-                self?.reloadDirectoryTree(root: url)
+                self?.syncDirectoryTreeToActivePanel()
             }
         }
         rightPanel.onDirectoryChanged = { [weak self] url in
@@ -379,7 +389,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             self?.updatePathFieldFromActivePanel()
             self?.updateWatcher(for: .right, directory: url)
             if self?.activeSide == .right {
-                self?.reloadDirectoryTree(root: url)
+                self?.syncDirectoryTreeToActivePanel()
             }
         }
 
@@ -828,10 +838,11 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     private func toggleActivePanel() {
+        captureDirectoryTreeState(for: activeSide)
         activeSide = (activeSide == .left) ? .right : .left
         activePanel.focusTable()
         updatePathFieldFromActivePanel()
-        reloadDirectoryTree(root: activePanel.currentDirectoryURL)
+        syncDirectoryTreeToActivePanel()
     }
 
     private func isURLAuthorizedForWatching(_ url: URL) -> Bool {
@@ -901,12 +912,16 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         activePanel.showInfoForCurrentDirectory()
     }
 
+    @objc private func goHome() {
+        activePanel.openURL(homeDirectoryURL)
+    }
+
     private func applyPreferences(initial: Bool) {
         preferences = J4FPreferences.load()
         leftPanel.setIncludeHidden(preferences.showHiddenFiles)
         rightPanel.setIncludeHidden(preferences.showHiddenFiles)
         BufferSizer.shared.setPreferredBigBytes(preferences.preferredBigBufferMB * 1024 * 1024)
-        reloadDirectoryTree(root: activePanel.currentDirectoryURL)
+        syncDirectoryTreeToActivePanel()
 
         if !initial {
             statusLabel.stringValue = "Preferencias aplicadas."
@@ -914,12 +929,139 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     private func reloadDirectoryTree(root: URL) {
+        isUpdatingDirectoryTreeSelection = true
+        defer { isUpdatingDirectoryTreeSelection = false }
         let rootNode = DirectoryTreeNode(url: root)
         directoryTreeRoot = rootNode
         directoryTree.reloadData()
         if directoryTree.numberOfRows > 0 {
             directoryTree.expandItem(rootNode)
-            directoryTree.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        }
+    }
+
+    private func syncDirectoryTreeToActivePanel() {
+        let current = activePanel.currentDirectoryURL.standardizedFileURL
+        let desiredRoot: URL
+        if current.path == homeDirectoryURL.path || current.path.hasPrefix(homeDirectoryURL.path + "/") {
+            desiredRoot = homeDirectoryURL
+        } else if let volumeURL = try? current.resourceValues(forKeys: [.volumeURLKey]).volume {
+            desiredRoot = volumeURL.standardizedFileURL
+        } else {
+            desiredRoot = URL(fileURLWithPath: "/", isDirectory: true)
+        }
+
+        if directoryTreeRoot?.url.standardizedFileURL.path != desiredRoot.path {
+            reloadDirectoryTree(root: desiredRoot)
+        }
+        restoreDirectoryTreeState(for: activeSide)
+        selectInDirectoryTree(path: current)
+    }
+
+    private func captureDirectoryTreeState(for side: PanelSide) {
+        var expanded: Set<String> = []
+        for row in 0..<directoryTree.numberOfRows {
+            guard let node = directoryTree.item(atRow: row) as? DirectoryTreeNode else { continue }
+            if directoryTree.isItemExpanded(node) {
+                expanded.insert(node.url.standardizedFileURL.path)
+            }
+        }
+        expandedTreePathsBySide[side] = expanded
+        let selectedRow = directoryTree.selectedRow
+        if selectedRow >= 0, let selected = directoryTree.item(atRow: selectedRow) as? DirectoryTreeNode {
+            selectedTreePathBySide[side] = selected.url.standardizedFileURL.path
+        }
+    }
+
+    private func restoreDirectoryTreeState(for side: PanelSide) {
+        guard let root = directoryTreeRoot else { return }
+        let expanded = expandedTreePathsBySide[side] ?? []
+        for path in expanded {
+            guard path != root.url.standardizedFileURL.path else { continue }
+            _ = expandPathInTree(path)
+        }
+        if let selectedPath = selectedTreePathBySide[side],
+           let selectedNode = findNodeInTree(path: selectedPath) {
+            let row = directoryTree.row(forItem: selectedNode)
+            if row >= 0 {
+                isUpdatingDirectoryTreeSelection = true
+                directoryTree.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+                isUpdatingDirectoryTreeSelection = false
+            }
+        }
+    }
+
+    @discardableResult
+    private func expandPathInTree(_ path: String) -> DirectoryTreeNode? {
+        guard let root = directoryTreeRoot else { return nil }
+        let rootPath = root.url.standardizedFileURL.path
+        guard path == rootPath || path.hasPrefix(rootPath + "/") else { return nil }
+        if path == rootPath {
+            directoryTree.expandItem(root)
+            return root
+        }
+
+        var node = root
+        let rootComponents = root.url.standardizedFileURL.pathComponents
+        let targetComponents = URL(fileURLWithPath: path).standardizedFileURL.pathComponents
+        let remainder = targetComponents.dropFirst(rootComponents.count)
+        for component in remainder {
+            loadChildrenIfNeeded(for: node)
+            guard let next = node.children.first(where: { !$0.isParentShortcut && $0.url.lastPathComponent == component }) else {
+                return nil
+            }
+            directoryTree.expandItem(node)
+            node = next
+        }
+        return node
+    }
+
+    private func findNodeInTree(path: String) -> DirectoryTreeNode? {
+        expandPathInTree(path)
+    }
+
+    private func selectInDirectoryTree(path target: URL) {
+        guard let root = directoryTreeRoot else { return }
+        let rootPath = root.url.standardizedFileURL.path
+        let targetPath = target.standardizedFileURL.path
+
+        guard targetPath == rootPath || targetPath.hasPrefix(rootPath + "/") else {
+            let rootRow = directoryTree.row(forItem: root)
+            if rootRow >= 0 {
+                isUpdatingDirectoryTreeSelection = true
+                directoryTree.selectRowIndexes(IndexSet(integer: rootRow), byExtendingSelection: false)
+                isUpdatingDirectoryTreeSelection = false
+            }
+            return
+        }
+
+        if targetPath == rootPath {
+            let row = directoryTree.row(forItem: root)
+            if row >= 0 {
+                isUpdatingDirectoryTreeSelection = true
+                directoryTree.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+                isUpdatingDirectoryTreeSelection = false
+            }
+            return
+        }
+
+        var node = root
+        let rootComponents = root.url.standardizedFileURL.pathComponents
+        let targetComponents = target.standardizedFileURL.pathComponents
+        let remainder = targetComponents.dropFirst(rootComponents.count)
+
+        for component in remainder {
+            loadChildrenIfNeeded(for: node)
+            guard let next = node.children.first(where: { !$0.isParentShortcut && $0.url.lastPathComponent == component }) else { break }
+            directoryTree.expandItem(node)
+            node = next
+        }
+
+        let row = directoryTree.row(forItem: node)
+        if row >= 0 {
+            isUpdatingDirectoryTreeSelection = true
+            directoryTree.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+            directoryTree.scrollRowToVisible(row)
+            isUpdatingDirectoryTreeSelection = false
         }
     }
 
@@ -943,15 +1085,14 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         if item == nil {
             return directoryTreeRoot as Any
         }
-        guard let node = item as? DirectoryTreeNode else {
-            return DirectoryTreeNode(url: activePanel.currentDirectoryURL)
-        }
+        guard let node = item as? DirectoryTreeNode else { return DirectoryTreeNode(url: activePanel.currentDirectoryURL) }
         loadChildrenIfNeeded(for: node)
         return node.children[index]
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
         guard outlineView == directoryTree, let node = item as? DirectoryTreeNode else { return false }
+        if node.isParentShortcut { return false }
         return hasDirectoryChildren(node.url)
     }
 
@@ -976,16 +1117,29 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             ])
         }
 
-        let base = node.url.lastPathComponent.isEmpty ? node.url.path : node.url.lastPathComponent
+        let base: String
+        if node.isParentShortcut {
+            base = ".."
+        } else {
+            base = node.url.lastPathComponent.isEmpty ? node.url.path : node.url.lastPathComponent
+        }
         label.stringValue = base
         label.lineBreakMode = .byTruncatingMiddle
         return cell
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
+        if isUpdatingDirectoryTreeSelection { return }
         guard let outline = notification.object as? NSOutlineView, outline == directoryTree else { return }
         let row = outline.selectedRow
         guard row >= 0, let node = outline.item(atRow: row) as? DirectoryTreeNode else { return }
+        if node.isParentShortcut, let parent = node.parent {
+            activePanel.openURL(parent.url)
+            return
+        }
+        if node.url.standardizedFileURL.path == activePanel.currentDirectoryURL.standardizedFileURL.path {
+            return
+        }
         activePanel.openURL(node.url)
     }
 
@@ -997,15 +1151,20 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         guard let entries = try? fm.contentsOfDirectory(at: node.url, includingPropertiesForKeys: Array(keys), options: [.skipsPackageDescendants]) else {
             return
         }
-        node.children = entries.compactMap { entry in
+        var children: [DirectoryTreeNode] = []
+        if let parent = node.parent {
+            children.append(DirectoryTreeNode(url: parent.url, parent: parent, isParentShortcut: true))
+        }
+        children += entries.compactMap { entry in
             guard let values = try? entry.resourceValues(forKeys: keys), values.isDirectory == true else { return nil }
             if !preferences.showHiddenFiles && values.isHidden == true {
                 return nil
             }
-            return DirectoryTreeNode(url: entry)
+            return DirectoryTreeNode(url: entry, parent: node)
         }.sorted {
             $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending
         }
+        node.children = children
     }
 
     private func hasDirectoryChildren(_ url: URL) -> Bool {
@@ -1242,7 +1401,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
-            ToolbarID.back, ToolbarID.forward, .flexibleSpace,
+            ToolbarID.back, ToolbarID.forward, ToolbarID.home, .flexibleSpace,
             ToolbarID.newTab, ToolbarID.copy, ToolbarID.move, ToolbarID.delete,
             ToolbarID.mkdir, ToolbarID.rename, ToolbarID.deletePermanent,
             .flexibleSpace, ToolbarID.refresh, ToolbarID.infoCurrent, ToolbarID.tasks, ToolbarID.diagnostics, ToolbarID.addLocation, ToolbarID.search
@@ -1272,6 +1431,12 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             item.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(goForward)
+        case ToolbarID.home:
+            item.label = "Home"
+            item.toolTip = "Ir al Home del usuario"
+            item.image = NSImage(systemSymbolName: "house", accessibilityDescription: nil)
+            item.target = self
+            item.action = #selector(goHome)
         case ToolbarID.newTab:
             item.label = "New Tab"
             item.toolTip = "Nueva tab (Cmd+T)"
@@ -1419,6 +1584,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             return activePanel.canGoBack
         case ToolbarID.forward:
             return activePanel.canGoForward
+        case ToolbarID.home:
+            return true
         case ToolbarID.copy, ToolbarID.move, ToolbarID.delete:
             return !activePanel.selectedURLs().isEmpty
         case ToolbarID.rename:
@@ -1433,6 +1600,38 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     func controlTextDidChange(_ obj: Notification) {
         guard let field = obj.object as? NSSearchField, field == searchField else { return }
         activePanel.setSearchQuery(field.stringValue)
+    }
+
+    func control(_ control: NSControl, textView: NSTextView, completions words: [String], forPartialWordRange charRange: NSRange, indexOfSelectedItem index: UnsafeMutablePointer<Int>) -> [String] {
+        guard control == pathField else { return words }
+        let raw = pathField.stringValue
+        let expanded = NSString(string: raw).expandingTildeInPath
+        let baseURL = URL(fileURLWithPath: expanded)
+
+        let directoryURL: URL
+        let fragment: String
+
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: baseURL.path, isDirectory: &isDir), isDir.boolValue {
+            directoryURL = baseURL
+            fragment = ""
+        } else {
+            directoryURL = baseURL.deletingLastPathComponent()
+            fragment = baseURL.lastPathComponent.lowercased()
+        }
+
+        let keys: [URLResourceKey] = [.isDirectoryKey]
+        let entries = (try? FileManager.default.contentsOfDirectory(at: directoryURL, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])) ?? []
+        let suggestions = entries.compactMap { url -> String? in
+            let name = url.lastPathComponent
+            guard fragment.isEmpty || name.lowercased().hasPrefix(fragment) else { return nil }
+            var candidate = url.path
+            if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+                candidate += "/"
+            }
+            return candidate
+        }.sorted()
+        return suggestions
     }
 
     private func promptForText(title: String, message: String, defaultValue: String) -> String? {

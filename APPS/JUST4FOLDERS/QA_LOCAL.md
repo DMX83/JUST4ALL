@@ -19,6 +19,9 @@
 - `Informacion` agrega `Tamano logico` y `Tamano en disco` (dedup hard links).
 - Boton/accion de `Info carpeta actual` disponible sin depender de seleccion.
 - Columna izquierda cambiada a arbol del directorio activo (navegacion rapida).
+- Arbol anclado estable (Home/volumen), con soporte `..` para subir nivel.
+- Boton `Home` en toolbar para volver rapido al directorio base.
+- Barra de ruta con autocompletado basico de rutas existentes.
 
 ## Smoke test critico (dmx83/temp/orlando_salida)
 

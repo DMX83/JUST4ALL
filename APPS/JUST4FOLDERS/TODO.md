@@ -162,3 +162,6 @@
   - [x] `Info carpeta actual` muestra metrica logica y en disco
   - [x] barra de ruta editable + `Go` con validacion
   - [x] arbol en columna izquierda sincronizado con panel activo
+  - [x] arbol anclado estable + nodo `..` para subir nivel
+  - [x] boton `Home` en toolbar
+  - [x] autocompletado basico en barra de ruta
