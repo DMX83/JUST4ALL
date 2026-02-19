@@ -76,6 +76,7 @@
 - [x] Implementar sandbox con security-scoped bookmarks.
 - [x] Implementar motor de operaciones v1 (queue + scheduler + budget 512MB).
 - [x] Completar productividad commander (tabs, shortcuts, search).
+- [ ] Resolver regresion de busqueda profunda (latencia alta/no retorno) con prioridad maxima.
 - [ ] Pulido App Store y release v1.0.0.
 
 ### Detalles de implementacion sugeridos

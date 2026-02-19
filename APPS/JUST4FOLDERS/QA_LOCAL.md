@@ -7,6 +7,14 @@
 - `scripts/perf_100k_listing.sh`: OK
 - `swift run JUST4FOLDERS`: arranca (sin crash inmediato)
 
+## Incidencia abierta critica (2026-02-19)
+
+- Busqueda profunda sigue con comportamiento inestable:
+  - en algunos directorios grandes tarda demasiado (hasta minutos),
+  - en algunos casos no muestra resultados en tiempo razonable.
+- Estado: pendiente, prioridad maxima.
+- Decision: no cerrar QA de busqueda hasta garantizar respuesta consistente y visible para usuario.
+
 ## Incidencias cerradas (2026-02-19)
 
 - Prompt de `Nueva carpeta` / `Renombrar` recupera foco de teclado.

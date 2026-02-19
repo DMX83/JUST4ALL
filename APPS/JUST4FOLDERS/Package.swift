@@ -11,7 +11,10 @@ let package = Package(
         .target(name: "J4FCore"),
         .target(
             name: "J4FFileSystem",
-            dependencies: ["J4FCore"]
+            dependencies: ["J4FCore"],
+            linkerSettings: [
+                .linkedLibrary("sqlite3")
+            ]
         ),
         .target(
             name: "J4FOps",

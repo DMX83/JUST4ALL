@@ -17,6 +17,12 @@
 - [x] Fixes de foco/rename/context menu/paste job queue en UI local.
 - [x] Fix de copia recursiva con archivo grande en J4FOps.
 
+## Bloqueante actual (prioridad maxima)
+
+- [ ] BUSQUEDA PROFUNDA: en ciertos arboles/directorios grandes sigue lenta o no retorna resultados en tiempos aceptables.
+- [ ] Definir y aplicar timeout/feedback de progreso visible durante busqueda profunda para evitar estado "colgado".
+- [ ] Ajustar pipeline de busqueda/indexacion para garantizar respuesta perceptible < 3s en casos comunes.
+
 ## MVP-0 — Fundaciones
 
 - [x] Definir principios de arquitectura (AppKit-first + sandbox + copy engine).

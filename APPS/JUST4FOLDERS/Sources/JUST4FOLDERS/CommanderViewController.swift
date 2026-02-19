@@ -126,6 +126,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let bookmarkStore = SecurityScopedBookmarkStore()
     private let favoriteStore = FavoriteLocationStore()
     private let recentStore = RecentLocationStore()
+    private let pathIndex = PathSearchIndex.shared
     private let jobQueue = JobQueueService()
     private let leftWatcher = DirectoryWatchService()
     private let rightWatcher = DirectoryWatchService()
@@ -162,6 +163,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private lazy var homeDirectoryURL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).standardizedFileURL
     private var expandedTreePathsBySide: [PanelSide: Set<String>] = [.left: [], .right: []]
     private var selectedTreePathBySide: [PanelSide: String] = [:]
+    private var isEditingPathField = false
+    private var cooperativeIndexTask: Task<Void, Never>?
+    private var cooperativeIndexDebounceWorkItem: DispatchWorkItem?
+    private var isCooperativeIndexing = false
 
     override func loadView() {
         view = NSView()
@@ -176,6 +181,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         loadSidebarLocations()
         updatePathFieldFromActivePanel()
         syncDirectoryTreeToActivePanel()
+        scheduleCooperativeIndexing()
         NotificationCenter.default.addObserver(self, selector: #selector(focusPathBar), name: .j4fFocusPathBar, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onPreferencesChanged), name: .j4fPreferencesChanged, object: nil)
     }
@@ -192,6 +198,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
         leftWatcher.stop()
         rightWatcher.stop()
+        cooperativeIndexTask?.cancel()
+        cooperativeIndexDebounceWorkItem?.cancel()
         stopAllScopedAccess()
         NotificationCenter.default.removeObserver(self)
     }
@@ -379,6 +387,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             self?.updateVolumeWarning(for: url)
             self?.updatePathFieldFromActivePanel()
             self?.updateWatcher(for: .left, directory: url)
+            self?.scheduleCooperativeIndexing()
             if self?.activeSide == .left {
                 self?.syncDirectoryTreeToActivePanel()
             }
@@ -388,6 +397,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             self?.updateVolumeWarning(for: url)
             self?.updatePathFieldFromActivePanel()
             self?.updateWatcher(for: .right, directory: url)
+            self?.scheduleCooperativeIndexing()
             if self?.activeSide == .right {
                 self?.syncDirectoryTreeToActivePanel()
             }
@@ -399,6 +409,18 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         rightPanel.onPasteRequested = { [weak self] in
             self?.pasteItemsFromClipboardToActivePanel()
         }
+        leftPanel.onSearchWillStart = { [weak self] in
+            self?.pauseCooperativeIndexingForSearch()
+        }
+        rightPanel.onSearchWillStart = { [weak self] in
+            self?.pauseCooperativeIndexingForSearch()
+        }
+        leftPanel.onSearchDidFinish = { [weak self] in
+            self?.scheduleCooperativeIndexing()
+        }
+        rightPanel.onSearchDidFinish = { [weak self] in
+            self?.scheduleCooperativeIndexing()
+        }
     }
 
     @objc private func focusPathBar() {
@@ -407,6 +429,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     @objc private func commitPathField() {
+        isEditingPathField = false
         activePanel.openPath(pathField.stringValue)
     }
 
@@ -734,6 +757,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         recentsTable.reloadData()
         reauthTable.reloadData()
         updateWatchersForVisibleDirectories()
+        scheduleCooperativeIndexing()
 
         if report.refreshedCount > 0 {
             statusLabel.stringValue = "Bookmarks actualizados: \(report.refreshedCount)."
@@ -833,6 +857,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     private func updatePathFieldFromActivePanel() {
+        if isEditingPathField { return }
         pathField.stringValue = activePanel.currentPath
         view.window?.toolbar?.validateVisibleItems()
     }
@@ -882,6 +907,12 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
                 case .right:
                     self.rightPanel.refreshForChangedPaths(changedPaths)
                 }
+                Task {
+                    let indexed = await self.pathIndex.isIndexed(for: directory)
+                    if indexed {
+                        await self.pathIndex.refreshChangedPaths(changedPaths, watchedRoot: directory, includeHidden: self.preferences.showHiddenFiles)
+                    }
+                }
             }
             watcher.setPaused(!activeJobIds.isEmpty)
         } catch {
@@ -922,10 +953,66 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         rightPanel.setIncludeHidden(preferences.showHiddenFiles)
         BufferSizer.shared.setPreferredBigBytes(preferences.preferredBigBufferMB * 1024 * 1024)
         syncDirectoryTreeToActivePanel()
+        scheduleCooperativeIndexing()
 
         if !initial {
             statusLabel.stringValue = "Preferencias aplicadas."
         }
+    }
+
+    private func scheduleCooperativeIndexing() {
+        if isCooperativeIndexing {
+            return
+        }
+        cooperativeIndexDebounceWorkItem?.cancel()
+        let roots = desiredIndexRoots()
+        let includeHidden = preferences.showHiddenFiles
+
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.cooperativeIndexTask?.cancel()
+            self.isCooperativeIndexing = true
+            self.cooperativeIndexTask = Task.detached(priority: .utility) { [weak self] in
+                guard let self else { return }
+                do {
+                    try await self.pathIndex.ensureIndexedCooperative(
+                        roots: roots,
+                        includeHidden: includeHidden,
+                        batchSize: 400,
+                        pausePerBatchMS: 20
+                    )
+                    await MainActor.run {
+                        self.isCooperativeIndexing = false
+                        self.flashIndexingCompleteHighlight()
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.isCooperativeIndexing = false
+                    }
+                }
+            }
+        }
+        cooperativeIndexDebounceWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
+    }
+
+    private func desiredIndexRoots() -> [URL] {
+        var roots: [URL] = [leftPanel.currentDirectoryURL, rightPanel.currentDirectoryURL]
+        roots.append(contentsOf: authorizedLocations)
+        let unique = Set(roots.map { $0.standardizedFileURL.path })
+        return unique.sorted().map { URL(fileURLWithPath: $0, isDirectory: true) }
+    }
+
+    private func flashIndexingCompleteHighlight() {
+        leftPanel.flashIndexReady()
+        rightPanel.flashIndexReady()
+        statusLabel.stringValue = "Indexado incremental completado."
+    }
+
+    private func pauseCooperativeIndexingForSearch() {
+        cooperativeIndexDebounceWorkItem?.cancel()
+        cooperativeIndexTask?.cancel()
+        isCooperativeIndexing = false
     }
 
     private func reloadDirectoryTree(root: URL) {
@@ -1092,7 +1179,6 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
         guard outlineView == directoryTree, let node = item as? DirectoryTreeNode else { return false }
-        if node.isParentShortcut { return false }
         return hasDirectoryChildren(node.url)
     }
 
@@ -1117,12 +1203,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             ])
         }
 
-        let base: String
-        if node.isParentShortcut {
-            base = ".."
-        } else {
-            base = node.url.lastPathComponent.isEmpty ? node.url.path : node.url.lastPathComponent
-        }
+        let base = node.url.lastPathComponent.isEmpty ? node.url.path : node.url.lastPathComponent
         label.stringValue = base
         label.lineBreakMode = .byTruncatingMiddle
         return cell
@@ -1133,10 +1214,6 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         guard let outline = notification.object as? NSOutlineView, outline == directoryTree else { return }
         let row = outline.selectedRow
         guard row >= 0, let node = outline.item(atRow: row) as? DirectoryTreeNode else { return }
-        if node.isParentShortcut, let parent = node.parent {
-            activePanel.openURL(parent.url)
-            return
-        }
         if node.url.standardizedFileURL.path == activePanel.currentDirectoryURL.standardizedFileURL.path {
             return
         }
@@ -1151,11 +1228,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         guard let entries = try? fm.contentsOfDirectory(at: node.url, includingPropertiesForKeys: Array(keys), options: [.skipsPackageDescendants]) else {
             return
         }
-        var children: [DirectoryTreeNode] = []
-        if let parent = node.parent {
-            children.append(DirectoryTreeNode(url: parent.url, parent: parent, isParentShortcut: true))
-        }
-        children += entries.compactMap { entry in
+        node.children = entries.compactMap { entry in
             guard let values = try? entry.resourceValues(forKeys: keys), values.isDirectory == true else { return nil }
             if !preferences.showHiddenFiles && values.isHidden == true {
                 return nil
@@ -1164,7 +1237,6 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }.sorted {
             $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending
         }
-        node.children = children
     }
 
     private func hasDirectoryChildren(_ url: URL) -> Bool {
@@ -1598,40 +1670,23 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     func controlTextDidChange(_ obj: Notification) {
-        guard let field = obj.object as? NSSearchField, field == searchField else { return }
-        activePanel.setSearchQuery(field.stringValue)
+        if let field = obj.object as? NSSearchField, field == searchField {
+            activePanel.setSearchQuery(field.stringValue)
+            return
+        }
+        if let field = obj.object as? NSTextField, field == pathField {
+            isEditingPathField = true
+        }
     }
 
-    func control(_ control: NSControl, textView: NSTextView, completions words: [String], forPartialWordRange charRange: NSRange, indexOfSelectedItem index: UnsafeMutablePointer<Int>) -> [String] {
-        guard control == pathField else { return words }
-        let raw = pathField.stringValue
-        let expanded = NSString(string: raw).expandingTildeInPath
-        let baseURL = URL(fileURLWithPath: expanded)
+    func controlTextDidBeginEditing(_ obj: Notification) {
+        guard let field = obj.object as? NSTextField, field == pathField else { return }
+        isEditingPathField = true
+    }
 
-        let directoryURL: URL
-        let fragment: String
-
-        var isDir: ObjCBool = false
-        if FileManager.default.fileExists(atPath: baseURL.path, isDirectory: &isDir), isDir.boolValue {
-            directoryURL = baseURL
-            fragment = ""
-        } else {
-            directoryURL = baseURL.deletingLastPathComponent()
-            fragment = baseURL.lastPathComponent.lowercased()
-        }
-
-        let keys: [URLResourceKey] = [.isDirectoryKey]
-        let entries = (try? FileManager.default.contentsOfDirectory(at: directoryURL, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])) ?? []
-        let suggestions = entries.compactMap { url -> String? in
-            let name = url.lastPathComponent
-            guard fragment.isEmpty || name.lowercased().hasPrefix(fragment) else { return nil }
-            var candidate = url.path
-            if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
-                candidate += "/"
-            }
-            return candidate
-        }.sorted()
-        return suggestions
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard let field = obj.object as? NSTextField, field == pathField else { return }
+        isEditingPathField = false
     }
 
     private func promptForText(title: String, message: String, defaultValue: String) -> String? {
@@ -1663,18 +1718,25 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     var onStatus: ((String) -> Void)?
     var onDirectoryChanged: ((URL) -> Void)?
     var onPasteRequested: (() -> Void)?
+    var onSearchWillStart: (() -> Void)?
+    var onSearchDidFinish: (() -> Void)?
 
     private let side: PanelSide
     private let tableView = FocusAwareTableView()
     private let titleLabel = NSTextField(labelWithString: "")
     private let rowCountLabel = NSTextField(labelWithString: "")
     private let tabsControl = NSSegmentedControl()
+    private let pathIndex = PathSearchIndex.shared
 
     private var allRows: [FileRow] = []
     private var rows: [FileRow] = []
+    private var searchRows: [FileRow] = []
     private var loadTask: Task<Void, Never>?
+    private var searchTask: Task<Void, Never>?
     private var loadToken = UUID()
+    private var searchToken = UUID()
     private var pendingRefreshWorkItem: DispatchWorkItem?
+    private var pendingSearchWorkItem: DispatchWorkItem?
     private var tabURLs: [URL] = []
     private var activeTabIndex = 0
     private var rootSelected = false
@@ -1686,6 +1748,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private var ascending = true
     private var searchQuery: String = ""
     private var includeHiddenFiles = false
+    private var isActivePanel = false
 
     var currentPath: String { currentURL.path }
     var currentDirectoryURL: URL { currentURL }
@@ -1703,6 +1766,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         fatalError("init(coder:) has not been implemented")
     }
 
+    deinit {
+        loadTask?.cancel()
+        searchTask?.cancel()
+        pendingRefreshWorkItem?.cancel()
+        pendingSearchWorkItem?.cancel()
+    }
+
     override func loadView() {
         view = NSView()
     }
@@ -1714,8 +1784,18 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     func setActive(_ isActive: Bool) {
+        isActivePanel = isActive
         view.layer?.borderColor = isActive ? NSColor.controlAccentColor.cgColor : NSColor.separatorColor.cgColor
         view.layer?.borderWidth = isActive ? 2 : 1
+    }
+
+    func flashIndexReady() {
+        guard let layer = view.layer else { return }
+        layer.borderColor = NSColor.systemGreen.cgColor
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
+            guard let self else { return }
+            self.setActive(self.isActivePanel)
+        }
     }
 
     func openPath(_ path: String) {
@@ -1761,7 +1841,21 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     func setSearchQuery(_ query: String) {
         searchQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        applySortAndReload()
+        pendingSearchWorkItem?.cancel()
+        searchTask?.cancel()
+
+        guard !searchQuery.isEmpty else {
+            searchRows.removeAll(keepingCapacity: true)
+            applySortAndReload()
+            onStatus?("\(rows.count) elemento(s) en \(currentURL.path)")
+            return
+        }
+
+        let work = DispatchWorkItem { [weak self] in
+            self?.startDeepSearch(query: self?.searchQuery ?? "")
+        }
+        pendingSearchWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: work)
     }
 
     func selectedURLs() -> [URL] {
@@ -1991,6 +2085,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tabsControl.target = self
         tabsControl.action = #selector(tabSelectionChanged)
         tabsControl.setAccessibilityLabel("Pestanas del panel \(side.rawValue)")
+        tabsControl.toolTip = "Click en tab actual para subir al directorio padre"
         refreshTabsControl()
 
         tableView.focusDelegate = self
@@ -2056,6 +2151,12 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         ])
     }
 
+    @objc private func navigateToParentDirectory() {
+        let parent = currentURL.deletingLastPathComponent()
+        guard parent.path != currentURL.path else { return }
+        openURL(parent)
+    }
+
     private func makeContextMenu() -> NSMenu {
         let menu = NSMenu(title: "Acciones")
         menu.delegate = self
@@ -2090,7 +2191,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     private func loadDirectory(_ url: URL, pushHistory: Bool) {
         loadTask?.cancel()
+        searchTask?.cancel()
         pendingRefreshWorkItem?.cancel()
+        pendingSearchWorkItem?.cancel()
         loadToken = UUID()
 
         if pushHistory, url != currentURL {
@@ -2146,8 +2249,12 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 await MainActor.run {
                     guard self.loadToken == token else { return }
                     self.pendingRefreshWorkItem?.cancel()
-                    self.applySortAndReload()
-                    self.onStatus?("\(total) elemento(s) en \(url.path)")
+                    if self.searchQuery.isEmpty {
+                        self.applySortAndReload()
+                        self.onStatus?("\(total) elemento(s) en \(url.path)")
+                    } else {
+                        self.startDeepSearch(query: self.searchQuery)
+                    }
                 }
             } catch is CancellationError {
                 return
@@ -2303,15 +2410,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     private func applySortAndReload() {
         let selectedPaths = Set(selectedURLs().map { $0.standardizedFileURL.path })
-        let filtered: [FileRow]
-        if searchQuery.isEmpty {
-            filtered = allRows
-        } else {
-            let query = searchQuery.lowercased()
-            filtered = allRows.filter { row in
-                row.name.lowercased().contains(query) || row.typeDescription.lowercased().contains(query)
-            }
-        }
+        let filtered: [FileRow] = searchQuery.isEmpty ? allRows : searchRows
 
         rows = filtered.sorted { lhs, rhs in
             let result: ComparisonResult
@@ -2345,6 +2444,291 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             }
         }
         rowCountLabel.stringValue = "\(rows.count) items"
+    }
+
+    private func startDeepSearch(query: String) {
+        let clean = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else {
+            searchRows.removeAll(keepingCapacity: true)
+            applySortAndReload()
+            onSearchDidFinish?()
+            return
+        }
+
+        onSearchWillStart?()
+
+        let token = UUID()
+        searchToken = token
+        let root = currentURL
+        let includeHidden = includeHiddenFiles
+        let terms = Self.searchTerms(from: clean)
+        let maxMatches = 5000
+        let allowIndexLookup = true
+
+        let quickRows = allRows.filter { row in
+            let normalizedName = Self.normalizedSearchText(row.name)
+            return terms.allSatisfy { normalizedName.contains($0) }
+        }
+        searchRows = quickRows
+        applySortAndReload()
+        onStatus?("Busqueda rapida: \(quickRows.count) coincidencias. Profundizando en \(root.path)...")
+
+        searchTask = Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+            if allowIndexLookup, await self.pathIndex.isIndexed(for: root) {
+                let hits = (try? await self.pathIndex.search(query: clean, under: root, limit: maxMatches)) ?? []
+                if Task.isCancelled { return }
+                let mapped: [FileRow] = hits.map { hit in
+                    let url = URL(fileURLWithPath: hit.path)
+                    let relativePath: String
+                    if hit.path.hasPrefix(root.path + "/") {
+                        relativePath = String(hit.path.dropFirst(root.path.count + 1))
+                    } else {
+                        relativePath = hit.name
+                    }
+                    return FileRow(
+                        url: url,
+                        name: hit.name,
+                        isDirectory: hit.isDirectory,
+                        sizeBytes: hit.isDirectory ? nil : hit.sizeBytes,
+                        modifiedDate: Date(timeIntervalSince1970: hit.modifiedTimeInterval),
+                        typeDescription: "\(hit.isDirectory ? "Folder" : "Archivo") • \(relativePath)"
+                    )
+                }
+                await MainActor.run {
+                    guard self.searchToken == token else { return }
+                    self.searchRows = mapped
+                    self.applySortAndReload()
+                    self.onStatus?("Busqueda indexada: \(self.searchRows.count) coincidencias en \(root.path)")
+                    self.onSearchDidFinish?()
+                }
+                return
+            }
+
+            let existing = Set(quickRows.map { $0.url.standardizedFileURL.path })
+            let deepRows = await Self.parallelDeepSearch(
+                root: root,
+                terms: terms,
+                includeHidden: includeHidden,
+                maxMatches: maxMatches,
+                excludingPaths: existing
+            )
+
+            if Task.isCancelled { return }
+
+            await MainActor.run {
+                guard self.searchToken == token else { return }
+                var merged = quickRows
+                merged.append(contentsOf: deepRows)
+
+                var seen = Set<String>()
+                let limited = merged.filter { row in
+                    let path = row.url.standardizedFileURL.path
+                    if seen.contains(path) { return false }
+                    seen.insert(path)
+                    return true
+                }.prefix(maxMatches)
+
+                self.searchRows = Array(limited)
+                self.applySortAndReload()
+                self.onStatus?("Busqueda completada: \(self.searchRows.count) coincidencias en \(root.path)")
+                self.onSearchDidFinish?()
+            }
+        }
+    }
+
+    nonisolated private static func parallelDeepSearch(
+        root: URL,
+        terms: [String],
+        includeHidden: Bool,
+        maxMatches: Int,
+        excludingPaths: Set<String>
+    ) async -> [FileRow] {
+        let fm = FileManager.default
+        let keys: Set<URLResourceKey> = [
+            .isDirectoryKey,
+            .isRegularFileKey,
+            .isHiddenKey,
+            .fileSizeKey,
+            .contentModificationDateKey,
+            .localizedTypeDescriptionKey
+        ]
+
+        guard let topLevel = try? fm.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: Array(keys),
+            options: [.skipsPackageDescendants]
+        ) else {
+            return []
+        }
+
+        var matches: [FileRow] = []
+        var seen = excludingPaths
+        var subdirectories: [URL] = []
+
+        for child in topLevel {
+            if Task.isCancelled { return [] }
+            guard let values = try? child.resourceValues(forKeys: keys) else { continue }
+            if !includeHidden, values.isHidden == true { continue }
+
+            if values.isDirectory == true {
+                subdirectories.append(child)
+            }
+
+            if let row = makeSearchRowIfMatches(url: child, values: values, terms: terms, root: root),
+               seen.insert(row.url.standardizedFileURL.path).inserted {
+                matches.append(row)
+                if matches.count >= maxMatches {
+                    return matches
+                }
+            }
+        }
+
+        guard !subdirectories.isEmpty else { return matches }
+
+        let workerCount = min(recommendedSearchWorkers(for: root), max(1, subdirectories.count))
+        let perWorkerCap = max(250, (maxMatches / max(1, workerCount)) + 128)
+        var buckets = Array(repeating: [URL](), count: workerCount)
+        for (index, dir) in subdirectories.enumerated() {
+            buckets[index % workerCount].append(dir)
+        }
+
+        await withTaskGroup(of: [FileRow].self) { group in
+            for bucket in buckets where !bucket.isEmpty {
+                group.addTask(priority: .utility) {
+                    var bucketMatches: [FileRow] = []
+                    for dir in bucket {
+                        if Task.isCancelled { break }
+                        scanSubtree(
+                            root: root,
+                            subtree: dir,
+                            terms: terms,
+                            includeHidden: includeHidden,
+                            maxMatches: perWorkerCap,
+                            output: &bucketMatches
+                        )
+                        if bucketMatches.count >= perWorkerCap {
+                            break
+                        }
+                    }
+                    return bucketMatches
+                }
+            }
+
+            while let partial = await group.next() {
+                if Task.isCancelled {
+                    group.cancelAll()
+                    break
+                }
+                for row in partial {
+                    let path = row.url.standardizedFileURL.path
+                    if seen.insert(path).inserted {
+                        matches.append(row)
+                        if matches.count >= maxMatches {
+                            group.cancelAll()
+                            return
+                        }
+                    }
+                }
+            }
+        }
+
+        return matches
+    }
+
+    nonisolated private static func scanSubtree(
+        root: URL,
+        subtree: URL,
+        terms: [String],
+        includeHidden: Bool,
+        maxMatches: Int,
+        output: inout [FileRow]
+    ) {
+        let keys: Set<URLResourceKey> = [
+            .isDirectoryKey,
+            .isRegularFileKey,
+            .isHiddenKey,
+            .fileSizeKey,
+            .contentModificationDateKey,
+            .localizedTypeDescriptionKey
+        ]
+
+        guard let enumerator = FileManager.default.enumerator(
+            at: subtree,
+            includingPropertiesForKeys: Array(keys),
+            options: [.skipsPackageDescendants]
+        ) else {
+            return
+        }
+
+        while let next = enumerator.nextObject() {
+            if Task.isCancelled || output.count >= maxMatches { return }
+            guard let url = next as? URL else { continue }
+            guard let values = try? url.resourceValues(forKeys: keys) else { continue }
+            if !includeHidden, values.isHidden == true {
+                if values.isDirectory == true {
+                    enumerator.skipDescendants()
+                }
+                continue
+            }
+            if let row = makeSearchRowIfMatches(url: url, values: values, terms: terms, root: root) {
+                output.append(row)
+            }
+        }
+    }
+
+    nonisolated private static func makeSearchRowIfMatches(
+        url: URL,
+        values: URLResourceValues,
+        terms: [String],
+        root: URL
+    ) -> FileRow? {
+        let normalizedName = normalizedSearchText(url.lastPathComponent)
+        guard terms.allSatisfy({ normalizedName.contains($0) }) else { return nil }
+
+        let isDir = values.isDirectory == true
+        let type = values.localizedTypeDescription ?? (isDir ? "Folder" : "Archivo")
+        let relativePath: String
+        if url.path.hasPrefix(root.path + "/") {
+            relativePath = String(url.path.dropFirst(root.path.count + 1))
+        } else {
+            relativePath = url.lastPathComponent
+        }
+        return FileRow(
+            url: url,
+            name: url.lastPathComponent,
+            isDirectory: isDir,
+            sizeBytes: isDir ? nil : Int64(values.fileSize ?? 0),
+            modifiedDate: values.contentModificationDate,
+            typeDescription: "\(type) • \(relativePath)"
+        )
+    }
+
+    nonisolated private static func recommendedSearchWorkers(for root: URL) -> Int {
+        if let values = try? root.resourceValues(forKeys: [.volumeIsLocalKey, .volumeIsInternalKey]) {
+            let isLocal = values.volumeIsLocal ?? true
+            let isInternal = values.volumeIsInternal ?? false
+            if isLocal && isInternal {
+                return 8
+            }
+            if isLocal {
+                return 4
+            }
+            return 2
+        }
+        return 4
+    }
+
+    nonisolated private static func searchTerms(from text: String) -> [String] {
+        normalizedSearchText(text)
+            .split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+    }
+
+    nonisolated private static func normalizedSearchText(_ text: String) -> String {
+        text
+            .folding(options: [.diacriticInsensitive, .widthInsensitive], locale: .current)
+            .lowercased()
     }
 
     private func compareOptional<T: Comparable>(_ lhs: T?, _ rhs: T?) -> ComparisonResult {
@@ -2677,7 +3061,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     @objc private func tabSelectionChanged() {
         let idx = tabsControl.selectedSegment
-        guard idx >= 0, idx < tabURLs.count, idx != activeTabIndex else { return }
+        guard idx >= 0, idx < tabURLs.count else { return }
+        if idx == activeTabIndex {
+            navigateToParentDirectory()
+            return
+        }
         activeTabIndex = idx
         historyBack.removeAll()
         historyForward.removeAll()
