@@ -158,3 +158,7 @@
   - [x] crear carpeta `temp` en `/Users/dmx83`
   - [x] copiar `orlando_salida` dentro de `temp` con motor J4FOps y progreso visible
   - [x] renombrar desde toolbar y desde menu contextual
+  - [x] click en vacio del panel selecciona raiz para acciones de contexto/info
+  - [x] `Info carpeta actual` muestra metrica logica y en disco
+  - [x] barra de ruta editable + `Go` con validacion
+  - [x] arbol en columna izquierda sincronizado con panel activo

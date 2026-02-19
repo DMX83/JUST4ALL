@@ -39,6 +39,16 @@ private struct FileRow {
     }()
 }
 
+private final class DirectoryTreeNode {
+    let url: URL
+    var children: [DirectoryTreeNode] = []
+    var isLoaded = false
+
+    init(url: URL) {
+        self.url = url
+    }
+}
+
 private let sharedMetadataCache = URLMetadataLRUCache(capacity: 20_000)
 
 private final class FileIconCache {
@@ -86,7 +96,7 @@ private final class FileIconCache {
 
 private let sharedFileIconCache = FileIconCache()
 
-final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarItemValidation {
+final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate, NSOutlineViewDataSource, NSOutlineViewDelegate, NSToolbarItemValidation {
     private enum ToolbarID {
         static let root = NSToolbar.Identifier("j4f.toolbar.main")
         static let back = NSToolbarItem.Identifier("j4f.toolbar.back")
@@ -102,6 +112,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         static let tasks = NSToolbarItem.Identifier("j4f.toolbar.tasks")
         static let refresh = NSToolbarItem.Identifier("j4f.toolbar.refresh")
         static let diagnostics = NSToolbarItem.Identifier("j4f.toolbar.diagnostics")
+        static let infoCurrent = NSToolbarItem.Identifier("j4f.toolbar.infoCurrent")
         static let search = NSToolbarItem.Identifier("j4f.toolbar.search")
     }
 
@@ -127,6 +138,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let statusLabel = NSTextField(labelWithString: "Listo")
     private let volumeWarningLabel = NSTextField(labelWithString: "")
     private let searchField = NSSearchField()
+    private let directoryTree = NSOutlineView()
     private var toolbarConfigured = false
     private let authorizedTable = NSTableView()
     private let favoritesTable = NSTableView()
@@ -140,6 +152,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private var keyMonitor: Any?
     private var activeJobIds: Set<UUID> = []
     private var preferences = J4FPreferences.load()
+    private var directoryTreeRoot: DirectoryTreeNode?
 
     override func loadView() {
         view = NSView()
@@ -153,6 +166,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         applyPreferences(initial: true)
         loadSidebarLocations()
         updatePathFieldFromActivePanel()
+        reloadDirectoryTree(root: activePanel.currentDirectoryURL)
         NotificationCenter.default.addObserver(self, selector: #selector(focusPathBar), name: .j4fFocusPathBar, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onPreferencesChanged), name: .j4fPreferencesChanged, object: nil)
     }
@@ -182,6 +196,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         activeIndicatorLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         activeIndicatorLabel.setAccessibilityLabel("Panel activo")
         pathField.placeholderString = "Ruta (Cmd+L)"
+        pathField.isEditable = true
+        pathField.isSelectable = true
+        pathField.isBezeled = true
         pathField.target = self
         pathField.action = #selector(commitPathField)
         pathField.setAccessibilityLabel("Barra de ruta")
@@ -254,48 +271,44 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         container.layer?.borderWidth = 1
         container.layer?.borderColor = NSColor.separatorColor.cgColor
 
-        let header = NSTextField(labelWithString: "Ubicaciones")
+        let header = NSTextField(labelWithString: "Arbol")
         header.font = .systemFont(ofSize: 12, weight: .semibold)
 
-        let addFavoriteButton = NSButton(title: "Favorito actual", target: self, action: #selector(addCurrentPathToFavorites))
-        addFavoriteButton.bezelStyle = .rounded
-        addFavoriteButton.font = .systemFont(ofSize: 11)
-        addFavoriteButton.setAccessibilityLabel("Agregar carpeta actual a favoritos")
-        let removeFavoriteButton = NSButton(title: "Quitar favorito", target: self, action: #selector(removeSelectedFavorite))
-        removeFavoriteButton.bezelStyle = .rounded
-        removeFavoriteButton.font = .systemFont(ofSize: 11)
-        removeFavoriteButton.setAccessibilityLabel("Quitar favorito seleccionado")
-        let clearRecentsButton = NSButton(title: "Limpiar recientes", target: self, action: #selector(clearRecentLocations))
-        clearRecentsButton.bezelStyle = .rounded
-        clearRecentsButton.font = .systemFont(ofSize: 11)
-        clearRecentsButton.setAccessibilityLabel("Limpiar ubicaciones recientes")
-        let removeRecentButton = NSButton(title: "Quitar reciente", target: self, action: #selector(removeSelectedRecent))
-        removeRecentButton.bezelStyle = .rounded
-        removeRecentButton.font = .systemFont(ofSize: 11)
-        removeRecentButton.setAccessibilityLabel("Quitar reciente seleccionado")
-        let reauthorizeButton = NSButton(title: "Reautorizar seleccion", target: self, action: #selector(reauthorizeSelectedBookmark))
-        reauthorizeButton.bezelStyle = .rounded
-        reauthorizeButton.font = .systemFont(ofSize: 11)
-        reauthorizeButton.setAccessibilityLabel("Reautorizar ubicacion seleccionada")
+        let addLocationButton = NSButton(title: "Anadir ubicacion", target: self, action: #selector(addAuthorizedLocation))
+        addLocationButton.bezelStyle = .rounded
+        addLocationButton.font = .systemFont(ofSize: 11)
+        addLocationButton.setAccessibilityLabel("Autorizar ubicacion para sandbox")
+
+        let infoCurrentButton = NSButton(title: "Info carpeta actual", target: self, action: #selector(showCurrentDirectoryInfo))
+        infoCurrentButton.bezelStyle = .rounded
+        infoCurrentButton.font = .systemFont(ofSize: 11)
+        infoCurrentButton.setAccessibilityLabel("Mostrar informacion de carpeta actual")
+
+        directoryTree.headerView = nil
+        directoryTree.selectionHighlightStyle = .regular
+        directoryTree.rowSizeStyle = .small
+        directoryTree.delegate = self
+        directoryTree.dataSource = self
+        directoryTree.doubleAction = #selector(openSelectedTreeNode)
+        directoryTree.target = self
+        directoryTree.setAccessibilityLabel("Arbol del directorio actual")
+        if directoryTree.tableColumns.isEmpty {
+            let col = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("tree"))
+            col.title = "Carpetas"
+            col.width = 220
+            directoryTree.addTableColumn(col)
+            directoryTree.outlineTableColumn = col
+        }
+        let treeScroll = NSScrollView()
+        treeScroll.documentView = directoryTree
+        treeScroll.hasVerticalScroller = true
+        treeScroll.translatesAutoresizingMaskIntoConstraints = false
+        treeScroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 380).isActive = true
 
         container.addArrangedSubview(header)
-        container.addArrangedSubview(addFavoriteButton)
-        container.addArrangedSubview(removeFavoriteButton)
-
-        container.addArrangedSubview(sidebarSectionLabel("Autorizadas"))
-        container.addArrangedSubview(makeTableScroll(for: authorizedTable, accessibilityLabel: "Ubicaciones autorizadas"))
-
-        container.addArrangedSubview(sidebarSectionLabel("Favoritos"))
-        container.addArrangedSubview(makeTableScroll(for: favoritesTable, accessibilityLabel: "Favoritos"))
-
-        container.addArrangedSubview(sidebarSectionLabel("Recientes"))
-        container.addArrangedSubview(removeRecentButton)
-        container.addArrangedSubview(clearRecentsButton)
-        container.addArrangedSubview(makeTableScroll(for: recentsTable, accessibilityLabel: "Ubicaciones recientes"))
-
-        container.addArrangedSubview(sidebarSectionLabel("Reautorizacion requerida"))
-        container.addArrangedSubview(reauthorizeButton)
-        container.addArrangedSubview(makeTableScroll(for: reauthTable, accessibilityLabel: "Reautorizacion requerida"))
+        container.addArrangedSubview(addLocationButton)
+        container.addArrangedSubview(infoCurrentButton)
+        container.addArrangedSubview(treeScroll)
 
         return container
     }
@@ -356,12 +369,18 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             self?.updateVolumeWarning(for: url)
             self?.updatePathFieldFromActivePanel()
             self?.updateWatcher(for: .left, directory: url)
+            if self?.activeSide == .left {
+                self?.reloadDirectoryTree(root: url)
+            }
         }
         rightPanel.onDirectoryChanged = { [weak self] url in
             self?.registerRecent(url: url)
             self?.updateVolumeWarning(for: url)
             self?.updatePathFieldFromActivePanel()
             self?.updateWatcher(for: .right, directory: url)
+            if self?.activeSide == .right {
+                self?.reloadDirectoryTree(root: url)
+            }
         }
 
         leftPanel.onPasteRequested = { [weak self] in
@@ -411,6 +430,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
 
         let destination = inactivePanel.currentDirectoryURL
+        if shouldUseSystemCopy(sources: selected, destination: destination) {
+            runSystemCopy(sources: selected, destination: destination)
+            return
+        }
         enqueueFileJob(type: .copy, selected: selected, destination: destination)
     }
 
@@ -808,6 +831,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         activeSide = (activeSide == .left) ? .right : .left
         activePanel.focusTable()
         updatePathFieldFromActivePanel()
+        reloadDirectoryTree(root: activePanel.currentDirectoryURL)
     }
 
     private func isURLAuthorizedForWatching(_ url: URL) -> Bool {
@@ -873,15 +897,131 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         applyPreferences(initial: false)
     }
 
+    @objc private func showCurrentDirectoryInfo() {
+        activePanel.showInfoForCurrentDirectory()
+    }
+
     private func applyPreferences(initial: Bool) {
         preferences = J4FPreferences.load()
         leftPanel.setIncludeHidden(preferences.showHiddenFiles)
         rightPanel.setIncludeHidden(preferences.showHiddenFiles)
         BufferSizer.shared.setPreferredBigBytes(preferences.preferredBigBufferMB * 1024 * 1024)
+        reloadDirectoryTree(root: activePanel.currentDirectoryURL)
 
         if !initial {
             statusLabel.stringValue = "Preferencias aplicadas."
         }
+    }
+
+    private func reloadDirectoryTree(root: URL) {
+        let rootNode = DirectoryTreeNode(url: root)
+        directoryTreeRoot = rootNode
+        directoryTree.reloadData()
+        if directoryTree.numberOfRows > 0 {
+            directoryTree.expandItem(rootNode)
+            directoryTree.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+        }
+    }
+
+    @objc private func openSelectedTreeNode() {
+        let row = directoryTree.selectedRow
+        guard row >= 0, let node = directoryTree.item(atRow: row) as? DirectoryTreeNode else { return }
+        activePanel.openURL(node.url)
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
+        guard outlineView == directoryTree else { return 0 }
+        if item == nil {
+            return directoryTreeRoot == nil ? 0 : 1
+        }
+        guard let node = item as? DirectoryTreeNode else { return 0 }
+        loadChildrenIfNeeded(for: node)
+        return node.children.count
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
+        if item == nil {
+            return directoryTreeRoot as Any
+        }
+        guard let node = item as? DirectoryTreeNode else {
+            return DirectoryTreeNode(url: activePanel.currentDirectoryURL)
+        }
+        loadChildrenIfNeeded(for: node)
+        return node.children[index]
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
+        guard outlineView == directoryTree, let node = item as? DirectoryTreeNode else { return false }
+        return hasDirectoryChildren(node.url)
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
+        guard outlineView == directoryTree, let node = item as? DirectoryTreeNode else { return nil }
+        let identifier = NSUserInterfaceItemIdentifier("TreeCell")
+        let cell = outlineView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView ?? NSTableCellView()
+        cell.identifier = identifier
+
+        let label: NSTextField
+        if let existing = cell.textField {
+            label = existing
+        } else {
+            label = NSTextField(labelWithString: "")
+            label.translatesAutoresizingMaskIntoConstraints = false
+            cell.textField = label
+            cell.addSubview(label)
+            NSLayoutConstraint.activate([
+                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 6),
+                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -6),
+                label.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
+            ])
+        }
+
+        let base = node.url.lastPathComponent.isEmpty ? node.url.path : node.url.lastPathComponent
+        label.stringValue = base
+        label.lineBreakMode = .byTruncatingMiddle
+        return cell
+    }
+
+    func outlineViewSelectionDidChange(_ notification: Notification) {
+        guard let outline = notification.object as? NSOutlineView, outline == directoryTree else { return }
+        let row = outline.selectedRow
+        guard row >= 0, let node = outline.item(atRow: row) as? DirectoryTreeNode else { return }
+        activePanel.openURL(node.url)
+    }
+
+    private func loadChildrenIfNeeded(for node: DirectoryTreeNode) {
+        guard !node.isLoaded else { return }
+        node.isLoaded = true
+        let fm = FileManager.default
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isHiddenKey]
+        guard let entries = try? fm.contentsOfDirectory(at: node.url, includingPropertiesForKeys: Array(keys), options: [.skipsPackageDescendants]) else {
+            return
+        }
+        node.children = entries.compactMap { entry in
+            guard let values = try? entry.resourceValues(forKeys: keys), values.isDirectory == true else { return nil }
+            if !preferences.showHiddenFiles && values.isHidden == true {
+                return nil
+            }
+            return DirectoryTreeNode(url: entry)
+        }.sorted {
+            $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending
+        }
+    }
+
+    private func hasDirectoryChildren(_ url: URL) -> Bool {
+        let fm = FileManager.default
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isHiddenKey]
+        guard let entries = try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: Array(keys), options: [.skipsPackageDescendants]) else {
+            return false
+        }
+        for entry in entries {
+            guard let values = try? entry.resourceValues(forKeys: keys), values.isDirectory == true else { continue }
+            if !preferences.showHiddenFiles && values.isHidden == true {
+                continue
+            }
+            return true
+        }
+        return false
     }
 
     private func installKeyMonitorIfNeeded() {
@@ -971,6 +1111,11 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             NSSound.beep()
             return
         }
+        let destination = activePanel.currentDirectoryURL
+        if shouldUseSystemCopy(sources: urls, destination: destination) {
+            runSystemCopy(sources: urls, destination: destination)
+            return
+        }
         enqueueFileJob(type: .copy, selected: urls, destination: activePanel.currentDirectoryURL)
         statusLabel.stringValue = "Pegando \(urls.count) item(s) en panel \(activeSide.rawValue)..."
     }
@@ -989,6 +1134,73 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         return lines
             .map { URL(fileURLWithPath: $0) }
             .filter { fm.fileExists(atPath: $0.path) }
+    }
+
+    private func shouldUseSystemCopy(sources: [URL], destination: URL) -> Bool {
+        guard !sources.isEmpty else { return false }
+        return sources.allSatisfy { source in
+            sameVolume(source, destination)
+        }
+    }
+
+    private func sameVolume(_ lhs: URL, _ rhs: URL) -> Bool {
+        let lhsVolume = try? lhs.resourceValues(forKeys: [.volumeURLKey]).volume
+        let rhsVolume = try? rhs.resourceValues(forKeys: [.volumeURLKey]).volume
+        guard let lhsVolume, let rhsVolume else { return false }
+        return lhsVolume.standardizedFileURL.path == rhsVolume.standardizedFileURL.path
+    }
+
+    private func isDirectoryURL(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+    }
+
+    private func runSystemCopy(sources: [URL], destination: URL) {
+        statusLabel.stringValue = "Copiando \(sources.count) item(s) en mismo volumen con copia del sistema..."
+        let fm = FileManager.default
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            var copied = 0
+            var failures: [String] = []
+
+            for source in sources {
+                let proposed = destination.appendingPathComponent(source.lastPathComponent, isDirectory: self.isDirectoryURL(source))
+                let target = self.availableDestination(for: proposed)
+                do {
+                    try fm.copyItem(at: source, to: target)
+                    copied += 1
+                } catch {
+                    failures.append("\(source.lastPathComponent): \(error.localizedDescription)")
+                }
+            }
+
+            DispatchQueue.main.async {
+                self.leftPanel.refreshCurrentDirectory()
+                self.rightPanel.refreshCurrentDirectory()
+                if failures.isEmpty {
+                    self.statusLabel.stringValue = "Copia sistema completada: \(copied)/\(sources.count)."
+                } else {
+                    self.statusLabel.stringValue = "Copia parcial: \(copied)/\(sources.count). Error en \(failures.count)."
+                    NSSound.beep()
+                }
+            }
+        }
+    }
+
+    private func availableDestination(for proposed: URL) -> URL {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: proposed.path) else { return proposed }
+        let base = proposed.deletingPathExtension().lastPathComponent
+        let ext = proposed.pathExtension
+        var idx = 1
+        while true {
+            let name = ext.isEmpty ? "\(base)-\(idx)" : "\(base)-\(idx).\(ext)"
+            let candidate = proposed.deletingLastPathComponent().appendingPathComponent(name)
+            if !fm.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+            idx += 1
+        }
     }
 
     private func openSelectedSidebarIfFocused() -> Bool {
@@ -1033,7 +1245,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             ToolbarID.back, ToolbarID.forward, .flexibleSpace,
             ToolbarID.newTab, ToolbarID.copy, ToolbarID.move, ToolbarID.delete,
             ToolbarID.mkdir, ToolbarID.rename, ToolbarID.deletePermanent,
-            .flexibleSpace, ToolbarID.refresh, ToolbarID.tasks, ToolbarID.diagnostics, ToolbarID.addLocation, ToolbarID.search
+            .flexibleSpace, ToolbarID.refresh, ToolbarID.infoCurrent, ToolbarID.tasks, ToolbarID.diagnostics, ToolbarID.addLocation, ToolbarID.search
         ]
     }
 
@@ -1050,66 +1262,85 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         switch itemIdentifier {
         case ToolbarID.back:
             item.label = "Back"
+            item.toolTip = "Volver (panel activo)"
             item.image = NSImage(systemSymbolName: "chevron.left", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(goBack)
         case ToolbarID.forward:
             item.label = "Forward"
+            item.toolTip = "Adelante (panel activo)"
             item.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(goForward)
         case ToolbarID.newTab:
             item.label = "New Tab"
+            item.toolTip = "Nueva tab (Cmd+T)"
             item.image = NSImage(systemSymbolName: "plus.square.on.square", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(newTab)
         case ToolbarID.copy:
             item.label = "Copy"
+            item.toolTip = "Copiar al otro panel (F5)"
             item.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(copySelection)
         case ToolbarID.move:
             item.label = "Move"
+            item.toolTip = "Mover al otro panel (F6)"
             item.image = NSImage(systemSymbolName: "arrow.right.doc.on.clipboard", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(moveSelection)
         case ToolbarID.delete:
             item.label = "Delete"
+            item.toolTip = "Enviar a Papelera (F8)"
             item.image = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(deleteSelection)
         case ToolbarID.mkdir:
             item.label = "Mkdir"
+            item.toolTip = "Crear carpeta (F7)"
             item.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(createDirectory)
         case ToolbarID.rename:
             item.label = "Rename"
+            item.toolTip = "Renombrar item seleccionado"
             item.image = NSImage(systemSymbolName: "pencil", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(renameSelection)
         case ToolbarID.deletePermanent:
             item.label = "Delete Permanent"
+            item.toolTip = "Eliminar definitivamente"
             item.image = NSImage(systemSymbolName: "trash.slash", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(deleteSelectionPermanently)
         case ToolbarID.addLocation:
             item.label = "Add Location"
+            item.toolTip = "Autorizar nueva ubicacion"
             item.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(addAuthorizedLocation)
         case ToolbarID.tasks:
             item.label = "Tasks"
+            item.toolTip = "Abrir Task Manager"
             item.image = NSImage(systemSymbolName: "list.bullet.rectangle", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(openTaskManager)
         case ToolbarID.refresh:
             item.label = "Refresh"
+            item.toolTip = "Refrescar panel activo"
             item.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(manualRefresh)
+        case ToolbarID.infoCurrent:
+            item.label = "Info"
+            item.toolTip = "Informacion de carpeta actual"
+            item.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: nil)
+            item.target = self
+            item.action = #selector(showCurrentDirectoryInfo)
         case ToolbarID.diagnostics:
             item.label = "Diagnostics"
+            item.toolTip = "Exportar diagnostico"
             item.image = NSImage(systemSymbolName: "stethoscope", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(exportDiagnostics)
@@ -1247,6 +1478,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private var pendingRefreshWorkItem: DispatchWorkItem?
     private var tabURLs: [URL] = []
     private var activeTabIndex = 0
+    private var rootSelected = false
 
     private var historyBack: [URL] = []
     private var historyForward: [URL] = []
@@ -1288,10 +1520,18 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     func openPath(_ path: String) {
-        let expanded = NSString(string: path).expandingTildeInPath
-        let url = URL(fileURLWithPath: expanded)
-        guard isDirectory(url) else {
-            onStatus?("Ruta invalida o no es carpeta: \(path)")
+        let clean = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else {
+            onStatus?("Ruta vacia.")
+            NSSound.beep()
+            return
+        }
+        let expanded = NSString(string: clean).expandingTildeInPath
+        let url = URL(fileURLWithPath: expanded).standardizedFileURL
+
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue else {
+            onStatus?("Ruta invalida o no es carpeta: \(clean)")
             NSSound.beep()
             return
         }
@@ -1299,12 +1539,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     func openURL(_ url: URL) {
-        guard isDirectory(url) else {
+        let normalized = url.standardizedFileURL
+        guard isDirectory(normalized) else {
             onStatus?("Ruta invalida o no es carpeta: \(url.path)")
             NSSound.beep()
             return
         }
-        loadDirectory(url, pushHistory: true)
+        loadDirectory(normalized, pushHistory: true)
     }
 
     func goBack() {
@@ -1325,10 +1566,14 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     func selectedURLs() -> [URL] {
-        tableView.selectedRowIndexes.compactMap { idx in
+        let selected = Array(tableView.selectedRowIndexes).compactMap { (idx: Int) -> URL? in
             guard idx >= 0, idx < rows.count else { return nil }
             return rows[idx].url
         }
+        if !selected.isEmpty {
+            return selected
+        }
+        return rootSelected ? [currentURL] : []
     }
 
     func deleteSelectedToTrash() -> Int {
@@ -1427,6 +1672,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             guard let firstComponent = relative.split(separator: "/").first else { continue }
             let child = currentURL.appendingPathComponent(String(firstComponent)).standardizedFileURL.path
             childPaths.insert(child)
+        }
+
+        if needsFullReload && childPaths.isEmpty {
+            // Root-only events are often metadata noise; skip hard reload to avoid flicker.
+            return
         }
 
         if needsFullReload || childPaths.count > 64 {
@@ -1548,6 +1798,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tableView.onEnterPressed = { [weak self] in
             self?.openSelected()
         }
+        tableView.onBackgroundClicked = { [weak self] in
+            self?.selectRootDirectory()
+        }
         tableView.headerView = NSTableHeaderView(frame: .zero)
         tableView.usesAlternatingRowBackgroundColors = false
         tableView.allowsMultipleSelection = true
@@ -1647,6 +1900,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
 
         currentURL = url
+        rootSelected = false
         if activeTabIndex < tabURLs.count {
             tabURLs[activeTabIndex] = url
         }
@@ -1827,6 +2081,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
+        if !tableView.selectedRowIndexes.isEmpty {
+            rootSelected = false
+        }
         activatePanel()
     }
 
@@ -1846,6 +2103,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     private func applySortAndReload() {
+        let selectedPaths = Set(selectedURLs().map { $0.standardizedFileURL.path })
         let filtered: [FileRow]
         if searchQuery.isEmpty {
             filtered = allRows
@@ -1879,6 +2137,14 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
 
         tableView.reloadData()
+        if !selectedPaths.isEmpty {
+            let indexes = IndexSet(rows.enumerated().compactMap { idx, row in
+                selectedPaths.contains(row.url.standardizedFileURL.path) ? idx : nil
+            })
+            if !indexes.isEmpty {
+                tableView.selectRowIndexes(indexes, byExtendingSelection: false)
+            }
+        }
         rowCountLabel.stringValue = "\(rows.count) items"
     }
 
@@ -1908,6 +2174,18 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         let targetRow = clicked >= 0 ? clicked : rowAtMouse
         if targetRow >= 0 && !tableView.selectedRowIndexes.contains(targetRow) {
             tableView.selectRowIndexes(IndexSet(integer: targetRow), byExtendingSelection: false)
+            rootSelected = false
+        } else if targetRow < 0 {
+            selectRootDirectory(announce: false)
+        }
+    }
+
+    private func selectRootDirectory(announce: Bool = true) {
+        rootSelected = true
+        tableView.deselectAll(nil)
+        activatePanel()
+        if announce {
+            onStatus?("Raiz seleccionada: \(currentURL.path)")
         }
     }
 
@@ -1955,10 +2233,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     @objc private func contextShowInfo() {
-        guard let url = selectedURLs().first else { return }
+        let url = contextTargetURL() ?? selectedURLs().first ?? currentURL
         let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey])
         let isDir = values?.isDirectory == true
-        let size = isDir ? "--" : ByteCountFormatter.string(fromByteCount: Int64(values?.fileSize ?? 0), countStyle: .file)
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
@@ -1972,14 +2249,122 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = url.lastPathComponent
+        alert.addButton(withTitle: "OK")
+
+        if isDir {
+            alert.informativeText = """
+            Ruta: \(url.path)
+            Tipo: Carpeta
+            Tamano logico: calculando...
+            Tamano en disco: calculando...
+            Elementos: calculando...
+            Carpetas: calculando... | Archivos: calculando...
+            Modificado: \(mod)
+            """
+            presentInfoAlert(alert)
+
+            DispatchQueue.global(qos: .userInitiated).async { [weak alert] in
+                let stats = self.directoryStats(for: url)
+                let logicalSize = ByteCountFormatter.string(fromByteCount: stats.logicalBytes, countStyle: .file)
+                let allocatedSize = ByteCountFormatter.string(fromByteCount: stats.allocatedBytes, countStyle: .file)
+                let text = """
+                Ruta: \(url.path)
+                Tipo: Carpeta
+                Tamano logico: \(logicalSize)
+                Tamano en disco: \(allocatedSize)
+                Elementos: \(stats.fileCount + stats.directoryCount)
+                Carpetas: \(stats.directoryCount) | Archivos: \(stats.fileCount)
+                Modificado: \(mod)
+                """
+                DispatchQueue.main.async {
+                    guard let alert else { return }
+                    alert.informativeText = text
+                }
+            }
+            return
+        }
+
+        let size = ByteCountFormatter.string(fromByteCount: Int64(values?.fileSize ?? 0), countStyle: .file)
+        let allocated = ByteCountFormatter.string(
+            fromByteCount: Int64(values?.totalFileAllocatedSize ?? values?.fileAllocatedSize ?? 0),
+            countStyle: .file
+        )
         alert.informativeText = """
         Ruta: \(url.path)
-        Tipo: \(isDir ? "Carpeta" : "Archivo")
-        Tamano: \(size)
+        Tipo: Archivo
+        Tamano logico: \(size)
+        Tamano en disco: \(allocated)
+        Elementos: --
+        Carpetas: -- | Archivos: --
         Modificado: \(mod)
         """
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+        presentInfoAlert(alert)
+    }
+
+    func showInfoForCurrentDirectory() {
+        let originalSelection = tableView.selectedRowIndexes
+        tableView.deselectAll(nil)
+        rootSelected = true
+        contextShowInfo()
+        rootSelected = false
+        if !originalSelection.isEmpty {
+            tableView.selectRowIndexes(originalSelection, byExtendingSelection: false)
+        }
+    }
+
+    private func presentInfoAlert(_ alert: NSAlert) {
+        if let window = view.window {
+            alert.beginSheetModal(for: window)
+        } else {
+            alert.runModal()
+        }
+    }
+
+    private func directoryStats(for root: URL) -> (logicalBytes: Int64, allocatedBytes: Int64, fileCount: Int, directoryCount: Int) {
+        let fm = FileManager.default
+        let keys: [URLResourceKey] = [
+            .isRegularFileKey,
+            .isDirectoryKey,
+            .fileSizeKey,
+            .fileAllocatedSizeKey,
+            .totalFileAllocatedSizeKey,
+            .fileResourceIdentifierKey
+        ]
+        guard let enumerator = fm.enumerator(
+            at: root,
+            includingPropertiesForKeys: keys,
+            options: []
+        ) else {
+            return (0, 0, 0, 0)
+        }
+
+        var logicalBytes: Int64 = 0
+        var allocatedBytes: Int64 = 0
+        var fileCount = 0
+        var directoryCount = 0
+        var seenResourceIDs = Set<String>()
+
+        for case let child as URL in enumerator {
+            guard let childValues = try? child.resourceValues(forKeys: Set(keys)) else { continue }
+            if childValues.isDirectory == true {
+                directoryCount += 1
+                continue
+            }
+            if childValues.isRegularFile == true {
+                if let rid = childValues.fileResourceIdentifier {
+                    let key = String(describing: rid)
+                    if seenResourceIDs.contains(key) {
+                        continue
+                    }
+                    seenResourceIDs.insert(key)
+                }
+                fileCount += 1
+                logicalBytes += Int64(childValues.fileSize ?? 0)
+                allocatedBytes += Int64(childValues.totalFileAllocatedSize ?? childValues.fileAllocatedSize ?? childValues.fileSize ?? 0)
+            }
+        }
+
+        return (logicalBytes, allocatedBytes, fileCount, directoryCount)
     }
 
     @objc private func contextRename() {
@@ -2127,6 +2512,7 @@ private extension Array {
 private final class FocusAwareTableView: NSTableView {
     weak var focusDelegate: FocusAwareTableViewDelegate?
     var onEnterPressed: (() -> Void)?
+    var onBackgroundClicked: (() -> Void)?
 
     override func becomeFirstResponder() -> Bool {
         let accepted = super.becomeFirstResponder()
@@ -2142,6 +2528,15 @@ private final class FocusAwareTableView: NSTableView {
             return
         }
         super.keyDown(with: event)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let clickedRow = row(at: point)
+        super.mouseDown(with: event)
+        if clickedRow < 0 {
+            onBackgroundClicked?()
+        }
     }
 }
 

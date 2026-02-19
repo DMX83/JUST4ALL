@@ -73,8 +73,11 @@ swift run
 - Renombrar (toolbar y menu contextual) estabilizado:
   - renombra por URL objetivo capturada (no depende de seleccion post-modal),
   - mismo nombre se trata como no-op sin error.
+- Columna izquierda migrada a arbol del directorio activo.
+- Accion explicita para `Info carpeta actual` (toolbar y sidebar).
 - Menu contextual ampliado con `Nueva carpeta`.
 - Pegado (`Cmd+V` / `Pegar item`) encola job de copia para mostrar progreso y usar motor J4FOps.
 - Motor de copia recursiva corregido:
   - copia estable de archivos grandes en arboles,
   - correccion de calculo de rutas relativas (casos `/var` vs `/private/var`).
+- Informacion de carpetas separa `Tamano logico` vs `Tamano en disco` (dedup hard links).

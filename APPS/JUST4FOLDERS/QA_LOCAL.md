@@ -14,6 +14,11 @@
 - Menu contextual incluye `Nueva carpeta`.
 - `Pegar item` usa cola de jobs (progreso visible).
 - Copia recursiva de carpetas conserva contenido interno (incluyendo archivos >1MB).
+- Barra de direccion editable + `Go` robusto (normaliza/valida ruta).
+- Click en area vacia del panel selecciona raiz del directorio actual.
+- `Informacion` agrega `Tamano logico` y `Tamano en disco` (dedup hard links).
+- Boton/accion de `Info carpeta actual` disponible sin depender de seleccion.
+- Columna izquierda cambiada a arbol del directorio activo (navegacion rapida).
 
 ## Smoke test critico (dmx83/temp/orlando_salida)
 
