@@ -116,6 +116,11 @@ struct ContentView: View {
 
     private func openApp(_ app: SubApp) {
         guard let url = appURL(for: app) else {
+            if launchLocalDevApp(app) {
+                historyStore.record(.opened, for: app)
+                statusMessage = "Abierta (dev): \(app.name)"
+                return
+            }
             openDownload(app)
             return
         }
@@ -300,6 +305,82 @@ struct ContentView: View {
         }
 
         return nil
+    }
+
+    private func launchLocalDevApp(_ app: SubApp) -> Bool {
+        guard let appDir = localAppDirectory(for: app) else { return false }
+
+        // Prefer prebuilt debug binary if already available.
+        if let binary = localDebugBinaryURL(for: app, appDir: appDir) {
+            do {
+                let process = Process()
+                process.executableURL = binary
+                process.currentDirectoryURL = appDir
+                try process.run()
+                return true
+            } catch {
+                // Fall through to swift run.
+            }
+        }
+
+        // Fallback: run from source in the subapp folder.
+        do {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = ["swift", "run", app.name]
+            process.currentDirectoryURL = appDir
+            try process.run()
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private func localAppDirectory(for app: SubApp) -> URL? {
+        for root in localRepoRootCandidates() {
+            let candidate = root.appendingPathComponent("APPS/\(app.name)", isDirectory: true)
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+        }
+        return nil
+    }
+
+    private func localDebugBinaryURL(for app: SubApp, appDir: URL) -> URL? {
+        let names = [
+            ".build/arm64-apple-macosx/debug/\(app.name)",
+            ".build/x86_64-apple-macosx/debug/\(app.name)"
+        ]
+        for relative in names {
+            let candidate = appDir.appendingPathComponent(relative)
+            if FileManager.default.isExecutableFile(atPath: candidate.path) {
+                return candidate
+            }
+        }
+        return nil
+    }
+
+    private func localRepoRootCandidates() -> [URL] {
+        var roots: [URL] = []
+        let fm = FileManager.default
+
+        roots.append(URL(fileURLWithPath: fm.currentDirectoryPath, isDirectory: true))
+
+        let bundleURL = Bundle.main.bundleURL.standardizedFileURL
+        var cursor = bundleURL
+        for _ in 0..<8 {
+            cursor.deleteLastPathComponent()
+            roots.append(cursor)
+        }
+
+        // De-duplicate by normalized path.
+        var seen = Set<String>()
+        return roots.filter { url in
+            let path = url.standardizedFileURL.path
+            if seen.contains(path) { return false }
+            seen.insert(path)
+            return true
+        }
     }
 
     private func detailContent(for app: SubApp) -> some View {

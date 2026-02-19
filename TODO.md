@@ -62,6 +62,22 @@
 - [x] Entrada mixta por item (auto-detectar tipo y elegir formato de salida por item).
 - [ ] MKV real (requiere encoder externo, evaluar ffmpeg).
 
+## Fase 3.2 - JUST4FOLDERS (MVP)
+
+- [x] Crear modulo nativo `APPS/JUST4FOLDERS` en SwiftUI.
+- [x] Selector de carpeta origen y destino.
+- [x] Escaneo recursivo con resumen por categoria.
+- [x] Organizacion por copia en carpetas por categoria.
+- [x] Manejo de colisiones de nombre + progreso basico.
+- [x] README/TODO del modulo + script de build DMG.
+- [x] Plan completo v1.0 documentado en `APPS/JUST4FOLDERS/ROADMAP_V1.md`.
+- [x] Estructura modular inicial: `J4FCore`, `J4FFileSystem`, `J4FOps`, `J4FUI`.
+- [ ] Migrar UI principal a AppKit-first (2 paneles).
+- [ ] Implementar sandbox con security-scoped bookmarks.
+- [ ] Implementar motor de operaciones v1 (queue + scheduler + budget 512MB).
+- [ ] Completar productividad commander (tabs, shortcuts, search).
+- [ ] Pulido App Store y release v1.0.0.
+
 ### Detalles de implementacion sugeridos
 
 - [ ] Formatos: mapear cada formato a presets AVFoundation/ImageIO y validar compatibilidad por extension.

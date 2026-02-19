@@ -121,6 +121,27 @@ enum SubAppsCatalog {
                 "Assets/JUST4CONVERT/screen-1.png",
                 "Assets/JUST4CONVERT/screen-2.png"
             ]
+        ),
+        SubApp(
+            name: "JUST4FOLDERS",
+            subtitle: "Organizador de carpetas y archivos",
+            bundleId: "com.dmx83.just4folders",
+            assetPrefix: "JUST4FOLDERS",
+            accent: Color(red: 0.88, green: 0.52, blue: 0.18),
+            systemIcon: "folder.badge.gearshape",
+            description: "Analiza carpetas y organiza archivos por categoria en una estructura de destino limpia.",
+            requirements: ["macOS 13+", "Instalado como .app"],
+            links: [],
+            version: pinnedVersion,
+            changelog: [
+                "MVP con analisis recursivo por categoria",
+                "Organizacion por copia con progreso y colisiones"
+            ],
+            logoName: "Assets/JUST4FOLDERS/logo.png",
+            screenshots: [
+                "Assets/JUST4FOLDERS/screen-1.png",
+                "Assets/JUST4FOLDERS/screen-2.png"
+            ]
         )
     ]
 
