@@ -41,7 +41,7 @@ swift run
   - Documento
   - Ecommerce
 - Pipeline de mejora automatica:
-  - Deteccion discreta del tipo de imagen en preset Auto (retrato/documento/paisaje) para ajustar parametros sin intervención manual.
+  - Deteccion discreta del tipo de imagen en preset Auto (retrato/documento/paisaje/foto oscura) para ajustar parametros sin intervención manual.
   - Auto-ajustes de Core Image.
   - Correccion de brillo/contraste/saturacion.
   - Reduccion de ruido suave.
@@ -73,6 +73,7 @@ swift run
   - con vista `Original / PRO / IA`,
   - y con doble click para visor ampliado.
 - `AUTO` debe seguir heredando `Retrato` cuando detecta cara. Cualquier refactor de escena debe preservar esa decision.
+- `AUTO` ya distingue mejor documento por texto + baja saturacion y foto oscura por luminancia/saturacion, sin dejar de priorizar retrato cuando detecta cara.
 - La `IA` actual debe entenderse como capa de decision y ajuste; no debe reemplazar sin control el pipeline local.
 - La receta IA ya puede influir en `preset`, `format`, `quality` y `upscale`.
 - `faceRestore` ya existe como etapa local selectiva y conservadora sobre rostros detectados.

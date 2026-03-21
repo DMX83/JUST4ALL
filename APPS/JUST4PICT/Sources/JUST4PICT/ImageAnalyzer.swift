@@ -6,6 +6,7 @@ import Vision
 
 struct PhotoAnalysis {
     let averageLuminance: Double
+    let averageSaturation: Double
     let isLowKey: Bool
     let isHighKey: Bool
 }
@@ -22,22 +23,62 @@ final class ImageAnalyzer {
     }
 
     func detectSceneType(inputURL: URL, precomputedFaces: [VNFaceObservation]) -> ImageEnhancer.SceneType? {
-        if !precomputedFaces.isEmpty {
+        let pixelSize = imagePixelSize(from: inputURL)
+        let textObservationCount = recognizedTextObservationCount(in: inputURL)
+        let landscapeHint = looksLikeLandscapePhoto(inputURL: inputURL)
+        let analysis: PhotoAnalysis?
+        if let image = CIImage(contentsOf: inputURL, options: [.applyOrientationProperty: true]) {
+            analysis = analyzePhotograph(image)
+        } else {
+            analysis = nil
+        }
+
+        return Self.inferSceneType(
+            hasFaces: !precomputedFaces.isEmpty,
+            textObservationCount: textObservationCount,
+            pixelSize: pixelSize,
+            analysis: analysis,
+            landscapeHint: landscapeHint
+        )
+    }
+
+    static func inferSceneType(
+        hasFaces: Bool,
+        textObservationCount: Int,
+        pixelSize: CGSize?,
+        analysis: PhotoAnalysis?,
+        landscapeHint: Bool
+    ) -> ImageEnhancer.SceneType {
+        if hasFaces {
             return .portrait
         }
 
-        if hasDenseText(in: inputURL) {
+        if textObservationCount >= 8 {
             return .document
         }
 
-        if let size = imagePixelSize(from: inputURL), size.width > 0, size.height > 0 {
+        if let analysis {
+            if textObservationCount >= 4 && analysis.averageSaturation < 0.18 {
+                return .document
+            }
+
+            if textObservationCount >= 3 && analysis.isHighKey && analysis.averageSaturation < 0.12 {
+                return .document
+            }
+
+            if analysis.isLowKey && textObservationCount <= 1 && analysis.averageSaturation < 0.42 {
+                return .darkPhoto
+            }
+        }
+
+        if let size = pixelSize, size.width > 0, size.height > 0 {
             let ratio = size.width / size.height
-            if ratio >= 1.25 {
+            if ratio >= 1.25 && textObservationCount <= 2 {
                 return .landscape
             }
         }
 
-        if looksLikeLandscapePhoto(inputURL: inputURL) {
+        if landscapeHint && textObservationCount <= 3 {
             return .landscape
         }
 
@@ -78,12 +119,13 @@ final class ImageAnalyzer {
 
         return PhotoAnalysis(
             averageLuminance: luminance,
+            averageSaturation: max(r, g, b) - min(r, g, b),
             isLowKey: luminance < 0.42,
             isHighKey: luminance > 0.68
         )
     }
 
-    private func hasDenseText(in inputURL: URL) -> Bool {
+    private func recognizedTextObservationCount(in inputURL: URL) -> Int {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .fast
         request.minimumTextHeight = 0.015
@@ -93,10 +135,9 @@ final class ImageAnalyzer {
         let handler = VNImageRequestHandler(url: inputURL, options: [:])
         do {
             try handler.perform([request])
-            let count = request.results?.count ?? 0
-            return count >= 8
+            return request.results?.count ?? 0
         } catch {
-            return false
+            return 0
         }
     }
 

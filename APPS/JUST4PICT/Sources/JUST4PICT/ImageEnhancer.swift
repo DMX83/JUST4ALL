@@ -340,7 +340,7 @@ final class ImageEnhancer {
             return .document
         case .landscape:
             return .landscape
-        case .generic, .none:
+        case .darkPhoto, .generic, .none:
             return .auto
         }
     }
@@ -357,6 +357,7 @@ final class ImageEnhancer {
         case portrait
         case document
         case landscape
+        case darkPhoto
         case generic
     }
 
@@ -366,7 +367,7 @@ final class ImageEnhancer {
 
     private func isPhotographScene(_ scene: SceneType?) -> Bool {
         switch scene {
-        case .portrait, .landscape, .generic, .none:
+        case .portrait, .landscape, .darkPhoto, .generic, .none:
             return true
         case .document:
             return false
@@ -400,6 +401,8 @@ final class ImageEnhancer {
             return "document"
         case .landscape:
             return "landscape"
+        case .darkPhoto:
+            return "dark-photo"
         case .generic:
             return "generic"
         case .none:

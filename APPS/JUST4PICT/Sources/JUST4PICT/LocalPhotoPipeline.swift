@@ -219,7 +219,7 @@ final class LocalPhotoPipeline {
                 effectivePreset = .document
             case .landscape:
                 effectivePreset = .landscape
-            case .generic, .none:
+            case .darkPhoto, .generic, .none:
                 effectivePreset = .auto
             }
         } else {
@@ -253,6 +253,10 @@ final class LocalPhotoPipeline {
             shadowAmount = 0.08
             highlightAmount = 0.03
             exposureEV = 0.03
+        case .auto where detectedScene == .darkPhoto:
+            shadowAmount = 0.26
+            highlightAmount = 0.14
+            exposureEV = 0.10
         case .auto:
             shadowAmount = 0.14
             highlightAmount = 0.05
@@ -484,6 +488,17 @@ final class LocalPhotoPipeline {
                 saturation: 0.98,
                 exposureEV: 0.02
             )
+        case .darkPhoto:
+            return AIEnhancementTuning(
+                shadowAmount: 0.30,
+                highlightAmount: 0.82,
+                vibrance: 0.04,
+                sharpen: 0.12,
+                sharpenRadius: 0.40,
+                contrast: 0.99,
+                saturation: 0.99,
+                exposureEV: 0.08
+            )
         case .generic, .none:
             if analysis.isLowKey {
                 return AIEnhancementTuning(
@@ -546,6 +561,17 @@ final class LocalPhotoPipeline {
                 contrast: min(max(base.contrast, 0.98), 1.05),
                 saturation: min(max(base.saturation, 0.95), 1.00),
                 exposureEV: min(max(base.exposureEV, -0.04), 0.06)
+            )
+        case .darkPhoto:
+            return AIEnhancementTuning(
+                shadowAmount: min(max(base.shadowAmount, 0.24), 0.40),
+                highlightAmount: min(max(base.highlightAmount, 0.76), 0.94),
+                vibrance: min(max(base.vibrance, 0.02), 0.10),
+                sharpen: min(max(base.sharpen, 0.08), 0.18),
+                sharpenRadius: min(max(base.sharpenRadius, 0.30), 0.55),
+                contrast: min(max(base.contrast, 0.97), 1.01),
+                saturation: min(max(base.saturation, 0.98), 1.02),
+                exposureEV: min(max(base.exposureEV, 0.03), 0.10)
             )
         case .generic, .none:
             return base

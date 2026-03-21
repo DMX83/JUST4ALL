@@ -10,7 +10,7 @@ Baseline activa validada manualmente:
 - `PRO` ya no rompe el retrato y sirve como base conservadora usable
 - `PRO` ya tiene un remate pequeno de detalle local con proteccion facial
 - `AUTO` ya hereda `Retrato` cuando detecta cara
-- `AUTO` ya detecta mejor paisaje vertical por contenido y contiene mejor la nocturna
+- `AUTO` ya detecta mejor paisaje vertical por contenido, documento por texto+saturacion y contiene mejor la nocturna
 - muestra fija de QA en `APPS/JUST4PICT/images/PHOTO-2026-03-18-22-18-19 2.jpg`
 - QA multiprueba con salidas visibles en `APPS/JUST4PICT/images/test/*-pro-sample.png`
 

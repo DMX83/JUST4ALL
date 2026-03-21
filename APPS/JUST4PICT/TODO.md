@@ -57,8 +57,9 @@ Objetivo de producto:
 - [x] Deteccion adicional de paisaje vertical por contenido para evitar depender solo del ratio.
 - [x] Ajuste fino inicial de `PRO` para retrato, paisaje y nocturna sobre muestras reales del repo.
 - [ ] Ajuste fino final de `Retrato/PRO` para ganar detalle local sin perder naturalidad.
-- [ ] Afinar `AUTO` en nocturna y generico oscuro con una receta base mas inteligente.
-- [ ] Mejorar deteccion `AUTO` para documento y producto mas alla de cara/texto/ratio.
+- [x] Afinar `AUTO` en nocturna y generico oscuro con una receta base mas inteligente.
+- [x] Mejorar deteccion `AUTO` para documento mas alla de cara/texto/ratio.
+- [ ] Mejorar deteccion `AUTO` para producto/ecommerce mas alla de cara/texto/ratio.
 
 ## 1A) Fase Retrato Pro
 
@@ -94,7 +95,7 @@ Trabajo:
 
 - [x] si detecta cara, usar exactamente el pipeline final de `Retrato`
 - [ ] si detecta texto denso, usar `Documento`
-- [ ] si detecta baja luminancia, activar perfil de recuperacion de fotos oscuras
+- [x] si detecta baja luminancia, activar perfil de recuperacion de fotos oscuras
 - [x] mejorar clasificacion de paisaje/generico con analisis de luminancia y textura
 - [ ] documentar decision efectiva de `AUTO` en logs y UI
 
@@ -102,7 +103,7 @@ Verificacion:
 
 - [x] prueba con retrato
 - [x] prueba con paisaje
-- [ ] prueba con documento
+- [x] prueba unitaria de clasificacion para documento
 - [x] prueba con foto oscura
 
 ## 2) UX batch
