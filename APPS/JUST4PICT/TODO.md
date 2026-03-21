@@ -98,6 +98,7 @@ Trabajo:
 - [x] si detecta baja luminancia, activar perfil de recuperacion de fotos oscuras
 - [x] mejorar clasificacion de paisaje/generico con analisis de luminancia y textura
 - [x] documentar decision efectiva de `AUTO` en logs y UI
+- [x] congelar el perfil de export al iniciar lote/reintento para evitar mezclas dentro del mismo batch
 
 Verificacion:
 

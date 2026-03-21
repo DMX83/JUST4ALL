@@ -57,6 +57,8 @@ Para evitar suposiciones falsas antes del siguiente cambio:
 - Sigue sin ser un modelo dedicado de restauracion facial; la implementacion actual es deliberadamente conservadora.
 - Ya existe perfil de export por destino (`Original`, `Social`, `Web`, `Ecommerce`) con resize aplicado solo al archivo final.
 - La decision efectiva de `AUTO` ya se refleja mejor en la UI de preview para que el usuario vea que pipeline se esta aplicando.
+- El perfil de export se considera parte del snapshot del lote; no debe variar a mitad de una ejecucion ya iniciada.
+- La clasificacion `ecommerce` debe seguir funcionando con branding ligero; `document` debe quedar reservado para imagenes realmente dominadas por texto.
 
 ## Regla para la siguiente fase
 

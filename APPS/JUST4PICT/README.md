@@ -86,6 +86,8 @@ swift run
 - La resolucion IA por imagen se cachea en memoria durante la sesion para evitar llamadas repetidas sobre la misma foto en el mismo contexto base.
 - El resize por destino se aplica solo al export final; la preview sigue mostrando el pipeline sin ese remuestreo de salida.
 - La UI ya muestra mejor la decision efectiva de `AUTO` durante la preview para evitar ambigüedad sobre el preset realmente aplicado.
+- El lote debe respetar el perfil de export seleccionado al iniciar; no debe mezclar destinos si el usuario cambia la UI a mitad de proceso.
+- En `AUTO`, `ecommerce` puede seguir ganando con texto ligero si la imagen mantiene rasgos claros de producto; `documento` debe reservarse para densidad de texto real.
 - El historial IA debe seguir guardando por defecto solo resumen del prompt, no el prompt completo.
 - Los cambios futuros de `IA` deben mantener compatibilidad con:
   - export multi-formato,

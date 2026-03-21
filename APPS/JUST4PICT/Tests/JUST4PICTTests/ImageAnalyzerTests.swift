@@ -81,4 +81,24 @@ final class ImageAnalyzerTests: XCTestCase {
 
         XCTAssertEqual(scene, .ecommerce)
     }
+
+    func testInferSceneTypeStillAllowsEcommerceWithLightBrandingText() {
+        let analysis = PhotoAnalysis(
+            averageLuminance: 0.80,
+            averageSaturation: 0.11,
+            isLowKey: false,
+            isHighKey: true
+        )
+
+        let scene = ImageAnalyzer.inferSceneType(
+            hasFaces: false,
+            textObservationCount: 3,
+            pixelSize: CGSize(width: 1500, height: 1500),
+            analysis: analysis,
+            landscapeHint: false,
+            ecommerceHint: true
+        )
+
+        XCTAssertEqual(scene, .ecommerce)
+    }
 }

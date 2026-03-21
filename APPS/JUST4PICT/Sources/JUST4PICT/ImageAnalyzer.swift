@@ -58,6 +58,10 @@ final class ImageAnalyzer {
             return .portrait
         }
 
+        if let analysis, ecommerceHint && textObservationCount <= 3 && analysis.isHighKey {
+            return .ecommerce
+        }
+
         if textObservationCount >= 8 {
             return .document
         }
@@ -75,9 +79,6 @@ final class ImageAnalyzer {
                 return .darkPhoto
             }
 
-            if ecommerceHint && textObservationCount <= 2 && analysis.isHighKey {
-                return .ecommerce
-            }
         }
 
         if let size = pixelSize, size.width > 0, size.height > 0 {

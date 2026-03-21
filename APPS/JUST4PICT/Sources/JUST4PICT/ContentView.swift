@@ -833,9 +833,6 @@ struct ContentView: View {
                                         .clipShape(Capsule())
                                 }
 
-                                if (entry.aiPrompt != nil && !(entry.aiPrompt?.isEmpty ?? true)) || (entry.aiPromptSummary != nil && !(entry.aiPromptSummary?.isEmpty ?? true)) {
-                                }
-
                                 Button("Abrir") {
                                     openOutput(path: entry.outputPath)
                                 }
@@ -873,6 +870,8 @@ struct ContentView: View {
         originalPreviewImage = nil
         proPreviewImage = nil
         aiPreviewImage = nil
+        effectivePreviewScene = nil
+        effectivePreviewPreset = .auto
         aiResolutionCache.removeAll()
         previewTask?.cancel()
         statusMessage = "Selecciona imágenes para iniciar"
@@ -900,14 +899,16 @@ struct ContentView: View {
                 outputDirectory: URL?,
                 preset: EnhancementPreset,
                 format: OutputFormat,
-                quality: Double
+                quality: Double,
+                exportProfile: ExportProfile
             ) in
                 return (
                     modeSnapshot,
                     outputDirectory,
                     preset,
                     activeFormat,
-                    activeQuality
+                    activeQuality,
+                    outputSettings.exportProfile
                 )
             }
 
@@ -969,7 +970,7 @@ struct ContentView: View {
                         preset: runResolution.preset,
                         quality: runResolution.quality,
                         format: runResolution.format,
-                        exportProfile: outputSettings.exportProfile,
+                        exportProfile: snapshot.exportProfile,
                         upscaleTargetLongSide: runResolution.upscaleTargetLongSide,
                         faceRestoreStrength: runResolution.faceRestoreStrength,
                         aiPrompt: runResolution.aiPrompt,
@@ -1033,9 +1034,10 @@ struct ContentView: View {
                 preset: EnhancementPreset,
                 quality: Double,
                 format: OutputFormat,
-                outputDirectory: URL?
+                outputDirectory: URL?,
+                exportProfile: ExportProfile
             ) in
-                (modeSnapshot, preset, activeQuality, activeFormat, outputDirectory)
+                (modeSnapshot, preset, activeQuality, activeFormat, outputDirectory, outputSettings.exportProfile)
             }
 
             let runResolution: AIRunResolution
@@ -1080,7 +1082,7 @@ struct ContentView: View {
                     preset: runResolution.preset,
                     quality: runResolution.quality,
                     format: runResolution.format,
-                    exportProfile: outputSettings.exportProfile,
+                    exportProfile: snapshot.exportProfile,
                     upscaleTargetLongSide: runResolution.upscaleTargetLongSide,
                     faceRestoreStrength: runResolution.faceRestoreStrength,
                     aiPrompt: runResolution.aiPrompt,
@@ -1586,6 +1588,8 @@ struct ContentView: View {
 
         guard let previewURL = selectedPreviewURL ?? inputFiles.first else {
             originalPreviewImage = nil
+            effectivePreviewScene = nil
+            effectivePreviewPreset = .auto
             return
         }
 
