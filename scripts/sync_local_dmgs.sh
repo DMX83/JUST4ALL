@@ -26,5 +26,6 @@ copy_dmg() {
 
 copy_dmg "$REPO_ROOT/APPS/JUST4PDF/dist/JUST4PDF.dmg" "JUST4PDF-$SUITE_VERSION.dmg"
 copy_dmg "$REPO_ROOT/APPS/JUST4CONVERT/dist/JUST4CONVERT.dmg" "JUST4CONVERT-$SUITE_VERSION.dmg"
+copy_dmg "$REPO_ROOT/APPS/JUST4PICT/dist/JUST4PICT.dmg" "JUST4PICT-$SUITE_VERSION.dmg"
 
 printf "Prepared release assets in %s\n" "$ASSETS_DIR"

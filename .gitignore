@@ -49,6 +49,7 @@ yarn-error.log*
 *.profraw
 
 # local env files
+.env.secrets
 .env*.local
 
 # vercel

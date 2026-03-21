@@ -142,6 +142,27 @@ enum SubAppsCatalog {
                 "Assets/JUST4FOLDERS/screen-1.png",
                 "Assets/JUST4FOLDERS/screen-2.png"
             ]
+        ),
+        SubApp(
+            name: "JUST4PICT",
+            subtitle: "Mejoramiento automatico de imagenes",
+            bundleId: "com.dmx83.just4pict",
+            assetPrefix: "JUST4PICT",
+            accent: Color(red: 0.59, green: 0.33, blue: 0.92),
+            systemIcon: "wand.and.stars",
+            description: "Mejora imagenes por lotes con presets automaticos para retrato, documento, ecommerce y mas.",
+            requirements: ["macOS 13+", "Instalado como .app"],
+            links: [],
+            version: pinnedVersion,
+            changelog: [
+                "MVP con mejoras automaticas por lotes",
+                "Export a JPG/PNG/HEIC/WEBP/TIFF"
+            ],
+            logoName: "Assets/JUST4PICT/logo.png",
+            screenshots: [
+                "Assets/JUST4PICT/screen-1.png",
+                "Assets/JUST4PICT/screen-2.png"
+            ]
         )
     ]
 

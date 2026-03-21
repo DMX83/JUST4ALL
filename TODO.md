@@ -79,6 +79,22 @@
 - [ ] Resolver regresion de busqueda profunda (latencia alta/no retorno) con prioridad maxima.
 - [ ] Pulido App Store y release v1.0.0.
 
+## Fase 3.3 - JUST4PICT (MVP)
+
+- [x] Crear modulo nativo `APPS/JUST4PICT` en SwiftUI.
+- [x] Pipeline base de mejoramiento automatico por lotes (Core Image).
+- [x] Presets iniciales (Auto, Retrato, Paisaje, Documento, Ecommerce).
+- [x] Export multi-formato (JPG/PNG/HEIC/WEBP/TIFF).
+- [x] Script de build DMG del modulo.
+- [x] Integracion en catalogo de JUST4ALL.
+- [x] Vista comparativa Before/After.
+- [x] Cancelacion y reintento por item en lote.
+- [x] Historial local de lotes con acciones abrir/revelar.
+- [x] Sugerencia IA (OpenAI) para preset/calidad HD + prompt HD copiable.
+- [x] Persistencia en historial de sugerencia IA aplicada (preset/calidad/prompt).
+- [x] Privacidad historial IA: resumen de prompt por defecto (sin prompt completo persistido).
+- [x] Publicar primer release DMG versionado + checksum.
+
 ### Detalles de implementacion sugeridos
 
 - [ ] Formatos: mapear cada formato a presets AVFoundation/ImageIO y validar compatibilidad por extension.

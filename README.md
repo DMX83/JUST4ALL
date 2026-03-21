@@ -14,6 +14,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - APPS/JUST4PDF: App enfocada en herramientas para PDF.
 - APPS/JUST4CONVERT: App nativa macOS en SwiftUI para conversion multimedia.
 - APPS/JUST4FOLDERS: App nativa macOS en SwiftUI para organizar archivos por carpetas.
+- APPS/JUST4PICT: App nativa macOS en SwiftUI para mejoramiento automatico de imagenes.
 - App principal (este repo): JUST4ALL en Swift (Sources/ y Resources/).
 
 ## Documentacion rapida
@@ -22,12 +23,14 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - JUST4PDF: `APPS/JUST4PDF/README.md` y `APPS/JUST4PDF/TODO.md`
 - JUST4CONVERT: `APPS/JUST4CONVERT/README.md`
 - JUST4FOLDERS: `APPS/JUST4FOLDERS/README.md` y `APPS/JUST4FOLDERS/TODO.md`
+- JUST4PICT: `APPS/JUST4PICT/README.md`, `APPS/JUST4PICT/TODO.md` y `APPS/JUST4PICT/ROADMAP_V1.md`
 
 ## Submodulos
 
 - JUST4PDF: App macOS para leer PDFs, convertir PDF↔imagenes y herramientas basicas de PDF.
 - JUST4CONVERT: App nativa macOS para conversion de audio, video e imagenes con cola de trabajos.
 - JUST4FOLDERS: App nativa macOS para analizar y organizar archivos por categoria.
+- JUST4PICT: App nativa macOS para mejorar imagenes por lotes con presets automaticos.
 - JUST4ALL: Hub macOS para lanzar subapps con vista de detalles.
 
 ## Principios del proyecto
@@ -43,6 +46,7 @@ El repositorio contiene al menos los siguientes submodulos:
 - JUST4PDF (Python + PySide6)
 - JUST4CONVERT (SwiftUI)
 - JUST4FOLDERS (SwiftUI)
+- JUST4PICT (SwiftUI)
 
 ### Estado funcional resumido
 
@@ -69,6 +73,11 @@ El repositorio contiene al menos los siguientes submodulos:
   - Resumen por categorias (imagenes, video, audio, documentos, comprimidos y otros).
   - Organizacion por copia a subcarpetas de categoria en destino.
   - Manejo de colisiones de nombre y progreso durante la ejecucion.
+- JUST4PICT:
+  - Seleccion por archivos o carpeta para lote de imagenes.
+  - Presets automaticos (Auto, Retrato, Paisaje, Documento, Ecommerce).
+  - Pipeline de mejora con Core Image (auto-ajuste, color, denoise, sharpen).
+  - Export en JPG/PNG/HEIC/WEBP/TIFF con colisiones resueltas.
 
 ## Build y ejecucion (alto nivel)
 
@@ -88,6 +97,12 @@ El repositorio contiene al menos los siguientes submodulos:
 - App nativa macOS en SwiftUI para organizar archivos por categoria.
 - Incluye analisis de carpetas y organizacion por copia.
 - Ver detalles en `APPS/JUST4FOLDERS/README.md`.
+
+### JUST4PICT
+
+- App nativa macOS en SwiftUI para mejoramiento automatico de imagenes.
+- Incluye procesamiento por lotes, presets y export multi-formato.
+- Ver detalles en `APPS/JUST4PICT/README.md`.
 
 ### JUST4ALL
 
@@ -109,6 +124,7 @@ Para trabajar JUST4ALL y JUST4CONVERT en Xcode al mismo tiempo, se recomienda un
   - Sources/JUST4ALL/Resources/Assets/JUST4PDF/
   - Sources/JUST4ALL/Resources/Assets/JUST4CONVERT/
   - Sources/JUST4ALL/Resources/Assets/JUST4FOLDERS/
+  - Sources/JUST4ALL/Resources/Assets/JUST4PICT/
 - Nombres esperados:
   - logo.png
   - screen-1.png
