@@ -10,7 +10,7 @@ Baseline activa validada manualmente:
 - `PRO` ya no rompe el retrato y sirve como base conservadora usable
 - `PRO` ya tiene un remate pequeno de detalle local con proteccion facial
 - `AUTO` ya hereda `Retrato` cuando detecta cara
-- `AUTO` ya detecta mejor paisaje vertical por contenido, documento por texto+saturacion y contiene mejor la nocturna
+- `AUTO` ya detecta mejor paisaje vertical por contenido, documento por texto+saturacion, producto `ecommerce` por fondo claro/uniforme y contiene mejor la nocturna
 - muestra fija de QA en `APPS/JUST4PICT/images/PHOTO-2026-03-18-22-18-19 2.jpg`
 - QA multiprueba con salidas visibles en `APPS/JUST4PICT/images/test/*-pro-sample.png`
 
@@ -56,6 +56,7 @@ Para evitar suposiciones falsas antes del siguiente cambio:
 - `faceRestore` ya aplica una mejora local selectiva sobre mascara facial.
 - Sigue sin ser un modelo dedicado de restauracion facial; la implementacion actual es deliberadamente conservadora.
 - Ya existe perfil de export por destino (`Original`, `Social`, `Web`, `Ecommerce`) con resize aplicado solo al archivo final.
+- La decision efectiva de `AUTO` ya se refleja mejor en la UI de preview para que el usuario vea que pipeline se esta aplicando.
 
 ## Regla para la siguiente fase
 

@@ -1,5 +1,6 @@
 import XCTest
 import CoreImage
+import AppKit
 @testable import JUST4PICT
 
 final class ImageEnhancerDiagnosticsTests: XCTestCase {
@@ -215,6 +216,35 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         XCTAssertLessThan(delta, 0.05, "Face restore should remain conservative against the current PRO baseline")
     }
 
+    func testExportProfileWebResizesLargeImageOnWrite() throws {
+        let inputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("jpg")
+
+        try makeSolidImage(width: 2400, height: 1200).pngWrite(to: inputURL)
+        defer {
+            try? FileManager.default.removeItem(at: inputURL)
+            try? FileManager.default.removeItem(at: outputURL)
+        }
+
+        let enhancer = ImageEnhancer()
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            preset: .auto,
+            quality: 0.9,
+            format: .jpg,
+            exportProfile: .web
+        )
+
+        let writtenSize = try pixelSize(for: outputURL)
+        XCTAssertEqual(writtenSize.width, 1600)
+        XCTAssertEqual(writtenSize.height, 800)
+    }
+
     private func primarySampleImageURL() throws -> URL {
         let samples = try sampleImageURLs()
         if let portrait = samples.first(where: { $0.lastPathComponent == "PHOTO-2026-03-18-22-18-19 2.jpg" }) {
@@ -310,5 +340,36 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
             Double(bitmap[2]) / 255.0,
             Double(bitmap[3]) / 255.0
         )
+    }
+
+    private func pixelSize(for url: URL) throws -> (width: Int, height: Int) {
+        guard let image = NSImage(contentsOf: url) else {
+            throw XCTSkip("Could not load image at \(url.path)")
+        }
+        guard let rep = image.representations.first else {
+            throw XCTSkip("No bitmap representation available for \(url.path)")
+        }
+        return (rep.pixelsWide, rep.pixelsHigh)
+    }
+
+    private func makeSolidImage(width: Int, height: Int) -> NSImage {
+        let image = NSImage(size: NSSize(width: width, height: height))
+        image.lockFocus()
+        NSColor(calibratedRed: 0.85, green: 0.86, blue: 0.88, alpha: 1.0).setFill()
+        NSBezierPath(rect: NSRect(x: 0, y: 0, width: width, height: height)).fill()
+        image.unlockFocus()
+        return image
+    }
+}
+
+private extension NSImage {
+    func pngWrite(to url: URL) throws {
+        guard let tiffData = tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiffData),
+              let pngData = rep.representation(using: .png, properties: [:])
+        else {
+            throw NSError(domain: "JUST4PICTTests", code: 1)
+        }
+        try pngData.write(to: url)
     }
 }

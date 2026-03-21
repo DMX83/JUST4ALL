@@ -78,13 +78,14 @@ swift run
   - con vista `Original / PRO / IA`,
   - y con doble click para visor ampliado.
 - `AUTO` debe seguir heredando `Retrato` cuando detecta cara. Cualquier refactor de escena debe preservar esa decision.
-- `AUTO` ya distingue mejor documento por texto + baja saturacion y foto oscura por luminancia/saturacion, sin dejar de priorizar retrato cuando detecta cara.
+- `AUTO` ya distingue mejor documento por texto + baja saturacion, foto oscura por luminancia/saturacion y producto `ecommerce` por fondo claro/uniforme y sujeto centrado, sin dejar de priorizar retrato cuando detecta cara.
 - La `IA` actual debe entenderse como capa de decision y ajuste; no debe reemplazar sin control el pipeline local.
 - La receta IA ya puede influir en `preset`, `format`, `quality` y `upscale`.
 - `faceRestore` ya existe como etapa local selectiva y conservadora sobre rostros detectados.
 - Sigue sin ser un modelo dedicado de restauracion facial; hoy actua como refuerzo suave de detalle/tono en mascara facial.
 - La resolucion IA por imagen se cachea en memoria durante la sesion para evitar llamadas repetidas sobre la misma foto en el mismo contexto base.
 - El resize por destino se aplica solo al export final; la preview sigue mostrando el pipeline sin ese remuestreo de salida.
+- La UI ya muestra mejor la decision efectiva de `AUTO` durante la preview para evitar ambigüedad sobre el preset realmente aplicado.
 - El historial IA debe seguir guardando por defecto solo resumen del prompt, no el prompt completo.
 - Los cambios futuros de `IA` deben mantener compatibilidad con:
   - export multi-formato,

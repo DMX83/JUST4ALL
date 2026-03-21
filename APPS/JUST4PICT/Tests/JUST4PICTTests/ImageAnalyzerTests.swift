@@ -15,7 +15,8 @@ final class ImageAnalyzerTests: XCTestCase {
             textObservationCount: 5,
             pixelSize: CGSize(width: 1400, height: 900),
             analysis: analysis,
-            landscapeHint: false
+            landscapeHint: false,
+            ecommerceHint: false
         )
 
         XCTAssertEqual(scene, .document)
@@ -34,7 +35,8 @@ final class ImageAnalyzerTests: XCTestCase {
             textObservationCount: 0,
             pixelSize: CGSize(width: 1080, height: 1350),
             analysis: analysis,
-            landscapeHint: false
+            landscapeHint: false,
+            ecommerceHint: false
         )
 
         XCTAssertEqual(scene, .darkPhoto)
@@ -53,9 +55,30 @@ final class ImageAnalyzerTests: XCTestCase {
             textObservationCount: 0,
             pixelSize: CGSize(width: 1600, height: 900),
             analysis: analysis,
-            landscapeHint: true
+            landscapeHint: true,
+            ecommerceHint: false
         )
 
         XCTAssertEqual(scene, .landscape)
+    }
+
+    func testInferSceneTypeDetectsEcommerceWhenBackgroundIsBrightAndUniform() {
+        let analysis = PhotoAnalysis(
+            averageLuminance: 0.78,
+            averageSaturation: 0.10,
+            isLowKey: false,
+            isHighKey: true
+        )
+
+        let scene = ImageAnalyzer.inferSceneType(
+            hasFaces: false,
+            textObservationCount: 0,
+            pixelSize: CGSize(width: 1500, height: 1500),
+            analysis: analysis,
+            landscapeHint: false,
+            ecommerceHint: true
+        )
+
+        XCTAssertEqual(scene, .ecommerce)
     }
 }

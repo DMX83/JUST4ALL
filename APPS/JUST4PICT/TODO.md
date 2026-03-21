@@ -59,7 +59,7 @@ Objetivo de producto:
 - [ ] Ajuste fino final de `Retrato/PRO` para ganar detalle local sin perder naturalidad.
 - [x] Afinar `AUTO` en nocturna y generico oscuro con una receta base mas inteligente.
 - [x] Mejorar deteccion `AUTO` para documento mas alla de cara/texto/ratio.
-- [ ] Mejorar deteccion `AUTO` para producto/ecommerce mas alla de cara/texto/ratio.
+- [x] Mejorar deteccion `AUTO` para producto/ecommerce mas alla de cara/texto/ratio.
 
 ## 1A) Fase Retrato Pro
 
@@ -97,7 +97,7 @@ Trabajo:
 - [ ] si detecta texto denso, usar `Documento`
 - [x] si detecta baja luminancia, activar perfil de recuperacion de fotos oscuras
 - [x] mejorar clasificacion de paisaje/generico con analisis de luminancia y textura
-- [ ] documentar decision efectiva de `AUTO` en logs y UI
+- [x] documentar decision efectiva de `AUTO` en logs y UI
 
 Verificacion:
 
@@ -128,7 +128,7 @@ Verificacion:
 - [x] Formalizar `EnhancementRecipe` como modelo central del pipeline.
 - [x] Separar `ImageAnalyzer`, `EnhancementPlanner` y `LocalPhotoPipeline`.
 - [x] Mostrar en UI la receta IA completa aplicada.
-- [ ] Resize inteligente por preset (social/ecommerce/miniaturas).
+- [x] Resize inteligente por preset/destino (`social`, `web`, `ecommerce`).
 - [ ] Correccion de horizonte y recorte de documento (Vision).
 - [ ] Perfil "Recuperar fotos oscuras".
 - [ ] Perfil "Optimizar para web < 300KB".
@@ -197,7 +197,8 @@ Trabajo:
 
 Verificacion:
 
-- [ ] comparar preview vs archivo exportado
+- [x] comparar preview vs archivo exportado
+  Cobertura añadida para coherencia general y resize real de export.
 - [ ] medir tamaño final y fidelidad visual
 
 ## 3D) IA de producto

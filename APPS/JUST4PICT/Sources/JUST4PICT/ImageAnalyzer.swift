@@ -27,10 +27,13 @@ final class ImageAnalyzer {
         let textObservationCount = recognizedTextObservationCount(in: inputURL)
         let landscapeHint = looksLikeLandscapePhoto(inputURL: inputURL)
         let analysis: PhotoAnalysis?
+        let ecommerceHint: Bool
         if let image = CIImage(contentsOf: inputURL, options: [.applyOrientationProperty: true]) {
             analysis = analyzePhotograph(image)
+            ecommerceHint = looksLikeProductPhoto(image: image)
         } else {
             analysis = nil
+            ecommerceHint = false
         }
 
         return Self.inferSceneType(
@@ -38,7 +41,8 @@ final class ImageAnalyzer {
             textObservationCount: textObservationCount,
             pixelSize: pixelSize,
             analysis: analysis,
-            landscapeHint: landscapeHint
+            landscapeHint: landscapeHint,
+            ecommerceHint: ecommerceHint
         )
     }
 
@@ -47,7 +51,8 @@ final class ImageAnalyzer {
         textObservationCount: Int,
         pixelSize: CGSize?,
         analysis: PhotoAnalysis?,
-        landscapeHint: Bool
+        landscapeHint: Bool,
+        ecommerceHint: Bool
     ) -> ImageEnhancer.SceneType {
         if hasFaces {
             return .portrait
@@ -68,6 +73,10 @@ final class ImageAnalyzer {
 
             if analysis.isLowKey && textObservationCount <= 1 && analysis.averageSaturation < 0.42 {
                 return .darkPhoto
+            }
+
+            if ecommerceHint && textObservationCount <= 2 && analysis.isHighKey {
+                return .ecommerce
             }
         }
 
@@ -183,6 +192,52 @@ final class ImageAnalyzer {
         let bottomVisible = bottom.luminance > 0.18
 
         return topBlueDominant && topBrightEnough && bottomNatureLike && bottomVisible
+    }
+
+    private func looksLikeProductPhoto(image: CIImage) -> Bool {
+        let extent = image.extent.integral
+        guard extent.width > 0, extent.height > 0 else { return false }
+
+        let borderThicknessX = max(extent.width * 0.12, 1)
+        let borderThicknessY = max(extent.height * 0.12, 1)
+
+        let topRect = CGRect(x: extent.minX, y: extent.maxY - borderThicknessY, width: extent.width, height: borderThicknessY).integral
+        let bottomRect = CGRect(x: extent.minX, y: extent.minY, width: extent.width, height: borderThicknessY).integral
+        let leftRect = CGRect(x: extent.minX, y: extent.minY, width: borderThicknessX, height: extent.height).integral
+        let rightRect = CGRect(x: extent.maxX - borderThicknessX, y: extent.minY, width: borderThicknessX, height: extent.height).integral
+        let centerRect = CGRect(
+            x: extent.minX + (extent.width * 0.22),
+            y: extent.minY + (extent.height * 0.22),
+            width: extent.width * 0.56,
+            height: extent.height * 0.56
+        ).integral
+
+        let samples = [
+            averageRGB(in: image, extent: topRect),
+            averageRGB(in: image, extent: bottomRect),
+            averageRGB(in: image, extent: leftRect),
+            averageRGB(in: image, extent: rightRect)
+        ]
+        let center = averageRGB(in: image, extent: centerRect)
+
+        let borderLuminances = samples.map(\.luminance)
+        let borderSaturations = samples.map { max($0.r, $0.g, $0.b) - min($0.r, $0.g, $0.b) }
+
+        guard let minBorderLuminance = borderLuminances.min(),
+              let maxBorderLuminance = borderLuminances.max()
+        else {
+            return false
+        }
+
+        let averageBorderLuminance = borderLuminances.reduce(0, +) / Double(borderLuminances.count)
+        let averageBorderSaturation = borderSaturations.reduce(0, +) / Double(borderSaturations.count)
+        let centerSaturation = max(center.r, center.g, center.b) - min(center.r, center.g, center.b)
+
+        let brightUniformBackground = averageBorderLuminance > 0.72 && (maxBorderLuminance - minBorderLuminance) < 0.10
+        let neutralBorder = averageBorderSaturation < 0.12
+        let centerSeparatedFromBackground = centerSaturation > averageBorderSaturation + 0.08 || center.luminance < averageBorderLuminance - 0.08
+
+        return brightUniformBackground && neutralBorder && centerSeparatedFromBackground
     }
 
     private func averageRGB(in image: CIImage, extent: CGRect) -> (r: Double, g: Double, b: Double, luminance: Double) {

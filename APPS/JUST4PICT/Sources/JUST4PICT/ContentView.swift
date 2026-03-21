@@ -113,6 +113,7 @@ struct ContentView: View {
     @State private var previewRequestID = UUID()
     @State private var previewNeedsRefresh = false
     @State private var effectivePreviewPreset: EnhancementPreset = .auto
+    @State private var effectivePreviewScene: ImageEnhancer.SceneType?
     @State private var isShowingPreviewLightbox = false
     @State private var lightboxSelection: PreviewKind = .original
 
@@ -570,9 +571,30 @@ struct ContentView: View {
     private var modeStatusText: String {
         switch selectedMode {
         case .local:
+            if let autoDecision = autoDecisionLabel {
+                return "Modo activo: Procesado Pro (motor local) · AUTO decide \(autoDecision)"
+            }
             return "Modo activo: Procesado Pro (motor local)"
         case .ai:
             return isAnalyzingWithAI ? "IA analizando imagen..." : "Modo activo: IA · asesor inteligente + motor local · \(aiStatusMessage)"
+        }
+    }
+
+    private var autoDecisionLabel: String? {
+        guard preset == .auto else { return nil }
+        switch effectivePreviewScene {
+        case .portrait:
+            return "Retrato"
+        case .document:
+            return "Documento"
+        case .landscape:
+            return "Paisaje"
+        case .ecommerce:
+            return "Ecommerce"
+        case .darkPhoto:
+            return "Foto oscura"
+        case .generic, .none:
+            return "General"
         }
     }
 
@@ -1548,6 +1570,10 @@ struct ContentView: View {
                 selectedPreviewURL = inputFiles.first
             }
             preparePreviewForSelection()
+            if preset == .auto, let previewURL = selectedPreviewURL ?? inputFiles.first {
+                let scene = enhancer.detectSceneType(inputURL: previewURL)
+                logs.insert("[PRO] AUTO analizará \(previewURL.lastPathComponent) como \(autoDecisionLabel(for: scene))", at: 0)
+            }
         }
     }
 
@@ -1567,6 +1593,7 @@ struct ContentView: View {
             selectedPreviewURL = previewURL
         }
         originalPreviewImage = NSImage(contentsOf: previewURL)
+        effectivePreviewScene = enhancer.detectSceneType(inputURL: previewURL)
         effectivePreviewPreset = enhancer.effectivePreset(for: preset, inputURL: previewURL)
         previewNeedsRefresh = true
     }
@@ -1627,15 +1654,36 @@ struct ContentView: View {
     private var proPreviewSummary: String {
         switch effectivePreviewPreset {
         case .portrait:
-            return "retrato natural, contraste contenido, color moderado y detalle suave"
+            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))" : ""
+            return "retrato natural, contraste contenido, color moderado y detalle suave\(suffix)"
         case .landscape:
-            return "paisaje equilibrado, color vivo moderado y nitidez local suave"
+            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))" : ""
+            return "paisaje equilibrado, color vivo moderado y nitidez local suave\(suffix)"
         case .document:
-            return "documento claro, contraste funcional y nitidez para lectura"
+            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))" : ""
+            return "documento claro, contraste funcional y nitidez para lectura\(suffix)"
         case .ecommerce:
-            return "producto limpio, color controlado y microdetalle moderado"
+            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))" : ""
+            return "producto limpio, color controlado y microdetalle moderado\(suffix)"
         case .auto:
-            return "auto local, correccion general y mejora conservadora"
+            return "auto local, correccion general y mejora conservadora · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))"
+        }
+    }
+
+    private func autoDecisionLabel(for scene: ImageEnhancer.SceneType?) -> String {
+        switch scene {
+        case .portrait:
+            return "Retrato"
+        case .document:
+            return "Documento"
+        case .landscape:
+            return "Paisaje"
+        case .ecommerce:
+            return "Ecommerce"
+        case .darkPhoto:
+            return "Foto oscura"
+        case .generic, .none:
+            return "General"
         }
     }
 
