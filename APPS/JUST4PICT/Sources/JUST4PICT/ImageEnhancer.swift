@@ -42,6 +42,28 @@ struct EnhancementOptions {
     let noiseReduction: Double
 }
 
+enum ExportProfile: String, CaseIterable, Identifiable {
+    case original = "Original"
+    case social = "Social"
+    case web = "Web"
+    case ecommerce = "Ecommerce"
+
+    var id: String { rawValue }
+
+    func targetLongSide(for preset: EnhancementPreset) -> CGFloat? {
+        switch self {
+        case .original:
+            return nil
+        case .social:
+            return 2048
+        case .web:
+            return 1600
+        case .ecommerce:
+            return preset == .ecommerce ? 2200 : 2000
+        }
+    }
+}
+
 enum OutputFormat: String, CaseIterable, Identifiable {
     case png = "PNG"
     case jpg = "JPG"
@@ -167,16 +189,21 @@ final class ImageEnhancer {
         preset: EnhancementPreset,
         quality: Double,
         format: OutputFormat,
+        exportProfile: ExportProfile = .original,
         upscaleTargetLongSide: CGFloat? = nil,
         faceRestoreStrength: Double? = nil,
         tuning: AIEnhancementTuning? = nil
     ) throws {
-        let image = try makeEnhancedImage(
+        var image = try makeEnhancedImage(
             inputURL: inputURL,
             preset: preset,
             upscaleToLongSide: resolvedUpscaleTargetLongSide(upscaleTargetLongSide),
             faceRestoreStrength: faceRestoreStrength,
             tuning: tuning
+        )
+        image = applyExportResizeIfNeeded(
+            image: image,
+            targetLongSide: exportProfile.targetLongSide(for: preset)
         )
 
         let extent = image.extent.integral
@@ -236,6 +263,25 @@ final class ImageEnhancer {
     private func resolvedPreviewUpscaleTargetLongSide(_ recipeTarget: CGFloat?) -> CGFloat? {
         guard let recipeTarget, recipeTarget > 0 else { return nil }
         return recipeTarget
+    }
+
+    private func applyExportResizeIfNeeded(image: CIImage, targetLongSide: CGFloat?) -> CIImage {
+        guard let targetLongSide, targetLongSide > 0 else {
+            return image
+        }
+
+        let extent = image.extent.integral
+        let currentLongSide = max(extent.width, extent.height)
+        guard currentLongSide > targetLongSide else {
+            return image
+        }
+
+        let scale = targetLongSide / currentLongSide
+        let filter = CIFilter.lanczosScaleTransform()
+        filter.inputImage = image
+        filter.scale = Float(scale)
+        filter.aspectRatio = 1.0
+        return (filter.outputImage ?? image).cropped(to: (filter.outputImage ?? image).extent.integral)
     }
 
     private func makeEnhancedImage(

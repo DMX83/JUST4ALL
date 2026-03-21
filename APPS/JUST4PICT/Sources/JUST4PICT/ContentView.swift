@@ -48,15 +48,18 @@ private struct PreviewLightboxItem: Identifiable {
 private final class OutputSettings: ObservableObject {
     @Published var format: OutputFormat
     @Published var quality: Double
+    @Published var exportProfile: ExportProfile
     @Published var hasUserTouchedOutputSettings: Bool
 
     init(
         format: OutputFormat = .preferredDefault,
         quality: Double = OutputFormat.preferredQualityDefault,
+        exportProfile: ExportProfile = .original,
         hasUserTouchedOutputSettings: Bool = false
     ) {
         self.format = format
         self.quality = quality
+        self.exportProfile = exportProfile
         self.hasUserTouchedOutputSettings = hasUserTouchedOutputSettings
     }
 
@@ -64,6 +67,7 @@ private final class OutputSettings: ObservableObject {
         hasUserTouchedOutputSettings = false
         format = .preferredDefault
         quality = OutputFormat.preferredQualityDefault
+        exportProfile = .original
     }
 }
 
@@ -125,6 +129,7 @@ struct ContentView: View {
             wrappedValue: OutputSettings(
                 format: initialFormat,
                 quality: initialQuality,
+                exportProfile: .original,
                 hasUserTouchedOutputSettings: false
             )
         )
@@ -307,6 +312,13 @@ struct ContentView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
 
+            Picker("Destino", selection: $outputSettings.exportProfile) {
+                ForEach(ExportProfile.allCases) { option in
+                    Text(option.rawValue).tag(option)
+                }
+            }
+            .pickerStyle(.menu)
+
             if activeFormat.supportsLossyQuality {
                 HStack(spacing: 6) {
                     Text("Calidad")
@@ -354,6 +366,9 @@ struct ContentView: View {
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .lineLimit(1)
+            Text("Perfil de export: \(outputSettings.exportProfile.rawValue)")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
         }
     }
 
@@ -932,6 +947,7 @@ struct ContentView: View {
                         preset: runResolution.preset,
                         quality: runResolution.quality,
                         format: runResolution.format,
+                        exportProfile: outputSettings.exportProfile,
                         upscaleTargetLongSide: runResolution.upscaleTargetLongSide,
                         faceRestoreStrength: runResolution.faceRestoreStrength,
                         aiPrompt: runResolution.aiPrompt,
@@ -1042,6 +1058,7 @@ struct ContentView: View {
                     preset: runResolution.preset,
                     quality: runResolution.quality,
                     format: runResolution.format,
+                    exportProfile: outputSettings.exportProfile,
                     upscaleTargetLongSide: runResolution.upscaleTargetLongSide,
                     faceRestoreStrength: runResolution.faceRestoreStrength,
                     aiPrompt: runResolution.aiPrompt,
@@ -1085,6 +1102,7 @@ struct ContentView: View {
         preset: EnhancementPreset,
         quality: Double,
         format: OutputFormat,
+        exportProfile: ExportProfile,
         upscaleTargetLongSide: CGFloat?,
         faceRestoreStrength: Double?,
         aiPrompt: String?,
@@ -1102,6 +1120,7 @@ struct ContentView: View {
                 preset: preset,
                 quality: quality,
                 format: format,
+                exportProfile: exportProfile,
                 upscaleTargetLongSide: upscaleTargetLongSide,
                 faceRestoreStrength: faceRestoreStrength,
                 tuning: aiTuning

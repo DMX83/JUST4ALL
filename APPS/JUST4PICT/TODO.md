@@ -192,7 +192,7 @@ Trabajo:
 - [x] respetar formato/calidad sugeridos por receta IA
 - [x] asegurar `PNG` como salida por defecto de maxima calidad en la UI
 - [ ] asegurar exportacion maxima en `PNG` y `JPG` segun caso
-- [ ] introducir resize inteligente por destino (`social`, `web`, `ecommerce`)
+- [x] introducir resize inteligente por destino (`social`, `web`, `ecommerce`)
 - [ ] evitar dobles compresiones y reescalados innecesarios
 
 Verificacion:

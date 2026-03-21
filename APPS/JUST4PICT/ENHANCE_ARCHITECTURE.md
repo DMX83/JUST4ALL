@@ -55,6 +55,7 @@ Para evitar suposiciones falsas antes del siguiente cambio:
 - `faceRestore` ya esta cableado como contrato de planner/UI/pipeline y viaja por preview y export.
 - `faceRestore` ya aplica una mejora local selectiva sobre mascara facial.
 - Sigue sin ser un modelo dedicado de restauracion facial; la implementacion actual es deliberadamente conservadora.
+- Ya existe perfil de export por destino (`Original`, `Social`, `Web`, `Ecommerce`) con resize aplicado solo al archivo final.
 
 ## Regla para la siguiente fase
 

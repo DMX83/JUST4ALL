@@ -56,6 +56,11 @@ swift run
   - Resolver por imagen en batch sin reutilizar una unica receta para todo el lote.
   - Reutilizar cache local de receta por imagen para no repetir analisis IA innecesario dentro de la misma sesion.
 - Export con colisiones resueltas (`-enhanced`, `-enhanced-1`, ...).
+- Perfil de export por destino:
+  - `Original`: conserva tamaño actual.
+  - `Social`: limita el lado mayor a `2048`.
+  - `Web`: limita el lado mayor a `1600`.
+  - `Ecommerce`: limita el lado mayor a `2000` o `2200` si el preset es `Ecommerce`.
 - Formatos de salida:
   - PNG (default recomendado para maxima calidad)
   - JPG
@@ -79,6 +84,7 @@ swift run
 - `faceRestore` ya existe como etapa local selectiva y conservadora sobre rostros detectados.
 - Sigue sin ser un modelo dedicado de restauracion facial; hoy actua como refuerzo suave de detalle/tono en mascara facial.
 - La resolucion IA por imagen se cachea en memoria durante la sesion para evitar llamadas repetidas sobre la misma foto en el mismo contexto base.
+- El resize por destino se aplica solo al export final; la preview sigue mostrando el pipeline sin ese remuestreo de salida.
 - El historial IA debe seguir guardando por defecto solo resumen del prompt, no el prompt completo.
 - Los cambios futuros de `IA` deben mantener compatibilidad con:
   - export multi-formato,
