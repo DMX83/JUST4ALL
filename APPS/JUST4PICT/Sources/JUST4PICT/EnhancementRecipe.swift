@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 struct AIEnhancementTuning: Codable, Hashable {
     let shadowAmount: Double
@@ -60,5 +61,49 @@ struct EnhancementRecipe: Codable, Hashable {
                 )
             }
         )
+    }
+}
+
+extension EnhancementRecipe {
+    var mappedPreset: EnhancementPreset? {
+        let normalized = preset.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalized {
+        case "auto":
+            return .auto
+        case "retrato", "portrait":
+            return .portrait
+        case "paisaje", "landscape":
+            return .landscape
+        case "documento", "document":
+            return .document
+        case "ecommerce", "e-commerce":
+            return .ecommerce
+        default:
+            return nil
+        }
+    }
+
+    var mappedExportFormat: OutputFormat? {
+        let normalized = exportFormat.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalized {
+        case "png":
+            return .png
+        case "jpg", "jpeg":
+            return .jpg
+        case "heic":
+            return .heic
+        case "webp":
+            return .webp
+        case "tiff", "tif":
+            return .tiff
+        default:
+            return nil
+        }
+    }
+
+    var upscaleTargetLongSide: CGFloat? {
+        guard let upscale, upscale.enabled else { return nil }
+        guard let target = upscale.targetLongSide, target > 0 else { return nil }
+        return CGFloat(target)
     }
 }

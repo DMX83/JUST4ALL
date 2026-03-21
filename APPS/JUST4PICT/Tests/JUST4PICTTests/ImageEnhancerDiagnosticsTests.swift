@@ -71,6 +71,150 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         }
     }
 
+    func testWritesPortraitFaceRestoreSampleForQuickQA() throws {
+        let inputURL = try primarySampleImageURL()
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Sample image not available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        let outputDirectory = try sampleOutputDirectory()
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let baseName = inputURL.deletingPathExtension().lastPathComponent
+        let outputURL = outputDirectory.appendingPathComponent("\(baseName)-portrait-face-restore-sample.png")
+        try? FileManager.default.removeItem(at: outputURL)
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png,
+            faceRestoreStrength: 0.65
+        )
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outputURL.path))
+        print("QA_OUTPUT \(outputURL.path)")
+    }
+
+    func testPreviewAndExportStayMeasurablyAlignedForSameRecipeInputs() throws {
+        let inputURL = try primarySampleImageURL()
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Sample image not available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+
+        let tuning = AIEnhancementTuning(
+            shadowAmount: 0.30,
+            highlightAmount: 0.85,
+            vibrance: 0.12,
+            sharpen: 0.18,
+            sharpenRadius: 0.45,
+            contrast: 1.01,
+            saturation: 1.02,
+            exposureEV: 0.02
+        )
+
+        let preview = try enhancer.enhancedPreviewImage(
+            inputURL: inputURL,
+            preset: .portrait,
+            tuning: tuning,
+            upscaleTargetLongSide: 2200
+        )
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png,
+            upscaleTargetLongSide: 2200,
+            tuning: tuning
+        )
+
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+
+        guard let previewCG = preview.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            XCTFail("Preview image should provide a CGImage")
+            return
+        }
+
+        let previewRep = NSBitmapImageRep(cgImage: previewCG)
+        guard let previewPNG = previewRep.representation(using: .png, properties: [:]) else {
+            XCTFail("Preview should be encodable as PNG")
+            return
+        }
+
+        let previewTempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+        try previewPNG.write(to: previewTempURL)
+        defer { try? FileManager.default.removeItem(at: previewTempURL) }
+
+        let previewStats = try averageRGBA(for: previewTempURL)
+        let exportStats = try averageRGBA(for: outputURL)
+
+        let delta = abs(previewStats.r - exportStats.r)
+            + abs(previewStats.g - exportStats.g)
+            + abs(previewStats.b - exportStats.b)
+            + abs(previewStats.a - exportStats.a)
+
+        XCTAssertLessThan(delta, 0.08, "Preview and export should stay visually aligned for the same recipe inputs")
+    }
+
+    func testFaceRestoreAddsContainedChangeOnPortraitSample() throws {
+        let inputURL = try primarySampleImageURL()
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Sample image not available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        let baselineURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+        let restoredURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: baselineURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png
+        )
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: restoredURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png,
+            faceRestoreStrength: 0.65
+        )
+
+        defer {
+            try? FileManager.default.removeItem(at: baselineURL)
+            try? FileManager.default.removeItem(at: restoredURL)
+        }
+
+        let faceRegion = CGRect(x: 0.28, y: 0.32, width: 0.44, height: 0.44)
+        let baselineStats = try averageRGBA(for: baselineURL, normalizedCrop: faceRegion)
+        let restoredStats = try averageRGBA(for: restoredURL, normalizedCrop: faceRegion)
+        let delta = abs(baselineStats.r - restoredStats.r)
+            + abs(baselineStats.g - restoredStats.g)
+            + abs(baselineStats.b - restoredStats.b)
+            + abs(baselineStats.a - restoredStats.a)
+
+        XCTAssertGreaterThan(delta, 0.001, "Face restore should produce some measurable facial adjustment")
+        XCTAssertLessThan(delta, 0.05, "Face restore should remain conservative against the current PRO baseline")
+    }
+
     private func primarySampleImageURL() throws -> URL {
         let samples = try sampleImageURLs()
         if let portrait = samples.first(where: { $0.lastPathComponent == "PHOTO-2026-03-18-22-18-19 2.jpg" }) {
@@ -124,15 +268,30 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
             .appendingPathComponent("test", isDirectory: true)
     }
 
-    private func averageRGBA(for url: URL) throws -> (r: Double, g: Double, b: Double, a: Double) {
+    private func averageRGBA(
+        for url: URL,
+        normalizedCrop: CGRect? = nil
+    ) throws -> (r: Double, g: Double, b: Double, a: Double) {
         guard let image = CIImage(contentsOf: url, options: [.applyOrientationProperty: true]) else {
             throw XCTSkip("Could not load image at \(url.path)")
         }
 
         let extent = image.extent.integral
+        let sampleExtent: CGRect
+        if let normalizedCrop {
+            let cropped = CGRect(
+                x: extent.minX + (extent.width * normalizedCrop.minX),
+                y: extent.minY + (extent.height * normalizedCrop.minY),
+                width: extent.width * normalizedCrop.width,
+                height: extent.height * normalizedCrop.height
+            ).integral
+            sampleExtent = cropped.intersection(extent)
+        } else {
+            sampleExtent = extent
+        }
         let filter = CIFilter.areaAverage()
         filter.inputImage = image
-        filter.extent = extent
+        filter.extent = sampleExtent
 
         let context = CIContext(options: [.cacheIntermediates: false])
         var bitmap = [UInt8](repeating: 0, count: 4)

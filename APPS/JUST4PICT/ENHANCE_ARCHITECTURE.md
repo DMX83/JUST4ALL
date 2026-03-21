@@ -20,6 +20,51 @@ Situacion del producto ahora:
 - `PRO` es usable y ya funciona bien como baseline visual para retrato
 - la validacion ya no depende solo de prueba manual: existe un set pequeno dentro del repo
 - `IA` existe, pero todavia no debe marcar la direccion del producto hasta que `PRO` y `AUTO` queden solidos
+- la arquitectura ya no depende solo de un archivo monolitico:
+  - `ImageAnalyzer` concentra analisis local de imagen,
+  - `EnhancementPlanner` resuelve decisiones derivadas de receta/fallback,
+  - `LocalPhotoPipeline` ejecuta el pipeline local
+
+## Invariantes actuales antes de tocar IA
+
+Estos puntos ya estan estabilizados y deben preservarse en cualquier refactor o ampliacion:
+
+- `PNG` es el formato de salida por defecto del proyecto.
+- `PNG` debe aparecer primero en el selector de formatos.
+- La calidad por defecto es `1.0`; no se debe volver a una salida con perdida por defecto.
+- La preview es manual y se dispara con `Enhance`; no debe reintroducirse auto-refresh costoso o agresivo.
+- `PRO` es la baseline visual principal. La integracion IA no puede degradar `PRO` ni mezclar responsabilidades.
+- `AUTO` ya hereda `Retrato` cuando detecta cara. Ese comportamiento es contrato actual del producto.
+- El historial IA guarda resumen de prompt por defecto y evita persistir el prompt completo salvo eleccion explicita.
+- El naming de salida versionado y con manejo de colisiones debe seguir intacto.
+- Los tests del modulo deben seguir cubriendo:
+  - formatos de salida,
+  - historial,
+  - y QA diagnostica de `ImageEnhancer`.
+
+## Estado tecnico real de IA hoy
+
+Para evitar suposiciones falsas antes del siguiente cambio:
+
+- La `IA` ya genera una `EnhancementRecipe` estructurada y la muestra en UI.
+- La `IA` ya puede sugerir preset, calidad y `tuning`.
+- La `IA` ya resuelve por imagen en batch a traves del planner.
+- La resolucion IA por imagen ya puede reutilizarse desde cache local en sesion para evitar analisis repetidos.
+- `preset`, `exportFormat`, `exportQuality` y `upscale` ya pueden influir en la ejecucion real.
+- La `IA` todavia no es la fuente de verdad completa del pipeline final.
+- `faceRestore` ya esta cableado como contrato de planner/UI/pipeline y viaja por preview y export.
+- `faceRestore` ya aplica una mejora local selectiva sobre mascara facial.
+- Sigue sin ser un modelo dedicado de restauracion facial; la implementacion actual es deliberadamente conservadora.
+
+## Regla para la siguiente fase
+
+El siguiente trabajo de `IA` no debe introducir comportamiento nuevo sin respetar este orden:
+
+1. preservar defaults actuales de exportacion y preview
+2. mantener `PRO` y `AUTO` visualmente estables
+3. hacer que `IA` decida por imagen
+4. hacer que `EnhancementRecipe` gobierne realmente la ejecucion
+5. solo despues ampliar motores, upscale dedicado o restauracion facial
 
 ## Objetivo
 
@@ -231,6 +276,15 @@ Separar implementacion por modulos:
 - `UpscaleEngine`
 - `FaceRestoreEngine`
 - `ExportPipeline`
+
+Estado actual del repo:
+
+- `ImageAnalyzer`: implementado para escena/caras/texto/luminancia
+- `EnhancementPlanner`: implementado para resolucion de receta IA y fallback
+- `LocalPhotoPipeline`: implementado para pipeline local de mejora
+- `UpscaleEngine`: pendiente como modulo dedicado; hoy vive dentro del pipeline local
+- `FaceRestoreEngine`: pendiente
+- `ExportPipeline`: pendiente como modulo dedicado; hoy sigue integrado en `ImageEnhancer`
 
 Responsabilidades:
 

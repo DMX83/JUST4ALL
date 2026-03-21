@@ -53,6 +53,8 @@ swift run
 - Sugerencia IA opcional (OpenAI) para:
   - Recomendar y aplicar preset/calidad objetivo para mejora maxima (HD/calidad alta).
   - Usar prompt interno del sistema (sin que el usuario escriba prompt).
+  - Resolver por imagen en batch sin reutilizar una unica receta para todo el lote.
+  - Reutilizar cache local de receta por imagen para no repetir analisis IA innecesario dentro de la misma sesion.
 - Export con colisiones resueltas (`-enhanced`, `-enhanced-1`, ...).
 - Formatos de salida:
   - PNG (default recomendado para maxima calidad)
@@ -60,6 +62,28 @@ swift run
   - HEIC
   - WEBP
   - TIFF
+
+## Contratos actuales que no se deben romper
+
+- `PNG` es la salida por defecto del proyecto y debe seguir siendo la primera opcion visible en la UI.
+- La calidad por defecto del proyecto es `1.0`; no se debe reintroducir `JPG` con compresion por defecto.
+- El modo `PRO` es la referencia visual del producto y no debe degradarse al introducir logica nueva de `IA`.
+- La preview manual con boton `Enhance` debe seguir siendo estable:
+  - sin auto-refresh agresivo,
+  - con vista `Original / PRO / IA`,
+  - y con doble click para visor ampliado.
+- `AUTO` debe seguir heredando `Retrato` cuando detecta cara. Cualquier refactor de escena debe preservar esa decision.
+- La `IA` actual debe entenderse como capa de decision y ajuste; no debe reemplazar sin control el pipeline local.
+- La receta IA ya puede influir en `preset`, `format`, `quality` y `upscale`.
+- `faceRestore` ya existe como etapa local selectiva y conservadora sobre rostros detectados.
+- Sigue sin ser un modelo dedicado de restauracion facial; hoy actua como refuerzo suave de detalle/tono en mascara facial.
+- La resolucion IA por imagen se cachea en memoria durante la sesion para evitar llamadas repetidas sobre la misma foto en el mismo contexto base.
+- El historial IA debe seguir guardando por defecto solo resumen del prompt, no el prompt completo.
+- Los cambios futuros de `IA` deben mantener compatibilidad con:
+  - export multi-formato,
+  - naming con colisiones resueltas,
+  - historial local,
+  - y tests de diagnostico/QA del modulo.
 
 ## Recomendaciones de producto (siguiente paso)
 

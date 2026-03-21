@@ -14,6 +14,19 @@ Objetivo de producto:
 - conseguir una mejora visible y limpia, sin artefactos, con exportacion alta calidad
 - dejar la puerta abierta a upscale serio y modulos avanzados sin romper la base local
 
+## Guardrails antes de insertar mas IA
+
+- no romper `PNG` como formato por defecto ni su posicion como primera opcion del selector
+- no reintroducir `JPG` con compresion por defecto
+- no degradar `PRO`, que sigue siendo la baseline visual de referencia
+- no cambiar la preview manual por refresco automatico agresivo
+- no perder compatibilidad con historial local, naming con colisiones y export multi-formato
+- no persistir el prompt completo de IA por defecto
+- cualquier ampliacion de `IA` debe pasar por tests y mantener verdes:
+  - `OutputFormatTests`
+  - `PictHistoryStoreTests`
+  - `ImageEnhancerDiagnosticsTests`
+
 ## 0) Base del modulo
 
 - [x] Crear modulo nativo `APPS/JUST4PICT` en SwiftUI.
@@ -112,7 +125,7 @@ Verificacion:
 - [x] IA devuelve receta local inicial (sombras, luces, vibrance, nitidez, contraste, saturacion, exposicion).
 - [x] Hacer que IA analice la imagen real por vision, no solo metadatos.
 - [x] Formalizar `EnhancementRecipe` como modelo central del pipeline.
-- [ ] Separar `ImageAnalyzer`, `EnhancementPlanner` y `LocalPhotoPipeline`.
+- [x] Separar `ImageAnalyzer`, `EnhancementPlanner` y `LocalPhotoPipeline`.
 - [x] Mostrar en UI la receta IA completa aplicada.
 - [ ] Resize inteligente por preset (social/ecommerce/miniaturas).
 - [ ] Correccion de horizonte y recorte de documento (Vision).
@@ -121,7 +134,8 @@ Verificacion:
 - [ ] Introducir `UpscaleEngine` dedicado para fotos pequenas.
 - [ ] Evaluar `Core ML` como motor serio de enhancement/upscale.
 - [ ] Evaluar `Real-ESRGAN` como benchmark de calidad para upscale.
-- [ ] Añadir modulo opcional de restauracion facial, apagado por defecto.
+- [~] Añadir modulo opcional de restauracion facial, apagado por defecto.
+  Ya existe una primera version local, selectiva y conservadora; falta evaluar si se queda asi o pasa a motor dedicado.
 
 ## 3A) Refactor de arquitectura
 
@@ -131,10 +145,11 @@ Meta:
 
 Trabajo:
 
-- [ ] separar `ImageAnalyzer`
-- [ ] separar `EnhancementPlanner`
-- [ ] separar `LocalPhotoPipeline`
+- [x] separar `ImageAnalyzer`
+- [x] separar `EnhancementPlanner`
+- [x] separar `LocalPhotoPipeline`
 - [ ] convertir `EnhancementRecipe` en contrato central efectivo, no solo estructural
+- [x] propagar `faceRestore` como contrato estable de receta en batch, preview y export
 - [ ] reutilizar `CIContext` compartido en todos los flujos
 - [ ] introducir `autoreleasepool` en lote grande
 
@@ -172,8 +187,8 @@ Meta:
 
 Trabajo:
 
-- [ ] alinear preview y export para que el render final sea coherente
-- [ ] respetar formato/calidad sugeridos por receta IA
+- [x] alinear preview y export para que el render final sea coherente
+- [x] respetar formato/calidad sugeridos por receta IA
 - [x] asegurar `PNG` como salida por defecto de maxima calidad en la UI
 - [ ] asegurar exportacion maxima en `PNG` y `JPG` segun caso
 - [ ] introducir resize inteligente por destino (`social`, `web`, `ecommerce`)
@@ -194,8 +209,9 @@ Trabajo:
 
 - [ ] hacer que la IA describa intencion visual y no solo sliders
 - [ ] usar esa intencion para guiar el planner local
-- [ ] cachear la ultima receta IA por imagen para no repetir analisis
+- [x] cachear la ultima receta IA por imagen para no repetir analisis
 - [ ] decidir si conviene upscale o face restore solo cuando haya evidencia
+- [x] dejar `faceRestore` integrado como etapa local conservadora sin romper la baseline `PRO`
 - [ ] mostrar en UI una explicacion corta de la decision IA
 
 Verificacion:

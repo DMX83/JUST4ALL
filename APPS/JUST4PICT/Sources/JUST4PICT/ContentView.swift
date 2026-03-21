@@ -67,6 +67,12 @@ private final class OutputSettings: ObservableObject {
     }
 }
 
+private struct AIResolutionCacheKey: Hashable {
+    let fileURL: URL
+    let basePreset: EnhancementPreset
+    let baseFormat: OutputFormat
+}
+
 struct ContentView: View {
     @State private var inputFiles: [URL] = []
     @State private var outputDirectory: URL?
@@ -95,6 +101,7 @@ struct ContentView: View {
     @State private var aiReasonForRun: String?
     @State private var aiTuningForRun: AIEnhancementTuning?
     @State private var aiRecipeForRun: EnhancementRecipe?
+    @State private var aiResolutionCache: [AIResolutionCacheKey: AIRunResolution] = [:]
     @State private var storeFullAIPromptInHistory = false
     @State private var selectedMode: EnhancementMode = .local
     @State private var activityFilter: ActivityLogFilter = .all
@@ -465,6 +472,15 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(recipe.objective)
                         .font(.system(size: 11))
+                    Text(aiDecisionExplanation(recipe))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
+                    if !aiDecisionHighlights(recipe).isEmpty {
+                        Text(aiDecisionHighlights(recipe).joined(separator: " · "))
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                    }
                     Text(aiRecipeSummary(recipe))
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
@@ -820,6 +836,7 @@ struct ContentView: View {
         originalPreviewImage = nil
         proPreviewImage = nil
         aiPreviewImage = nil
+        aiResolutionCache.removeAll()
         previewTask?.cancel()
         statusMessage = "Selecciona imágenes para iniciar"
     }
@@ -841,48 +858,19 @@ struct ContentView: View {
         let modeSnapshot = selectedMode
 
         batchTask = Task {
-            if modeSnapshot == .ai, let firstFile = files.first {
-                await recommendWithAI(for: firstFile)
-            }
-
             let snapshot = await MainActor.run { () -> (
                 mode: EnhancementMode,
                 outputDirectory: URL?,
                 preset: EnhancementPreset,
-                quality: Double,
                 format: OutputFormat,
-                aiPreset: String?,
-                aiQuality: Double?,
-                aiReason: String?,
-                aiPrompt: String?,
-                aiTuning: AIEnhancementTuning?
+                quality: Double
             ) in
-                if selectedMode == .ai {
-                    return (
-                        modeSnapshot,
-                        outputDirectory,
-                        preset,
-                        activeQuality,
-                        activeFormat,
-                        aiSuggestedPresetForRun,
-                        aiSuggestedQualityForRun,
-                        aiReasonForRun,
-                        aiPromptHD,
-                        aiTuningForRun
-                    )
-                }
-
                 return (
-                        modeSnapshot,
-                        outputDirectory,
-                        preset,
-                        activeQuality,
-                        activeFormat,
-                        nil,
-                        nil,
-                        nil,
-                    nil,
-                    nil
+                    modeSnapshot,
+                    outputDirectory,
+                    preset,
+                    activeFormat,
+                    activeQuality
                 )
             }
 
@@ -902,11 +890,37 @@ struct ContentView: View {
                     batchResults[input] = BatchItemResult(status: .processing, outputURL: nil, errorMessage: nil, mode: modeSnapshot)
                 }
 
+                let runResolution: AIRunResolution
+                if modeSnapshot == .ai {
+                    runResolution = await resolveAIRunConfiguration(
+                        for: input,
+                        basePreset: snapshot.preset,
+                        baseFormat: snapshot.format,
+                        baseQuality: snapshot.quality,
+                        shouldUpdateUIState: false
+                    )
+                } else {
+                    runResolution = AIRunResolution(
+                        preset: snapshot.preset,
+                        format: snapshot.format,
+                        quality: snapshot.quality,
+                        upscaleTargetLongSide: nil,
+                        faceRestoreStrength: nil,
+                        aiSuggestedPreset: nil,
+                        aiSuggestedQuality: nil,
+                        aiReason: nil,
+                        aiPrompt: nil,
+                        aiTuning: nil,
+                        recipe: nil,
+                        usedFallback: false
+                    )
+                }
+
                 let destinationDirectory = snapshot.outputDirectory ?? input.deletingLastPathComponent()
                 let outputURL = uniqueOutputURL(
                     for: input,
                     in: destinationDirectory,
-                    format: snapshot.format,
+                    format: runResolution.format,
                     mode: snapshot.mode
                 )
 
@@ -915,11 +929,13 @@ struct ContentView: View {
                         inputURL: input,
                         outputURL: outputURL,
                         mode: snapshot.mode,
-                        preset: snapshot.preset,
-                        quality: snapshot.quality,
-                        format: snapshot.format,
-                        aiPrompt: snapshot.aiPrompt,
-                        aiTuning: snapshot.aiTuning
+                        preset: runResolution.preset,
+                        quality: runResolution.quality,
+                        format: runResolution.format,
+                        upscaleTargetLongSide: runResolution.upscaleTargetLongSide,
+                        faceRestoreStrength: runResolution.faceRestoreStrength,
+                        aiPrompt: runResolution.aiPrompt,
+                        aiTuning: runResolution.aiTuning
                     )
                     await MainActor.run {
                         batchResults[input] = BatchItemResult(status: .success, outputURL: outputURL, errorMessage: nil, mode: modeSnapshot)
@@ -927,16 +943,17 @@ struct ContentView: View {
                             current: historyEntries,
                             inputFileName: input.lastPathComponent,
                             outputURL: outputURL,
-                            preset: snapshot.preset,
-                            format: snapshot.format,
-                            aiSuggestedPreset: snapshot.aiPreset,
-                            aiSuggestedQuality: snapshot.aiQuality,
-                            aiReason: snapshot.aiReason,
-                            aiTuningSummary: aiTuningSummary(snapshot.aiTuning),
-                            aiPrompt: snapshot.aiPrompt,
+                            preset: runResolution.preset,
+                            format: runResolution.format,
+                            aiSuggestedPreset: runResolution.aiSuggestedPreset,
+                            aiSuggestedQuality: runResolution.aiSuggestedQuality,
+                            aiReason: runResolution.aiReason,
+                            aiTuningSummary: aiTuningSummary(runResolution.aiTuning),
+                            aiPrompt: runResolution.aiPrompt,
                             storeFullPrompt: storeFullAIPromptInHistory
                         )
-                        logs.insert("\(modeLogPrefix(modeSnapshot)) ✅ \(input.lastPathComponent) → \(outputURL.lastPathComponent)", at: 0)
+                        let fallbackSuffix = runResolution.usedFallback ? " (fallback local)" : ""
+                        logs.insert("\(modeLogPrefix(modeSnapshot)) ✅ \(input.lastPathComponent) → \(outputURL.lastPathComponent)\(fallbackSuffix)", at: 0)
                         recomputeCounters(total: files.count)
                     }
                 } catch {
@@ -968,49 +985,67 @@ struct ContentView: View {
         guard let current = batchResults[file], current.status == .failed else { return }
 
         let modeSnapshot = selectedMode
-        let destinationDirectory = outputDirectory ?? file.deletingLastPathComponent()
-        let outputURL = uniqueOutputURL(
-            for: file,
-            in: destinationDirectory,
-            format: activeFormat,
-            mode: modeSnapshot
-        )
 
         batchResults[file] = BatchItemResult(status: .processing, outputURL: nil, errorMessage: nil, mode: modeSnapshot)
         statusMessage = "Reintentando \(file.lastPathComponent)..."
 
         Task {
-            if modeSnapshot == .ai {
-                await recommendWithAI(for: file)
-            }
-
             let snapshot = await MainActor.run { () -> (
                 mode: EnhancementMode,
                 preset: EnhancementPreset,
                 quality: Double,
                 format: OutputFormat,
-                aiPreset: String?,
-                aiQuality: Double?,
-                aiReason: String?,
-                aiPrompt: String?,
-                aiTuning: AIEnhancementTuning?
+                outputDirectory: URL?
             ) in
-                if selectedMode == .ai {
-                    return (modeSnapshot, preset, activeQuality, activeFormat, aiSuggestedPresetForRun, aiSuggestedQualityForRun, aiReasonForRun, aiPromptHD, aiTuningForRun)
-                }
-                return (modeSnapshot, preset, activeQuality, activeFormat, nil, nil, nil, nil, nil)
+                (modeSnapshot, preset, activeQuality, activeFormat, outputDirectory)
             }
+
+            let runResolution: AIRunResolution
+            if modeSnapshot == .ai {
+                runResolution = await resolveAIRunConfiguration(
+                    for: file,
+                    basePreset: snapshot.preset,
+                    baseFormat: snapshot.format,
+                    baseQuality: snapshot.quality,
+                    shouldUpdateUIState: true
+                )
+            } else {
+                    runResolution = AIRunResolution(
+                        preset: snapshot.preset,
+                        format: snapshot.format,
+                        quality: snapshot.quality,
+                        upscaleTargetLongSide: nil,
+                        faceRestoreStrength: nil,
+                        aiSuggestedPreset: nil,
+                    aiSuggestedQuality: nil,
+                    aiReason: nil,
+                    aiPrompt: nil,
+                    aiTuning: nil,
+                    recipe: nil,
+                    usedFallback: false
+                )
+            }
+
+            let destinationDirectory = snapshot.outputDirectory ?? file.deletingLastPathComponent()
+            let outputURL = uniqueOutputURL(
+                for: file,
+                in: destinationDirectory,
+                format: runResolution.format,
+                mode: modeSnapshot
+            )
 
             do {
                 try await runEnhancement(
                     inputURL: file,
                     outputURL: outputURL,
                     mode: snapshot.mode,
-                    preset: snapshot.preset,
-                    quality: snapshot.quality,
-                    format: snapshot.format,
-                    aiPrompt: snapshot.aiPrompt,
-                    aiTuning: snapshot.aiTuning
+                    preset: runResolution.preset,
+                    quality: runResolution.quality,
+                    format: runResolution.format,
+                    upscaleTargetLongSide: runResolution.upscaleTargetLongSide,
+                    faceRestoreStrength: runResolution.faceRestoreStrength,
+                    aiPrompt: runResolution.aiPrompt,
+                    aiTuning: runResolution.aiTuning
                 )
                 await MainActor.run {
                     batchResults[file] = BatchItemResult(status: .success, outputURL: outputURL, errorMessage: nil, mode: modeSnapshot)
@@ -1018,16 +1053,17 @@ struct ContentView: View {
                         current: historyEntries,
                         inputFileName: file.lastPathComponent,
                         outputURL: outputURL,
-                        preset: snapshot.preset,
-                        format: snapshot.format,
-                        aiSuggestedPreset: snapshot.aiPreset,
-                        aiSuggestedQuality: snapshot.aiQuality,
-                        aiReason: snapshot.aiReason,
-                        aiTuningSummary: aiTuningSummary(snapshot.aiTuning),
-                        aiPrompt: snapshot.aiPrompt,
+                        preset: runResolution.preset,
+                        format: runResolution.format,
+                        aiSuggestedPreset: runResolution.aiSuggestedPreset,
+                        aiSuggestedQuality: runResolution.aiSuggestedQuality,
+                        aiReason: runResolution.aiReason,
+                        aiTuningSummary: aiTuningSummary(runResolution.aiTuning),
+                        aiPrompt: runResolution.aiPrompt,
                         storeFullPrompt: storeFullAIPromptInHistory
                     )
-                    logs.insert("\(modeLogPrefix(modeSnapshot)) ✅ Reintento \(file.lastPathComponent) → \(outputURL.lastPathComponent)", at: 0)
+                    let fallbackSuffix = runResolution.usedFallback ? " (fallback local)" : ""
+                    logs.insert("\(modeLogPrefix(modeSnapshot)) ✅ Reintento \(file.lastPathComponent) → \(outputURL.lastPathComponent)\(fallbackSuffix)", at: 0)
                     recomputeCounters(total: inputFiles.count)
                     statusMessage = "Reintento completado"
                 }
@@ -1049,6 +1085,8 @@ struct ContentView: View {
         preset: EnhancementPreset,
         quality: Double,
         format: OutputFormat,
+        upscaleTargetLongSide: CGFloat?,
+        faceRestoreStrength: Double?,
         aiPrompt: String?,
         aiTuning: AIEnhancementTuning?
     ) async throws {
@@ -1064,6 +1102,8 @@ struct ContentView: View {
                 preset: preset,
                 quality: quality,
                 format: format,
+                upscaleTargetLongSide: upscaleTargetLongSide,
+                faceRestoreStrength: faceRestoreStrength,
                 tuning: aiTuning
             )
         }.value
@@ -1163,55 +1203,13 @@ struct ContentView: View {
         isAnalyzingWithAI = true
         defer { isAnalyzingWithAI = false }
 
-        let image = NSImage(contentsOf: fileURL)
-        let width = Int(image?.size.width ?? 0)
-        let height = Int(image?.size.height ?? 0)
-
-        do {
-            let recommendation = try await openAIAdvisor.recommendHD(
-                inputURL: fileURL,
-                fileName: fileURL.lastPathComponent,
-                width: width,
-                height: height,
-                currentPreset: preset,
-                currentFormat: activeFormat
-            )
-
-            if let suggestedPreset = recommendation.preset {
-                preset = suggestedPreset
-            }
-
-            if let suggestedQuality = recommendation.quality, activeFormat.supportsLossyQuality {
-                outputSettings.hasUserTouchedOutputSettings = true
-                outputSettings.quality = suggestedQuality
-            }
-
-            aiPromptHD = recommendation.hdPrompt
-            aiStatusMessage = recommendation.recipe?.objective ?? recommendation.reason
-            aiSuggestedPresetForRun = recommendation.preset?.rawValue
-            aiSuggestedQualityForRun = recommendation.quality
-            aiReasonForRun = recommendation.recipe?.objective ?? recommendation.reason
-            aiTuningForRun = recommendation.tuning
-            aiRecipeForRun = recommendation.recipe
-            logs.insert("[IA] 🤖 IA aplicada: preset \(preset.rawValue), calidad \(Int(activeQuality * 100))%, ajustes locales IA", at: 0)
-            invalidateProcessedPreview()
-        } catch {
-            aiPromptHD = OpenAIImageAdvisor.defaultHDPrompt(
-                fileName: fileURL.lastPathComponent,
-                width: width,
-                height: height,
-                currentPreset: preset,
-                currentFormat: activeFormat
-            )
-            aiStatusMessage = "IA no disponible, usando prompt HD local"
-            aiSuggestedPresetForRun = nil
-            aiSuggestedQualityForRun = nil
-            aiReasonForRun = nil
-            aiTuningForRun = nil
-            aiRecipeForRun = nil
-            logs.insert("[IA] ⚠️ IA no disponible: \(error.localizedDescription)", at: 0)
-            invalidateProcessedPreview()
-        }
+        _ = await resolveAIRunConfiguration(
+            for: fileURL,
+            basePreset: preset,
+            baseFormat: activeFormat,
+            baseQuality: activeQuality,
+            shouldUpdateUIState: true
+        )
     }
 
     private func selectLocalMode() {
@@ -1274,6 +1272,142 @@ struct ContentView: View {
         schedulePreviewRefresh()
     }
 
+    private func imagePixelDimensions(for fileURL: URL) -> (width: Int, height: Int) {
+        let image = NSImage(contentsOf: fileURL)
+        return (Int(image?.size.width ?? 0), Int(image?.size.height ?? 0))
+    }
+
+    @MainActor
+    private func applyAIResolutionToUI(_ resolution: AIRunResolution, for fileURL: URL, fromCache: Bool) {
+        if let suggestedPreset = EnhancementPlanner.suggestedPreset(for: resolution) {
+            preset = suggestedPreset
+        }
+
+        if let recipeFormat = resolution.recipe?.mappedExportFormat {
+            outputSettings.hasUserTouchedOutputSettings = true
+            outputSettings.format = recipeFormat
+            if !recipeFormat.supportsLossyQuality {
+                outputSettings.quality = OutputFormat.preferredQualityDefault
+            }
+        }
+
+        if resolution.format.supportsLossyQuality {
+            outputSettings.hasUserTouchedOutputSettings = true
+            outputSettings.quality = resolution.quality
+        }
+
+        aiPromptHD = resolution.aiPrompt ?? aiPromptHD
+        aiStatusMessage = resolution.aiReason ?? "IA lista"
+        aiSuggestedPresetForRun = resolution.aiSuggestedPreset
+        aiSuggestedQualityForRun = resolution.aiSuggestedQuality
+        aiReasonForRun = resolution.aiReason
+        aiTuningForRun = resolution.aiTuning
+        aiRecipeForRun = resolution.recipe
+
+        if resolution.usedFallback {
+            logs.insert("[IA] ⚠️ IA no disponible para \(fileURL.lastPathComponent). Se usa fallback local.", at: 0)
+        } else {
+            let decisionSummary = aiDecisionLogSummary(for: resolution)
+            let cacheSuffix = fromCache ? " · cache" : ""
+            logs.insert("[IA] 🤖 IA aplicada a \(fileURL.lastPathComponent): \(decisionSummary)\(cacheSuffix)", at: 0)
+        }
+
+        invalidateProcessedPreview()
+    }
+
+    private func aiResolutionCacheKey(
+        for fileURL: URL,
+        basePreset: EnhancementPreset,
+        baseFormat: OutputFormat
+    ) -> AIResolutionCacheKey {
+        AIResolutionCacheKey(
+            fileURL: fileURL.standardizedFileURL,
+            basePreset: basePreset,
+            baseFormat: baseFormat
+        )
+    }
+
+    private func resolveAIRunConfiguration(
+        for fileURL: URL,
+        basePreset: EnhancementPreset,
+        baseFormat: OutputFormat,
+        baseQuality: Double,
+        shouldUpdateUIState: Bool
+    ) async -> AIRunResolution {
+        let cacheKey = aiResolutionCacheKey(
+            for: fileURL,
+            basePreset: basePreset,
+            baseFormat: baseFormat
+        )
+
+        if let cached = await MainActor.run(body: { aiResolutionCache[cacheKey] }) {
+            if shouldUpdateUIState {
+                await MainActor.run {
+                    applyAIResolutionToUI(cached, for: fileURL, fromCache: true)
+                }
+            }
+            return cached
+        }
+
+        let dimensions = imagePixelDimensions(for: fileURL)
+
+        do {
+            let recommendation = try await openAIAdvisor.recommendHD(
+                inputURL: fileURL,
+                fileName: fileURL.lastPathComponent,
+                width: dimensions.width,
+                height: dimensions.height,
+                currentPreset: basePreset,
+                currentFormat: baseFormat
+            )
+
+            let resolution = EnhancementPlanner.resolve(
+                recommendation: recommendation,
+                basePreset: basePreset,
+                baseFormat: baseFormat,
+                baseQuality: baseQuality
+            )
+
+            if shouldUpdateUIState {
+                await MainActor.run {
+                    aiResolutionCache[cacheKey] = resolution
+                    applyAIResolutionToUI(resolution, for: fileURL, fromCache: false)
+                }
+            } else {
+                await MainActor.run {
+                    aiResolutionCache[cacheKey] = resolution
+                }
+            }
+
+            return resolution
+        } catch {
+            let fallback = EnhancementPlanner.fallbackPlan(
+                fileName: fileURL.lastPathComponent,
+                width: dimensions.width,
+                height: dimensions.height,
+                basePreset: basePreset,
+                baseFormat: baseFormat,
+                baseQuality: baseQuality
+            )
+
+            if shouldUpdateUIState {
+                await MainActor.run {
+                    aiStatusMessage = "IA no disponible, usando flujo local"
+                    aiSuggestedPresetForRun = nil
+                    aiSuggestedQualityForRun = nil
+                    aiReasonForRun = nil
+                    aiTuningForRun = nil
+                    aiRecipeForRun = nil
+                    aiPromptHD = fallback.aiPrompt ?? aiPromptHD
+                    logs.insert("[IA] ⚠️ IA no disponible: \(error.localizedDescription)", at: 0)
+                    invalidateProcessedPreview()
+                }
+            }
+
+            return fallback
+        }
+    }
+
     private func resolvedAIPrompt(for inputURL: URL, preferredPrompt: String?) -> String {
         let trimmedPrompt = preferredPrompt?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let trimmedPrompt, !trimmedPrompt.isEmpty {
@@ -1309,7 +1443,13 @@ struct ContentView: View {
 
             if let aiTuningForRun {
                 _ = resolvedAIPrompt(for: selectedPreviewURL, preferredPrompt: aiPromptHD)
-                let aiPreview = try enhancer.enhancedPreviewImage(inputURL: selectedPreviewURL, preset: preset, tuning: aiTuningForRun)
+                let aiPreview = try enhancer.enhancedPreviewImage(
+                    inputURL: selectedPreviewURL,
+                    preset: preset,
+                    tuning: aiTuningForRun,
+                    faceRestoreStrength: aiRecipeForRun?.faceRestore.flatMap { $0.enabled ? ($0.strength ?? 0.5) : nil },
+                    upscaleTargetLongSide: aiRecipeForRun?.upscaleTargetLongSide
+                )
                 if Task.isCancelled || previewRequestID != requestID {
                     isGeneratingPreview = false
                     return
@@ -1493,8 +1633,84 @@ struct ContentView: View {
         } else {
             upscaleText = "sin upscale"
         }
+        let faceRestoreText: String
+        if let faceRestore = recipe.faceRestore, faceRestore.enabled {
+            let strength = Int(((faceRestore.strength ?? 0.5) * 100).rounded())
+            faceRestoreText = "face restore \(strength)%"
+        } else {
+            faceRestoreText = "sin face restore"
+        }
 
-        return "preset \(recipe.preset), calidad \(Int(recipe.exportQuality * 100))%, sombras \(Int(tuning.shadowAmount * 100)), luces \(Int(tuning.highlightAmount * 100)), vibrance \(Int(tuning.vibrance * 100)), nitidez \(Int(tuning.sharpen * 100)), sat \(Int(tuning.saturation * 100)), exp \(exposureText) EV, \(upscaleText)"
+        return "preset \(recipe.preset), calidad \(Int(recipe.exportQuality * 100))%, sombras \(Int(tuning.shadowAmount * 100)), luces \(Int(tuning.highlightAmount * 100)), vibrance \(Int(tuning.vibrance * 100)), nitidez \(Int(tuning.sharpen * 100)), sat \(Int(tuning.saturation * 100)), exp \(exposureText) EV, \(upscaleText), \(faceRestoreText)"
+    }
+
+    private func aiDecisionExplanation(_ recipe: EnhancementRecipe) -> String {
+        var components: [String] = []
+
+        if let faceRestore = recipe.faceRestore, faceRestore.enabled {
+            let strength = Int(((faceRestore.strength ?? 0.5) * 100).rounded())
+            components.append("restauracion facial suave \(strength)%")
+        }
+
+        if let upscale = recipe.upscale, upscale.enabled {
+            if let target = upscale.targetLongSide {
+                components.append("upscale hasta \(target) px")
+            } else {
+                components.append("upscale activado")
+            }
+        }
+
+        if components.isEmpty {
+            return "La IA ajusta la receta local sin activar modulos extra."
+        }
+
+        return "La IA prioriza \(components.joined(separator: " y "))."
+    }
+
+    private func aiDecisionHighlights(_ recipe: EnhancementRecipe) -> [String] {
+        var highlights: [String] = [
+            "preset \(recipe.preset)",
+            "salida \(recipe.exportFormat.uppercased())"
+        ]
+
+        if let upscale = recipe.upscale, upscale.enabled {
+            if let target = upscale.targetLongSide {
+                highlights.append("upscale \(target)px")
+            } else {
+                highlights.append("upscale on")
+            }
+        }
+
+        if let faceRestore = recipe.faceRestore, faceRestore.enabled {
+            let strength = Int(((faceRestore.strength ?? 0.5) * 100).rounded())
+            highlights.append("face restore \(strength)%")
+        }
+
+        return highlights
+    }
+
+    private func aiDecisionLogSummary(for resolution: AIRunResolution) -> String {
+        var components: [String] = [
+            "preset \(resolution.preset.rawValue)",
+            "formato \(resolution.format.rawValue)"
+        ]
+
+        if let recipe = resolution.recipe {
+            if let upscale = recipe.upscale, upscale.enabled {
+                if let target = upscale.targetLongSide {
+                    components.append("upscale \(target)px")
+                } else {
+                    components.append("upscale on")
+                }
+            }
+
+            if let faceRestore = recipe.faceRestore, faceRestore.enabled {
+                let strength = Int(((faceRestore.strength ?? 0.5) * 100).rounded())
+                components.append("face restore \(strength)%")
+            }
+        }
+
+        return components.joined(separator: ", ")
     }
 }
 

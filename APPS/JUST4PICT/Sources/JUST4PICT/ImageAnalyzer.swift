@@ -1,0 +1,168 @@
+import Foundation
+import CoreImage
+import CoreImage.CIFilterBuiltins
+import ImageIO
+import Vision
+
+struct PhotoAnalysis {
+    let averageLuminance: Double
+    let isLowKey: Bool
+    let isHighKey: Bool
+}
+
+final class ImageAnalyzer {
+    private let context: CIContext
+
+    init(context: CIContext) {
+        self.context = context
+    }
+
+    func detectSceneType(inputURL: URL) -> ImageEnhancer.SceneType? {
+        detectSceneType(inputURL: inputURL, precomputedFaces: detectFaces(in: inputURL))
+    }
+
+    func detectSceneType(inputURL: URL, precomputedFaces: [VNFaceObservation]) -> ImageEnhancer.SceneType? {
+        if !precomputedFaces.isEmpty {
+            return .portrait
+        }
+
+        if hasDenseText(in: inputURL) {
+            return .document
+        }
+
+        if let size = imagePixelSize(from: inputURL), size.width > 0, size.height > 0 {
+            let ratio = size.width / size.height
+            if ratio >= 1.25 {
+                return .landscape
+            }
+        }
+
+        if looksLikeLandscapePhoto(inputURL: inputURL) {
+            return .landscape
+        }
+
+        return .generic
+    }
+
+    func detectFaces(in inputURL: URL) -> [VNFaceObservation] {
+        let request = VNDetectFaceRectanglesRequest()
+        let handler = VNImageRequestHandler(url: inputURL, options: [:])
+        do {
+            try handler.perform([request])
+            return request.results ?? []
+        } catch {
+            return []
+        }
+    }
+
+    func analyzePhotograph(_ image: CIImage) -> PhotoAnalysis {
+        let extent = image.extent.integral
+        let filter = CIFilter.areaAverage()
+        filter.inputImage = image
+        filter.extent = extent
+
+        var bitmap = [UInt8](repeating: 0, count: 4)
+        context.render(
+            filter.outputImage ?? image,
+            toBitmap: &bitmap,
+            rowBytes: 4,
+            bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
+            format: .RGBA8,
+            colorSpace: CGColorSpaceCreateDeviceRGB()
+        )
+
+        let r = Double(bitmap[0]) / 255.0
+        let g = Double(bitmap[1]) / 255.0
+        let b = Double(bitmap[2]) / 255.0
+        let luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
+
+        return PhotoAnalysis(
+            averageLuminance: luminance,
+            isLowKey: luminance < 0.42,
+            isHighKey: luminance > 0.68
+        )
+    }
+
+    private func hasDenseText(in inputURL: URL) -> Bool {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .fast
+        request.minimumTextHeight = 0.015
+        request.usesLanguageCorrection = false
+        request.recognitionLanguages = ["es", "en"]
+
+        let handler = VNImageRequestHandler(url: inputURL, options: [:])
+        do {
+            try handler.perform([request])
+            let count = request.results?.count ?? 0
+            return count >= 8
+        } catch {
+            return false
+        }
+    }
+
+    private func imagePixelSize(from inputURL: URL) -> CGSize? {
+        guard let source = CGImageSourceCreateWithURL(inputURL as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = props[kCGImagePropertyPixelWidth] as? CGFloat,
+              let height = props[kCGImagePropertyPixelHeight] as? CGFloat
+        else {
+            return nil
+        }
+
+        return CGSize(width: width, height: height)
+    }
+
+    private func looksLikeLandscapePhoto(inputURL: URL) -> Bool {
+        guard let image = CIImage(contentsOf: inputURL, options: [.applyOrientationProperty: true]) else {
+            return false
+        }
+
+        let extent = image.extent.integral
+        guard extent.width > 0, extent.height > 0 else { return false }
+
+        let topRect = CGRect(
+            x: extent.minX,
+            y: extent.midY,
+            width: extent.width,
+            height: extent.height / 2
+        ).integral
+        let bottomRect = CGRect(
+            x: extent.minX,
+            y: extent.minY,
+            width: extent.width,
+            height: extent.height / 2
+        ).integral
+
+        let top = averageRGB(in: image, extent: topRect)
+        let bottom = averageRGB(in: image, extent: bottomRect)
+
+        let topBlueDominant = top.b > top.r + 0.03 && top.b >= top.g - 0.01
+        let topBrightEnough = top.luminance > 0.40
+        let bottomNatureLike = (bottom.g > bottom.r && bottom.g > bottom.b - 0.02) || (bottom.b > bottom.r && bottom.b > bottom.g - 0.02)
+        let bottomVisible = bottom.luminance > 0.18
+
+        return topBlueDominant && topBrightEnough && bottomNatureLike && bottomVisible
+    }
+
+    private func averageRGB(in image: CIImage, extent: CGRect) -> (r: Double, g: Double, b: Double, luminance: Double) {
+        let filter = CIFilter.areaAverage()
+        filter.inputImage = image
+        filter.extent = extent
+
+        var bitmap = [UInt8](repeating: 0, count: 4)
+        context.render(
+            filter.outputImage ?? image,
+            toBitmap: &bitmap,
+            rowBytes: 4,
+            bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
+            format: .RGBA8,
+            colorSpace: CGColorSpaceCreateDeviceRGB()
+        )
+
+        let r = Double(bitmap[0]) / 255.0
+        let g = Double(bitmap[1]) / 255.0
+        let b = Double(bitmap[2]) / 255.0
+        let luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
+        return (r, g, b, luminance)
+    }
+}
