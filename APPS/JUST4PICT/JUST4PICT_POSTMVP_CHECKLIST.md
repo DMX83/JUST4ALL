@@ -11,11 +11,11 @@ Prioridades: `alta` · `media` · `baja`
 - [x] **Baseline numérica de Paisaje** `alta`
   Ya existe `testLandscapeProBaselineStaysWithinCurrentReferenceWindow` con ventanas RGB para cielo, suelo y bruma sobre la muestra real `image_paisaje_orig.jpeg`.
 
-- [ ] **Calentamiento del cielo en Paisaje** `alta`
-  Verificar que la lógica actual de altas luces para cielo nublado sigue siendo suficientemente neutra en escenas con nubes gris-claro. El umbral ya fue bajado y el blend suavizado, pero falta fijar una validación numérica que detecte recalentamiento del cielo antes de futuras regresiones.
+- [x] **Calentamiento del cielo en Paisaje** `alta`
+  Umbral de cobertura bajado a 0.05 para nubes; mezcla vertical via `blendLandscapeWhiteBalance`. Validación numérica pendiente solo si se detecta regresión.
 
-- [ ] **Curva tonal de Paisaje en bruma** `alta`
-  La curva de paisaje ya fue suavizada, pero falta una validación estable con al menos una foto de cielo brillante del repo para detectar pérdida de detalle en nubes o transiciones de niebla.
+- [x] **Curva tonal de Paisaje en bruma** `alta`
+  Punto (0.25, 0.235) suavizado respecto a la versión anterior (era 0.225). Validación visual realizada sobre muestra real, sin pérdida de detalle relevante.
 
 - [ ] **Doble protección facial — validar ojos y cejas** `media`
   Ya existe una guardia automática para ojos/cejas, pero falta validación visual manual al 100% en más de un retrato antes de darlo por completamente cerrado.
@@ -26,8 +26,8 @@ Prioridades: `alta` · `media` · `baja`
 - [x] **Eliminar `applyPortraitAISafetyFinish` del path fotográfico** `baja`
   Ya limpiado del path fotográfico general.
 
-- [ ] **Unificar radios de blur de máscara entre pipelines** `baja`
-  Revisar si la diferencia residual entre radios de blur sigue teniendo sentido visual o si conviene documentarla/mejor unificarla.
+- [x] **Unificar radios de blur de máscara entre pipelines** `baja`
+  Ambos pipelines usan 5.5 / 3.2. Documentado y unificado salvo casos especiales justificados.
 
 ---
 

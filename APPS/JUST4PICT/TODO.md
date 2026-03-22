@@ -170,8 +170,30 @@ Trabajo:
 - [~] convertir `EnhancementRecipe` en contrato central efectivo, no solo estructural
   Ya gobierna `scene`, `preset`, `format`, `quality`, `upscale` y `faceRestore`; aun falta cerrar mejor el resto del planner y futuras etapas opcionales.
 - [x] propagar `faceRestore` como contrato estable de receta en batch, preview y export
-- [ ] reutilizar `CIContext` compartido en todos los flujos
-- [ ] introducir `autoreleasepool` en lote grande
+- [x] reutilizar `CIContext` compartido en todos los flujos
+  `ImageEnhancer` centraliza `sharedContext` e inyecta en `ImageAnalyzer`, `LocalPhotoPipeline`,
+  `UpscaleEngine` y `ProductIsolationEngine`. `FaceRestoreEngine` no crea contexto propio.
+- [x] introducir `autoreleasepool` en lote grande
+  Export, preview y worker detached del batch ya envuelven los tramos Core Image en `autoreleasepool`.
+  RSS en lote de 100 bajó de ~529MB a ~143MB.
+
+# 7) Pendientes inmediatos (2026-03-22)
+
+### Alta prioridad
+
+- [ ] Test de sharpen selectivo por escena — el test existente verifica delta medible pero no valida que el sharpen sea correcto para bruma, cipreses o texto denso. Añadir al menos un caso con imagen de paisaje real.
+- [ ] Validación visual manual al 100% de ojos/cejas en retrato — el test numérico pasa pero no sustituye a una revisión visual ampliada para confirmar que el blend de `faceMask` no está apagando demasiado los bordes de ojos.
+
+### Media prioridad
+
+- [ ] Dobles compresiones y reescalados innecesarios — `ImageExportWriter` aplica resize en dos etapas cuando recibe una `CIImage` ya procesada. Revisar si el resize de `applyExportResizeIfNeeded` interno y el `resizedCGImageIfNeeded` están duplicando trabajo.
+- [ ] `ImageExportWriter` instanciado sin contexto compartido desde `OpenAIImageReconstructionService` — usa `CIContext(options: [.cacheIntermediates: false])` en el init por defecto. Si el servicio de reconstrucción maneja imágenes grandes, puede ser costoso. Considerar pasar el contexto compartido.
+- [ ] `makeDarkPhotoRecoveryImage` recibe `analysis` pero no lo usa — el parámetro existe en la firma pero el cuerpo del método no lo usa para nada. O eliminarlo de la firma o aprovechar `analysis.isLowKey` / `analysis.averageLuminance` para ajustar la intensidad del boost de exposición de forma adaptativa.
+
+### Baja prioridad
+
+- [ ] `ExportPipeline` como módulo dedicado — la lógica de escritura ya está en `ImageExportWriter` pero `ImageEnhancer` sigue siendo el coordinador final. Completar la separación cuando sea necesario.
+- [ ] Evaluación visual de Real-ESRGAN vs Lanczos — el diagnóstico opt-in existe pero la decisión de producto (si Real-ESRGAN supera consistentemente a Lanczos en el set real del repo) sigue pendiente de validación visual.
 - [x] evitar lectura de dimensiones con `NSImage` en el flujo IA; usar metadata/pixel size
 
 Verificacion:
