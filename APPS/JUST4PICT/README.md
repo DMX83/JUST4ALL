@@ -95,7 +95,8 @@ Validacion baseline 2026-03-22:
 - En `Ecommerce`, el pipeline ya puede detectar el producto principal, eliminar el fondo y recomponerlo centrado sobre fondo blanco.
 - En `Documento`, el pipeline ahora fuerza un remate mas claro para evitar fondos grises en export de hojas blancas.
 - La `IA` actual debe entenderse como capa de decision y ajuste; no debe reemplazar sin control el pipeline local.
-- La receta IA ya puede influir en `preset`, `format`, `quality` y `upscale`.
+- La receta IA ya puede influir en `scene`, `preset`, `format`, `quality` y `upscale`.
+- Cuando la receta IA trae una `scene` valida, esa escena ya puede sobreescribir la deteccion local para mantener coherencia entre la decision IA y el pipeline ejecutado.
 - `faceRestore` ya existe como etapa local selectiva y conservadora sobre rostros detectados.
 - Sigue sin ser un modelo dedicado de restauracion facial; hoy actua como refuerzo suave de detalle/tono en mascara facial.
 - La resolucion IA por imagen se cachea en memoria durante la sesion para evitar llamadas repetidas sobre la misma foto en el mismo contexto base.

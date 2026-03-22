@@ -123,4 +123,36 @@ final class EnhancementPlannerTests: XCTestCase {
         XCTAssertEqual(resolution.faceRestoreStrength, 1.0)
         XCTAssertFalse(resolution.usedFallback)
     }
+
+    func testRecipeMappedSceneSupportsIAOverrideValues() {
+        XCTAssertEqual(makeRecipe(scene: "portrait").mappedScene, .portrait)
+        XCTAssertEqual(makeRecipe(scene: "document").mappedScene, .document)
+        XCTAssertEqual(makeRecipe(scene: "landscape").mappedScene, .landscape)
+        XCTAssertEqual(makeRecipe(scene: "product").mappedScene, .ecommerce)
+        XCTAssertEqual(makeRecipe(scene: "dark photo").mappedScene, .darkPhoto)
+        XCTAssertEqual(makeRecipe(scene: "generic").mappedScene, .generic)
+        XCTAssertNil(makeRecipe(scene: "unknown").mappedScene)
+    }
+
+    private func makeRecipe(scene: String) -> EnhancementRecipe {
+        EnhancementRecipe(
+            scene: scene,
+            objective: "Objetivo",
+            preset: "Auto",
+            exportFormat: "PNG",
+            exportQuality: 1.0,
+            tuning: AIEnhancementTuning(
+                shadowAmount: 0.30,
+                highlightAmount: 0.82,
+                vibrance: 0.10,
+                sharpen: 0.17,
+                sharpenRadius: 0.40,
+                contrast: 1.0,
+                saturation: 1.0,
+                exposureEV: 0.01
+            ),
+            upscale: nil,
+            faceRestore: nil
+        )
+    }
 }

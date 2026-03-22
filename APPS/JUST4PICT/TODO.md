@@ -161,7 +161,8 @@ Trabajo:
 - [x] separar `EnhancementPlanner`
 - [x] separar `LocalPhotoPipeline`
 - [x] reducir duplicacion obvia de orquestacion en `ContentView` sin cambiar el flujo funcional
-- [ ] convertir `EnhancementRecipe` en contrato central efectivo, no solo estructural
+- [~] convertir `EnhancementRecipe` en contrato central efectivo, no solo estructural
+  Ya gobierna `scene`, `preset`, `format`, `quality`, `upscale` y `faceRestore`; aun falta cerrar mejor el resto del planner y futuras etapas opcionales.
 - [x] propagar `faceRestore` como contrato estable de receta en batch, preview y export
 - [ ] reutilizar `CIContext` compartido en todos los flujos
 - [ ] introducir `autoreleasepool` en lote grande

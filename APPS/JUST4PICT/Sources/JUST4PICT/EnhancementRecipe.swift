@@ -65,6 +65,26 @@ struct EnhancementRecipe: Codable, Hashable {
 }
 
 extension EnhancementRecipe {
+    var mappedScene: ImageEnhancer.SceneType? {
+        let normalized = scene.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalized {
+        case "retrato", "portrait":
+            return .portrait
+        case "documento", "document":
+            return .document
+        case "paisaje", "landscape":
+            return .landscape
+        case "ecommerce", "e-commerce", "product":
+            return .ecommerce
+        case "darkphoto", "dark-photo", "dark photo", "foto oscura", "nocturna", "night":
+            return .darkPhoto
+        case "general", "generic":
+            return .generic
+        default:
+            return nil
+        }
+    }
+
     var mappedPreset: EnhancementPreset? {
         let normalized = preset.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         switch normalized {

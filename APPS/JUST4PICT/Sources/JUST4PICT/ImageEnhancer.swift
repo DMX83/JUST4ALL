@@ -192,14 +192,16 @@ final class ImageEnhancer {
         exportProfile: ExportProfile = .original,
         upscaleTargetLongSide: CGFloat? = nil,
         faceRestoreStrength: Double? = nil,
-        tuning: AIEnhancementTuning? = nil
+        tuning: AIEnhancementTuning? = nil,
+        sceneOverride: SceneType? = nil
     ) throws {
         var image = try makeEnhancedImage(
             inputURL: inputURL,
             preset: preset,
             upscaleToLongSide: resolvedUpscaleTargetLongSide(upscaleTargetLongSide),
             faceRestoreStrength: faceRestoreStrength,
-            tuning: tuning
+            tuning: tuning,
+            sceneOverride: sceneOverride
         )
         image = applyExportResizeIfNeeded(
             image: image,
@@ -236,14 +238,16 @@ final class ImageEnhancer {
         maxDimension: CGFloat = 1600,
         tuning: AIEnhancementTuning? = nil,
         faceRestoreStrength: Double? = nil,
-        upscaleTargetLongSide: CGFloat? = nil
+        upscaleTargetLongSide: CGFloat? = nil,
+        sceneOverride: SceneType? = nil
     ) throws -> NSImage {
         let image = try makeEnhancedImage(
             inputURL: inputURL,
             preset: preset,
             upscaleToLongSide: resolvedPreviewUpscaleTargetLongSide(upscaleTargetLongSide),
             faceRestoreStrength: faceRestoreStrength,
-            tuning: tuning
+            tuning: tuning,
+            sceneOverride: sceneOverride
         )
         let extent = image.extent.integral
         guard let cgImage = context.createCGImage(image, from: extent) else {
@@ -293,14 +297,16 @@ final class ImageEnhancer {
         preset: EnhancementPreset,
         upscaleToLongSide: CGFloat?,
         faceRestoreStrength: Double?,
-        tuning: AIEnhancementTuning?
+        tuning: AIEnhancementTuning?,
+        sceneOverride: SceneType?
     ) throws -> CIImage {
         guard var image = CIImage(contentsOf: inputURL, options: [.applyOrientationProperty: true]) else {
             throw ImageEnhancerError.cannotLoadImage(inputURL)
         }
 
         let faceObservations = analyzer.detectFaces(in: inputURL)
-        let detectedScene = analyzer.detectSceneType(inputURL: inputURL, precomputedFaces: faceObservations)
+        let localDetectedScene = analyzer.detectSceneType(inputURL: inputURL, precomputedFaces: faceObservations)
+        let detectedScene = sceneOverride ?? localDetectedScene
         let analysis = analyzer.analyzePhotograph(image)
         let faceMask = createFaceProtectionMask(faceObservations: faceObservations, extent: image.extent.integral)
 
@@ -311,11 +317,11 @@ final class ImageEnhancer {
 
         if recoveryProfile == .conservativePortrait {
             logger.notice(
-                "Conservative portrait recovery activated | mode=\(self.recoveryProfileLabel(recoveryProfile), privacy: .public) file=\(inputURL.lastPathComponent, privacy: .public) preset=\(preset.rawValue, privacy: .public) scene=\(self.sceneLabel(detectedScene), privacy: .public)"
+                "Conservative portrait recovery activated | mode=\(self.recoveryProfileLabel(recoveryProfile), privacy: .public) file=\(inputURL.lastPathComponent, privacy: .public) preset=\(preset.rawValue, privacy: .public) scene=\(self.sceneLabel(detectedScene), privacy: .public) localScene=\(self.sceneLabel(localDetectedScene), privacy: .public)"
             )
         } else {
             logger.debug(
-                "Standard recovery profile | file=\(inputURL.lastPathComponent, privacy: .public) preset=\(preset.rawValue, privacy: .public) scene=\(self.sceneLabel(detectedScene), privacy: .public)"
+                "Standard recovery profile | file=\(inputURL.lastPathComponent, privacy: .public) preset=\(preset.rawValue, privacy: .public) scene=\(self.sceneLabel(detectedScene), privacy: .public) localScene=\(self.sceneLabel(localDetectedScene), privacy: .public)"
             )
         }
 
@@ -343,7 +349,7 @@ final class ImageEnhancer {
 
         if isPhotographScene(detectedScene) {
             logger.notice(
-                "Photo recipe activated | file=\(inputURL.lastPathComponent, privacy: .public) preset=\(preset.rawValue, privacy: .public) scene=\(self.sceneLabel(detectedScene), privacy: .public)"
+                "Photo recipe activated | file=\(inputURL.lastPathComponent, privacy: .public) preset=\(preset.rawValue, privacy: .public) scene=\(self.sceneLabel(detectedScene), privacy: .public) localScene=\(self.sceneLabel(localDetectedScene), privacy: .public)"
             )
             image = localPipeline.makePhotographImage(
                 image: image,

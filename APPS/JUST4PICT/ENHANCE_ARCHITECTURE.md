@@ -60,7 +60,8 @@ Para evitar suposiciones falsas antes del siguiente cambio:
 - La `IA` ya puede sugerir preset, calidad y `tuning`.
 - La `IA` ya resuelve por imagen en batch a traves del planner.
 - La resolucion IA por imagen ya puede reutilizarse desde cache local en sesion para evitar analisis repetidos.
-- `preset`, `exportFormat`, `exportQuality` y `upscale` ya pueden influir en la ejecucion real.
+- `scene`, `preset`, `exportFormat`, `exportQuality` y `upscale` ya pueden influir en la ejecucion real.
+- Si la `EnhancementRecipe` trae una `scene` valida, esa escena ya puede sobreescribir la deteccion local dentro del motor para mantener coherencia entre planner, preview y export.
 - La `IA` todavia no es la fuente de verdad completa del pipeline final.
 - El flujo IA ya toma dimensiones de entrada desde metadata/pixel size y no debe volver a depender de `NSImage` para esa lectura.
 - `faceRestore` ya esta cableado como contrato de planner/UI/pipeline y viaja por preview y export.
@@ -83,6 +84,7 @@ El siguiente trabajo de `IA` no debe introducir comportamiento nuevo sin respeta
 2. mantener `PRO` y `AUTO` visualmente estables
 3. hacer que `IA` decida por imagen
 4. hacer que `EnhancementRecipe` gobierne realmente la ejecucion
+   Ya no es solo estructural: la escena recomendada por IA ya puede cablearse hasta el motor y modificar el pipeline efectivo.
 5. solo despues ampliar motores, upscale dedicado o restauracion facial
 
 ## Objetivo

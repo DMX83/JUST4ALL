@@ -994,6 +994,7 @@ struct ContentView: View {
                         exportProfile: snapshot.exportProfile,
                         upscaleTargetLongSide: runResolution.upscaleTargetLongSide,
                         faceRestoreStrength: runResolution.faceRestoreStrength,
+                        sceneOverride: runResolution.recipe?.mappedScene,
                         aiPrompt: runResolution.aiPrompt,
                         aiTuning: runResolution.aiTuning
                     )
@@ -1079,6 +1080,7 @@ struct ContentView: View {
                     exportProfile: snapshot.exportProfile,
                     upscaleTargetLongSide: runResolution.upscaleTargetLongSide,
                     faceRestoreStrength: runResolution.faceRestoreStrength,
+                    sceneOverride: runResolution.recipe?.mappedScene,
                     aiPrompt: runResolution.aiPrompt,
                     aiTuning: runResolution.aiTuning
                 )
@@ -1118,6 +1120,7 @@ struct ContentView: View {
         exportProfile: ExportProfile,
         upscaleTargetLongSide: CGFloat?,
         faceRestoreStrength: Double?,
+        sceneOverride: ImageEnhancer.SceneType?,
         aiPrompt: String?,
         aiTuning: AIEnhancementTuning?
     ) async throws {
@@ -1136,7 +1139,8 @@ struct ContentView: View {
                 exportProfile: exportProfile,
                 upscaleTargetLongSide: upscaleTargetLongSide,
                 faceRestoreStrength: faceRestoreStrength,
-                tuning: aiTuning
+                tuning: aiTuning,
+                sceneOverride: sceneOverride
             )
         }.value
     }
@@ -1498,7 +1502,8 @@ struct ContentView: View {
                     preset: preset,
                     tuning: aiTuningForRun,
                     faceRestoreStrength: aiRecipeForRun?.faceRestore.flatMap { $0.enabled ? ($0.strength ?? 0.5) : nil },
-                    upscaleTargetLongSide: aiRecipeForRun?.upscaleTargetLongSide
+                    upscaleTargetLongSide: aiRecipeForRun?.upscaleTargetLongSide,
+                    sceneOverride: aiRecipeForRun?.mappedScene
                 )
                 if Task.isCancelled || previewRequestID != requestID {
                     isGeneratingPreview = false
