@@ -257,33 +257,6 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         }
     }
 
-    func testWritesPortraitFaceRestoreSampleForQuickQA() throws {
-        let inputURL = try primarySampleImageURL()
-        guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            throw XCTSkip("Sample image not available in this environment")
-        }
-
-        let enhancer = ImageEnhancer()
-        let outputDirectory = try sampleOutputDirectory()
-        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-
-        let baseName = inputURL.deletingPathExtension().lastPathComponent
-        let outputURL = outputDirectory.appendingPathComponent("\(baseName)-portrait-face-restore-sample.png")
-        try? FileManager.default.removeItem(at: outputURL)
-
-        try enhancer.enhance(
-            inputURL: inputURL,
-            outputURL: outputURL,
-            preset: .portrait,
-            quality: 1.0,
-            format: .png,
-            faceRestoreStrength: 0.65
-        )
-
-        XCTAssertTrue(FileManager.default.fileExists(atPath: outputURL.path))
-        print("QA_OUTPUT \(outputURL.path)")
-    }
-
     func testDetectsDocumentSceneFromRealRepoSample() throws {
         let enhancer = ImageEnhancer()
         let inputURL = try sampleImageURL(matching: .document, enhancer: enhancer)
@@ -319,35 +292,6 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         let inputURL = try sampleImageURL(matching: .ecommerce, enhancer: enhancer)
         let detectedScene = enhancer.detectSceneType(inputURL: inputURL)
         XCTAssertEqual(detectedScene, .ecommerce)
-    }
-
-    func testWritesDocumentAndEcommerceSamplesForQuickQA() throws {
-        let enhancer = ImageEnhancer()
-        let outputDirectory = try sampleOutputDirectory()
-        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-
-        let sampleURLs = [
-            try sampleImageURL(matching: .document, enhancer: enhancer),
-            try sampleImageURL(matching: .ecommerce, enhancer: enhancer)
-        ]
-
-        for inputURL in sampleURLs {
-
-            let baseName = inputURL.deletingPathExtension().lastPathComponent
-            let outputURL = outputDirectory.appendingPathComponent("\(baseName)-auto-sample.png")
-            try? FileManager.default.removeItem(at: outputURL)
-
-            try enhancer.enhance(
-                inputURL: inputURL,
-                outputURL: outputURL,
-                preset: .auto,
-                quality: 1.0,
-                format: .png
-            )
-
-            XCTAssertTrue(FileManager.default.fileExists(atPath: outputURL.path))
-            print("QA_OUTPUT \(outputURL.path)")
-        }
     }
 
     func testEcommerceAutoPlacesDetectedProductOnWhiteBackground() throws {

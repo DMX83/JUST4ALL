@@ -348,18 +348,19 @@ Motivo:
 
 Referencia fija:
 
-- entrada: `APPS/JUST4PICT/images/PHOTO-2026-03-18-22-18-19 2.jpg`
+- entrada: `APPS/JUST4PICT/images/PHOTO-2026-03-18-22-18-19 5.jpg`
 - entradas adicionales:
-  - `APPS/JUST4PICT/images/32474560-ED95-47FF-96E9-2ACD793D0A30_1_105_c.jpeg`
-  - `APPS/JUST4PICT/images/58706BD4-3915-4068-80EF-B7B11F7D2EC6_1_105_c.jpeg`
-  - `APPS/JUST4PICT/images/image_doc_orig.jpeg`
-  - `APPS/JUST4PICT/images/image_product_orig.jpeg`
+  - `APPS/JUST4PICT/images/5E57193E-1028-4B98-B674-77C71F64A195_1_105_c.jpeg`
+  - `APPS/JUST4PICT/images/AE018C52-E452-4101-B77F-F5D7A4868D0B_1_105_c.jpeg`
+  - `APPS/JUST4PICT/images/D92852D4-89B0-4918-9269-9AC8A49F11F0_1_105_c.jpeg`
+  - `APPS/JUST4PICT/images/images_document_orig.jpeg`
+  - `APPS/JUST4PICT/images/image_commerce_orig.jpeg`
+  - `APPS/JUST4PICT/images/image_paisaje_orig.jpeg`
+  - `APPS/JUST4PICT/images/image_upscale_lowres.jpeg`
 
 Salidas QA:
 
 - `APPS/JUST4PICT/images/test/*-pro-sample.png`
-- `APPS/JUST4PICT/images/test/image_doc_orig-auto-sample.png`
-- `APPS/JUST4PICT/images/test/image_product_orig-auto-sample.png`
 
 Uso actual:
 
@@ -368,7 +369,7 @@ Uso actual:
 - nocturna para contener mejor sombras, color y brillo global
 - documento para fijar `AUTO -> Documento` con muestra real
 - ecommerce para fijar `AUTO -> Ecommerce` con muestra real
-- salida de referencia retrato: `APPS/JUST4PICT/images/test/PHOTO-2026-03-18-22-18-19 2-pro-sample.png`
+- salida de referencia retrato: `APPS/JUST4PICT/images/test/PHOTO-2026-03-18-22-18-19 5-pro-sample.png`
 
 Objetivo:
 

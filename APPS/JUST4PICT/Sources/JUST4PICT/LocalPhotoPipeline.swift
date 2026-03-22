@@ -531,7 +531,7 @@ final class LocalPhotoPipeline {
         case .portrait:
             basePoints = [(0.00, 0.00), (0.25, 0.245), (0.50, 0.515), (0.75, 0.775), (1.00, 1.00)]
         case .landscape:
-            basePoints = [(0.00, 0.00), (0.25, 0.20), (0.50, 0.54), (0.75, 0.82), (1.00, 1.00)]
+            basePoints = [(0.00, 0.00), (0.25, 0.225), (0.50, 0.515), (0.75, 0.775), (1.00, 1.00)]
         default:
             basePoints = [(0.00, 0.00), (0.25, 0.22), (0.50, 0.53), (0.75, 0.80), (1.00, 1.00)]
         }
@@ -634,13 +634,13 @@ final class LocalPhotoPipeline {
             )
         case .landscape:
             return AIEnhancementTuning(
-                shadowAmount: 0.34,
-                highlightAmount: 0.82,
-                vibrance: 0.14,
-                sharpen: 0.22,
-                sharpenRadius: 0.58,
-                contrast: 1.005,
-                saturation: 1.02,
+                shadowAmount: 0.28,
+                highlightAmount: 0.78,
+                vibrance: 0.05,
+                sharpen: 0.14,
+                sharpenRadius: 0.48,
+                contrast: 1.0,
+                saturation: 0.99,
                 exposureEV: 0.0
             )
         case .ecommerce:
@@ -719,13 +719,13 @@ final class LocalPhotoPipeline {
             )
         case .landscape:
             return AIEnhancementTuning(
-                shadowAmount: min(max(base.shadowAmount, 0.24), 0.46),
-                highlightAmount: min(max(base.highlightAmount, 0.78), 1.00),
-                vibrance: min(max(base.vibrance, 0.08), 0.22),
-                sharpen: min(max(base.sharpen, 0.12), 0.34),
-                sharpenRadius: min(max(base.sharpenRadius, 0.35), 0.80),
-                contrast: min(max(base.contrast, 0.96), 1.04),
-                saturation: min(max(base.saturation, 0.97), 1.06),
+                shadowAmount: min(max(base.shadowAmount, 0.20), 0.36),
+                highlightAmount: min(max(base.highlightAmount, 0.74), 0.88),
+                vibrance: min(max(base.vibrance, 0.03), 0.10),
+                sharpen: min(max(base.sharpen, 0.08), 0.20),
+                sharpenRadius: min(max(base.sharpenRadius, 0.30), 0.60),
+                contrast: min(max(base.contrast, 0.99), 1.01),
+                saturation: min(max(base.saturation, 0.98), 1.0),
                 exposureEV: min(max(base.exposureEV, -0.10), 0.08)
             )
         case .ecommerce:

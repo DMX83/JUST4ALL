@@ -114,7 +114,7 @@ Verificacion:
 - [x] prueba con foto oscura
 - [x] prueba diagnostica con `APPS/JUST4PICT/images/images_document_orig.jpeg`
 - [x] prueba diagnostica con `APPS/JUST4PICT/images/image_commerce_orig.jpeg`
-- [x] generar salidas QA visibles `images_document_orig-auto-sample.png` y `image_commerce_orig-auto-sample.png`
+- [x] generar una sola salida QA visible por original en `APPS/JUST4PICT/images/test/*-pro-sample.png`
 - [x] verificar por test que las esquinas del export `Ecommerce` quedan blancas en la muestra real
 
 ## 2) UX batch

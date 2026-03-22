@@ -24,7 +24,7 @@ enum EnhancementPreset: String, CaseIterable, Identifiable {
         case .portrait:
             return EnhancementOptions(enableAutoAdjust: false, brightness: 0.0, contrast: 1.0, saturation: 0.98, sharpness: 0.035, noiseReduction: 0.006)
         case .landscape:
-            return EnhancementOptions(enableAutoAdjust: true, brightness: 0.0, contrast: 1.08, saturation: 1.08, sharpness: 0.24, noiseReduction: 0.012)
+            return EnhancementOptions(enableAutoAdjust: true, brightness: 0.0, contrast: 1.03, saturation: 1.0, sharpness: 0.16, noiseReduction: 0.012)
         case .document:
             return EnhancementOptions(enableAutoAdjust: false, brightness: 0.03, contrast: 1.14, saturation: 0.0, sharpness: 0.28, noiseReduction: 0.02)
         case .ecommerce:
