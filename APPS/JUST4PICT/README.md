@@ -7,7 +7,10 @@ App nativa macOS en SwiftUI para edicion y mejoramiento automatico de imagenes p
 - Hub principal: `../../README.md`
 - Roadmap general: `../../TODO.md`
 - Tareas del modulo: `TODO.md`
-- Plan v1: `ROADMAP_V1.md`
+- Roadmap inicial: `ROADMAP_V1.md`
+- Arquitectura activa: `ENHANCE_ARCHITECTURE.md`
+- QA local: `QA_BATCH_LOCAL.md`
+- Notas de release: `RELEASE_NOTES_v0.1.0.md`
 
 ## Requisitos
 
