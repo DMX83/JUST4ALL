@@ -170,10 +170,15 @@ Estado actual del cierre:
 
 ## Configuracion opcional de Real-ESRGAN
 
-- Variable opcional: `JUST4PICT_REAL_ESRGAN_BIN`
-- Debe apuntar al binario ejecutable, por ejemplo `realesrgan-ncnn-vulkan`
+- Variables opcionales:
+  - `JUST4PICT_REAL_ESRGAN_BIN`
+  - `JUST4PICT_REAL_ESRGAN_MODELS`
+- `JUST4PICT_REAL_ESRGAN_BIN` debe apuntar al binario ejecutable, por ejemplo `realesrgan-ncnn-vulkan`
+- `JUST4PICT_REAL_ESRGAN_MODELS` debe apuntar al directorio que contiene al menos:
+  - `realesrgan-x4plus.param`
+  - `realesrgan-x4plus.bin`
 - El motor externo solo se intenta usar cuando:
-  - el binario existe,
+  - existen binario y modelos,
   - la imagen es realmente pequena,
   - y el upscale pedido es suficientemente grande
 - En cualquier otro caso, `JUST4PICT` mantiene el fallback local actual sin romper preview ni export

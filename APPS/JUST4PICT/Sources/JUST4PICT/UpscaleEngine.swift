@@ -24,6 +24,11 @@ struct UpscaleBackendResolution: Equatable {
 final class UpscaleEngine {
     private let context: CIContext
     private let fileManager: FileManager
+    private struct RealESRGANInstallation {
+        let binaryURL: URL
+        let modelDirectoryURL: URL
+        let modelName: String
+    }
 
     init(context: CIContext, fileManager: FileManager = .default) {
         self.context = context
@@ -45,10 +50,10 @@ final class UpscaleEngine {
 
         if resolution.backend == .realESRGAN,
            let scaleFactor = resolution.scaleFactor,
-           let binaryURL = Self.findRealESRGANBinary(environment: ProcessInfo.processInfo.environment),
+           let installation = Self.findRealESRGANInstallation(environment: ProcessInfo.processInfo.environment),
            let upscaledImage = try? upscaleWithRealESRGAN(
                 image: image,
-                binaryURL: binaryURL,
+                installation: installation,
                 scaleFactor: scaleFactor,
                 targetLongSide: targetLongSide
            ) {
@@ -72,12 +77,12 @@ final class UpscaleEngine {
             return UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil)
         }
 
-        guard findRealESRGANBinary(environment: environment) != nil else {
+        guard findRealESRGANInstallation(environment: environment) != nil else {
             return UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil)
         }
 
         let requestedScale = targetLongSide / currentLongSide
-        guard currentLongSide <= 1400, requestedScale >= 1.35 else {
+        guard currentLongSide <= 1600, requestedScale >= 1.35 else {
             return UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil)
         }
 
@@ -86,10 +91,25 @@ final class UpscaleEngine {
     }
 
     static func findRealESRGANBinary(environment: [String: String]) -> URL? {
+        findRealESRGANInstallation(environment: environment)?.binaryURL
+    }
+
+    private static func findRealESRGANInstallation(environment: [String: String]) -> RealESRGANInstallation? {
+        let modelName = "realesrgan-x4plus"
+
         if let explicit = environment["JUST4PICT_REAL_ESRGAN_BIN"], !explicit.isEmpty {
             let url = URL(fileURLWithPath: explicit)
-            if FileManager.default.isExecutableFile(atPath: url.path) {
-                return url
+            if FileManager.default.isExecutableFile(atPath: url.path),
+               let modelDirectoryURL = resolveModelDirectory(
+                    environment: environment,
+                    binaryURL: url,
+                    modelName: modelName
+               ) {
+                return RealESRGANInstallation(
+                    binaryURL: url,
+                    modelDirectoryURL: modelDirectoryURL,
+                    modelName: modelName
+                )
             }
         }
 
@@ -97,8 +117,42 @@ final class UpscaleEngine {
         for component in pathValue.split(separator: ":") {
             let url = URL(fileURLWithPath: String(component))
                 .appendingPathComponent("realesrgan-ncnn-vulkan")
-            if FileManager.default.isExecutableFile(atPath: url.path) {
-                return url
+            if FileManager.default.isExecutableFile(atPath: url.path),
+               let modelDirectoryURL = resolveModelDirectory(
+                    environment: environment,
+                    binaryURL: url,
+                    modelName: modelName
+               ) {
+                return RealESRGANInstallation(
+                    binaryURL: url,
+                    modelDirectoryURL: modelDirectoryURL,
+                    modelName: modelName
+                )
+            }
+        }
+
+        return nil
+    }
+
+    private static func resolveModelDirectory(
+        environment: [String: String],
+        binaryURL: URL,
+        modelName: String
+    ) -> URL? {
+        let fm = FileManager.default
+        let candidateURLs: [URL]
+
+        if let explicit = environment["JUST4PICT_REAL_ESRGAN_MODELS"], !explicit.isEmpty {
+            candidateURLs = [URL(fileURLWithPath: explicit)]
+        } else {
+            candidateURLs = [binaryURL.deletingLastPathComponent().appendingPathComponent("models", isDirectory: true)]
+        }
+
+        for candidate in candidateURLs {
+            let paramURL = candidate.appendingPathComponent("\(modelName).param")
+            let binURL = candidate.appendingPathComponent("\(modelName).bin")
+            if fm.fileExists(atPath: paramURL.path), fm.fileExists(atPath: binURL.path) {
+                return candidate
             }
         }
 
@@ -123,7 +177,7 @@ final class UpscaleEngine {
 
     private func upscaleWithRealESRGAN(
         image: CIImage,
-        binaryURL: URL,
+        installation: RealESRGANInstallation,
         scaleFactor: Int,
         targetLongSide: CGFloat
     ) throws -> CIImage {
@@ -137,12 +191,13 @@ final class UpscaleEngine {
         try writePNG(image: image, to: inputURL)
 
         let process = Process()
-        process.executableURL = binaryURL
+        process.executableURL = installation.binaryURL
         process.arguments = [
             "-i", inputURL.path,
             "-o", outputURL.path,
             "-s", String(scaleFactor),
-            "-n", scaleFactor >= 4 ? "realesrgan-x4plus" : "realesrgan-x2plus"
+            "-m", installation.modelDirectoryURL.path,
+            "-n", installation.modelName
         ]
 
         let errorPipe = Pipe()

@@ -316,6 +316,7 @@ Estado actual del repo:
 - `UpscaleEngine`: pendiente como modulo dedicado; hoy vive dentro del pipeline local
 - `UpscaleEngine`: ya extraido como modulo dedicado
 - `UpscaleEngine`: backend local activo + backend opcional `Real-ESRGAN` por binario externo con fallback automatico
+- `Real-ESRGAN` solo se considera disponible cuando existen ejecutable y modelos (`realesrgan-x4plus.param/.bin`)
 - `FaceRestoreEngine`: pendiente
 - `ProductIsolationEngine`: implementado para `Ecommerce` con foreground masking y recomposicion centrada sobre blanco
 - `ExportPipeline`: pendiente como modulo dedicado; hoy sigue integrado en `ImageEnhancer`

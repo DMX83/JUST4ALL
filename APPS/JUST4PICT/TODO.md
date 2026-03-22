@@ -147,6 +147,8 @@ Verificacion:
 - [ ] Evaluar `Core ML` como motor serio de enhancement/upscale.
 - [~] Evaluar `Real-ESRGAN` como benchmark de calidad para upscale.
   Backend opcional ya cableado por binario externo con fallback local; falta validacion visual real con el binario instalado.
+  Ya existe tambien un diagnostico opt-in para comparar `local` vs `Real-ESRGAN` sobre `image_upscale_lowres.jpeg`.
+  Para considerarlo disponible hacen falta binario y modelos (`realesrgan-x4plus.param/.bin`).
 - [~] Añadir modulo opcional de restauracion facial, apagado por defecto.
   Ya existe una primera version local, selectiva y conservadora; falta evaluar si se queda asi o pasa a motor dedicado.
 

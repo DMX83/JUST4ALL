@@ -6,6 +6,7 @@ import AppKit
 final class ImageEnhancerDiagnosticsTests: XCTestCase {
     private let longBenchmarkEnvironmentKey = "JUST4PICT_RUN_LONG_BENCHMARKS"
     private let aiDiagnosticEnvironmentKey = "JUST4PICT_RUN_AI_DIAGNOSTICS"
+    private let upscaleDiagnosticEnvironmentKey = "JUST4PICT_RUN_UPSCALE_DIAGNOSTICS"
 
     func testDetectsPortraitAndProducesMeasurableChangeForUserSample() throws {
         let inputURL = try primarySampleImageURL()
@@ -347,6 +348,88 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         XCTAssertFalse(recommendation.reason.isEmpty)
         XCTAssertTrue(FileManager.default.fileExists(atPath: proURL.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: aiURL.path))
+    }
+
+    func testUpscaleDiagnosticComparesLocalAgainstRealESRGANOnLowResSample() throws {
+        let value = ProcessInfo.processInfo.environment[upscaleDiagnosticEnvironmentKey]
+        guard value == "1" else {
+            throw XCTSkip("Set \(upscaleDiagnosticEnvironmentKey)=1 to run upscale backend diagnostics")
+        }
+
+        let inputURL = try sampleImageURL(named: "image_upscale_lowres.jpeg")
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Low-resolution upscale sample not available in this environment")
+        }
+
+        let packageRoot = try packageRootURL()
+        let binaryURL = packageRoot
+            .appendingPathComponent(".cache", isDirectory: true)
+            .appendingPathComponent("realesrgan", isDirectory: true)
+            .appendingPathComponent("realesrgan-ncnn-vulkan-v0.2.0-macos", isDirectory: true)
+            .appendingPathComponent("realesrgan-ncnn-vulkan")
+        let modelsURL = packageRoot
+            .appendingPathComponent(".cache", isDirectory: true)
+            .appendingPathComponent("realesrgan", isDirectory: true)
+            .appendingPathComponent("models", isDirectory: true)
+        guard FileManager.default.isExecutableFile(atPath: binaryURL.path) else {
+            throw XCTSkip("Real-ESRGAN binary not available in local cache")
+        }
+        guard FileManager.default.fileExists(atPath: modelsURL.appendingPathComponent("realesrgan-x4plus.param").path),
+              FileManager.default.fileExists(atPath: modelsURL.appendingPathComponent("realesrgan-x4plus.bin").path) else {
+            throw XCTSkip("Real-ESRGAN models not available in local cache")
+        }
+
+        let localURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+        let realURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+
+        defer {
+            unsetenv("JUST4PICT_REAL_ESRGAN_BIN")
+            unsetenv("JUST4PICT_REAL_ESRGAN_MODELS")
+            try? FileManager.default.removeItem(at: localURL)
+            try? FileManager.default.removeItem(at: realURL)
+        }
+
+        unsetenv("JUST4PICT_REAL_ESRGAN_BIN")
+        unsetenv("JUST4PICT_REAL_ESRGAN_MODELS")
+        try ImageEnhancer().enhance(
+            inputURL: inputURL,
+            outputURL: localURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png,
+            upscaleTargetLongSide: 2200
+        )
+
+        setenv("JUST4PICT_REAL_ESRGAN_MODELS", modelsURL.path, 1)
+        setenv("JUST4PICT_REAL_ESRGAN_BIN", binaryURL.path, 1)
+        try ImageEnhancer().enhance(
+            inputURL: inputURL,
+            outputURL: realURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png,
+            upscaleTargetLongSide: 2200
+        )
+
+        let localSize = try pixelSize(for: localURL)
+        let realSize = try pixelSize(for: realURL)
+        let localEdgeEnergy = try averageEdgeEnergy(for: localURL, normalizedCrop: CGRect(x: 0.25, y: 0.25, width: 0.50, height: 0.50))
+        let realEdgeEnergy = try averageEdgeEnergy(for: realURL, normalizedCrop: CGRect(x: 0.25, y: 0.25, width: 0.50, height: 0.50))
+        let localStats = try averageRGBA(for: localURL)
+        let realStats = try averageRGBA(for: realURL)
+        let globalDelta = abs(localStats.r - realStats.r)
+            + abs(localStats.g - realStats.g)
+            + abs(localStats.b - realStats.b)
+
+        print("UPSCALE_DIAG local_size=\(localSize.width)x\(localSize.height) real_size=\(realSize.width)x\(realSize.height)")
+        print(String(format: "UPSCALE_DIAG local_edge=%.5f real_edge=%.5f delta=%.5f", localEdgeEnergy, realEdgeEnergy, globalDelta))
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: localURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: realURL.path))
     }
 
     func testDetectsDocumentSceneFromRealRepoSample() throws {
