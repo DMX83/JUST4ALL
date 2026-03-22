@@ -71,15 +71,11 @@ Meta:
 
 - que `Retrato/PRO` sea el preset de referencia del producto
 
-Trabajo:
+Estado:
 
-- [ ] mantener tono y exposicion neutros como base estable
-- [ ] añadir detalle local moderado en pelo, ropa y bordes
-- [ ] proteger piel y cara durante el sharpen
-- [ ] introducir micro-punch muy leve sin cerrar negros ni quemar blancos
-- [ ] evaluar `temperature/tint` muy sutil para corregir dominantes de piel
-- [ ] definir limites de seguridad para no volver a resultados oscuros/calentados
-- [ ] validar con la foto fija del repo y al menos 2 retratos adicionales
+- la baseline actual ya queda congelada y usable
+- ya existen guardias automáticas para ojos/cejas y validación visual suficiente para no reabrir el pipeline a ciegas
+- el único cierre pendiente real es validar 2 retratos adicionales antes de dar `Retrato/PRO` por totalmente rematado post-MVP
 
 Verificacion:
 
@@ -98,7 +94,7 @@ Meta:
 Trabajo:
 
 - [x] si detecta cara, usar exactamente el pipeline final de `Retrato`
-- [ ] si detecta texto denso, usar `Documento`
+- [x] si detecta texto denso, usar `Documento`
 - [x] si detecta baja luminancia, activar perfil de recuperacion de fotos oscuras
 - [x] mejorar clasificacion de paisaje/generico con analisis de luminancia y textura
 - [x] documentar decision efectiva de `AUTO` en logs y UI
@@ -319,10 +315,12 @@ Hitos:
 
 - [x] `Retrato/PRO` usable como baseline visual
 - [x] `AUTO` fiable para retrato, paisaje y nocturna base
-- [ ] `Documento` y `Paisaje` refinados
-- [ ] arquitectura modular estable
-- [ ] upscale dedicado evaluado
-- [ ] QA de volumen completada
+- [x] `Documento` refinado y validado con muestra real
+- [~] `Paisaje` refinado
+  Ya existe baseline numérica y afinado de cielo/bruma; queda solo validación adicional si aparecen regresiones en nuevas muestras.
+- [x] arquitectura modular estable
+- [x] upscale dedicado evaluado
+- [x] QA de volumen completada
 - [ ] release candidata lista para firma
 
 ## 7) Cierre de MVP
@@ -400,6 +398,5 @@ Prioridad media:
 
 Prioridad baja:
 
-- [ ] before/after con slider
 - [ ] perfil web `< 300KB`
 - [ ] evaluar motores dedicados de upscale/restauracion

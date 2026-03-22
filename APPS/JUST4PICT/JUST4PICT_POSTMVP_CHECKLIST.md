@@ -82,7 +82,8 @@ Prioridades: `alta` · `media` · `baja`
 1. Calentamiento del cielo + curva tonal de Paisaje  → correcciones en LocalPhotoPipeline / ImageAnalyzer
 2. Sharpen selectivo desaturado + test por escena    → calidad + cobertura
 3. Doble protección facial                           → validación visual, posible ajuste
-4. Limpieza de puntos ya resueltos                   → deuda técnica
+4. Persistir decisión efectiva de AUTO en historial  → producto / debug
+5. Limpieza de puntos ya resueltos                   → deuda técnica
 ```
 
 ---

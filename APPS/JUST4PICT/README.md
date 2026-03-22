@@ -131,10 +131,10 @@ Validacion baseline 2026-03-22:
 
 ## Recomendaciones de producto (siguiente paso)
 
-- Before/After con slider.
-- Resize inteligente para redes/ecommerce.
+- Persistir en historial la decision efectiva de `AUTO`.
 - Perfil de export rapido para miniaturas web.
 - Integracion de deteccion de documento con Vision para recorte/enfoque automatizado.
+- Evaluar `Ecommerce + IA` solo para recortes complejos que Vision no resuelva bien.
 
 ## Cierre de MVP
 
