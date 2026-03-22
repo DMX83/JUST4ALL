@@ -116,7 +116,8 @@ final class LocalPhotoPipelineTests: XCTestCase {
     }
 
     private func makePipeline() -> LocalPhotoPipeline {
-        LocalPhotoPipeline(context: CIContext())
+        let context = CIContext()
+        return LocalPhotoPipeline(context: context, upscaleEngine: UpscaleEngine(context: context))
     }
 
     private func makeRepoPortraitSampleImage() throws -> CIImage {

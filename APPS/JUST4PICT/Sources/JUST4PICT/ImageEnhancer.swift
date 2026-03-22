@@ -153,8 +153,9 @@ struct CoreTuning {
 final class ImageEnhancer {
     private static let sharedContext = ImageEnhancer.makeContext()
     private let context = ImageEnhancer.sharedContext
+    private lazy var upscaleEngine = UpscaleEngine(context: context)
     private lazy var analyzer = ImageAnalyzer(context: context)
-    private lazy var localPipeline = LocalPhotoPipeline(context: context)
+    private lazy var localPipeline = LocalPhotoPipeline(context: context, upscaleEngine: upscaleEngine)
     private lazy var productIsolationEngine = ProductIsolationEngine(context: context)
     private let defaultHDLongSide: CGFloat = 1600
     private let logger = Logger(subsystem: "com.dmx83.just4pict", category: "ImageEnhancer")

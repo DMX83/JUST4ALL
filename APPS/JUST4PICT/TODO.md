@@ -143,9 +143,10 @@ Verificacion:
 - [ ] Correccion de horizonte y recorte de documento (Vision).
 - [ ] Perfil "Recuperar fotos oscuras".
 - [ ] Perfil "Optimizar para web < 300KB".
-- [ ] Introducir `UpscaleEngine` dedicado para fotos pequenas.
+- [x] Introducir `UpscaleEngine` dedicado para fotos pequenas.
 - [ ] Evaluar `Core ML` como motor serio de enhancement/upscale.
-- [ ] Evaluar `Real-ESRGAN` como benchmark de calidad para upscale.
+- [~] Evaluar `Real-ESRGAN` como benchmark de calidad para upscale.
+  Backend opcional ya cableado por binario externo con fallback local; falta validacion visual real con el binario instalado.
 - [~] Añadir modulo opcional de restauracion facial, apagado por defecto.
   Ya existe una primera version local, selectiva y conservadora; falta evaluar si se queda asi o pasa a motor dedicado.
 

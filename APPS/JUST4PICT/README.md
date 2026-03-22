@@ -120,6 +120,9 @@ Validacion baseline 2026-03-22:
   - y tests de diagnostico/QA del modulo.
 - La suite ahora incluye `LocalPhotoPipelineTests` para cubrir activacion/no-disparo del balance de blancos y diferencia medible del sharpen selectivo.
 - La QA diagnostica actual tambien cubre una muestra degradada controlada para `upscale` (`image_upscale_lowres.jpeg`).
+- El upscale ya tiene un `UpscaleEngine` dedicado.
+- `Real-ESRGAN` queda abierto como backend opcional por binario externo via `JUST4PICT_REAL_ESRGAN_BIN`.
+- Si ese binario no existe o no aplica a la imagen, el pipeline cae automaticamente al upscale local actual con Lanczos.
 
 ## Recomendaciones de producto (siguiente paso)
 
@@ -164,6 +167,16 @@ Estado actual del cierre:
   1) variable de entorno `OPENAI_API_KEY`
   2) archivo `.env.secrets` en la raiz del repo (y padres cercanos)
 - Nota: para apps distribuidas, no se recomienda embutir la key en cliente.
+
+## Configuracion opcional de Real-ESRGAN
+
+- Variable opcional: `JUST4PICT_REAL_ESRGAN_BIN`
+- Debe apuntar al binario ejecutable, por ejemplo `realesrgan-ncnn-vulkan`
+- El motor externo solo se intenta usar cuando:
+  - el binario existe,
+  - la imagen es realmente pequena,
+  - y el upscale pedido es suficientemente grande
+- En cualquier otro caso, `JUST4PICT` mantiene el fallback local actual sin romper preview ni export
 
 ## Privacidad de historial IA
 

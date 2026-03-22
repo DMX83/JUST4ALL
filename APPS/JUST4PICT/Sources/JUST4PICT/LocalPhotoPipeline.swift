@@ -4,14 +4,16 @@ import CoreImage.CIFilterBuiltins
 
 final class LocalPhotoPipeline {
     private let context: CIContext
+    private let upscaleEngine: UpscaleEngine
     struct WhiteBalanceAdjustment {
         let temperatureOffset: Double
         let tintOffset: Double
         let usesHighlights: Bool
     }
 
-    init(context: CIContext) {
+    init(context: CIContext, upscaleEngine: UpscaleEngine) {
         self.context = context
+        self.upscaleEngine = upscaleEngine
     }
 
     func makePortraitImage(
@@ -151,18 +153,8 @@ final class LocalPhotoPipeline {
     }
 
     private func applyUpscaleIfNeeded(image: CIImage, targetLongSide: CGFloat) -> (image: CIImage, upscaled: Bool, scale: CGFloat) {
-        let extent = image.extent.integral
-        let currentLongSide = max(extent.width, extent.height)
-        guard currentLongSide > 0, currentLongSide < targetLongSide else {
-            return (image, false, 1.0)
-        }
-
-        let scale = targetLongSide / currentLongSide
-        let filter = CIFilter.lanczosScaleTransform()
-        filter.inputImage = image
-        filter.scale = Float(scale)
-        filter.aspectRatio = 1.0
-        return (filter.outputImage ?? image, true, scale)
+        let result = upscaleEngine.upscaleIfNeeded(image: image, targetLongSide: targetLongSide)
+        return (result.image, result.upscaled, result.scale)
     }
 
     private func applyPostUpscaleDetailRecovery(image: CIImage, scale: CGFloat, profile: RecoveryProfile) -> CIImage {

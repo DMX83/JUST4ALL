@@ -314,6 +314,8 @@ Estado actual del repo:
 - `EnhancementPlanner`: implementado para resolucion de receta IA y fallback
 - `LocalPhotoPipeline`: implementado para pipeline local de mejora
 - `UpscaleEngine`: pendiente como modulo dedicado; hoy vive dentro del pipeline local
+- `UpscaleEngine`: ya extraido como modulo dedicado
+- `UpscaleEngine`: backend local activo + backend opcional `Real-ESRGAN` por binario externo con fallback automatico
 - `FaceRestoreEngine`: pendiente
 - `ProductIsolationEngine`: implementado para `Ecommerce` con foreground masking y recomposicion centrada sobre blanco
 - `ExportPipeline`: pendiente como modulo dedicado; hoy sigue integrado en `ImageEnhancer`
