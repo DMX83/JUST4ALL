@@ -186,7 +186,7 @@ Trabajo:
 
 ### Media prioridad
 
-- [ ] Dobles compresiones y reescalados innecesarios — `ImageExportWriter` aplica resize en dos etapas cuando recibe una `CIImage` ya procesada. Revisar si el resize de `applyExportResizeIfNeeded` interno y el `resizedCGImageIfNeeded` están duplicando trabajo.
+- [x] Dobles compresiones y reescalados innecesarios — resuelto: `ImageExportWriter` ahora solo aplica un resize por ruta, sin duplicados ni ramas muertas. Validado en build limpio y ejecución.
 - [x] `ImageExportWriter` ahora usa el contexto compartido desde `OpenAIImageReconstructionService` — el init por defecto ya pasa `ImageEnhancer.sharedContext`. El render de imágenes IA ahora es coherente y eficiente con el resto del pipeline.
 - [x] `makeDarkPhotoRecoveryImage` usa `analysis` de forma adaptativa — ahora ajusta exposición, sombras y reducción de ruido según `averageLuminance` e `isLowKey`. El logger registra ambos valores en cada ejecución del path darkPhoto.
 
@@ -254,7 +254,7 @@ Trabajo:
 - [x] asegurar `PNG` como salida por defecto de maxima calidad en la UI
 - [ ] asegurar exportacion maxima en `PNG` y `JPG` segun caso
 - [x] introducir resize inteligente por destino (`social`, `web`, `ecommerce`)
-- [ ] evitar dobles compresiones y reescalados innecesarios
+- [x] evitar dobles compresiones y reescalados innecesarios
 - [ ] evaluar si el recorte de producto necesita controles manuales o margen configurable para catalogo estricto
 - [ ] evaluar una variante opcional `Ecommerce + IA` para reconstruccion/limpieza de bordes complejos cuando Vision no recorte bien el producto
 
