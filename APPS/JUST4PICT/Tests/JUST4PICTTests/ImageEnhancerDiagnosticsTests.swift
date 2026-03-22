@@ -365,7 +365,7 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         let binaryURL = packageRoot
             .appendingPathComponent(".cache", isDirectory: true)
             .appendingPathComponent("realesrgan", isDirectory: true)
-            .appendingPathComponent("realesrgan-ncnn-vulkan-v0.2.0-macos", isDirectory: true)
+            .appendingPathComponent("realesrgan-ncnn-vulkan-20220424-macos", isDirectory: true)
             .appendingPathComponent("realesrgan-ncnn-vulkan")
         let modelsURL = packageRoot
             .appendingPathComponent(".cache", isDirectory: true)

@@ -317,7 +317,8 @@ Estado actual del repo:
 - `UpscaleEngine`: ya extraido como modulo dedicado
 - `UpscaleEngine`: backend local activo + backend opcional `Real-ESRGAN` por binario externo con fallback automatico
 - `Real-ESRGAN` solo se considera disponible cuando existen ejecutable y modelos (`realesrgan-x4plus.param/.bin`)
-- el bootstrap local del binario queda formalizado en `scripts/setup_realesrgan_local.sh`
+- el bootstrap local recomendado queda formalizado en `scripts/setup_realesrgan_local.sh`
+- ese setup usa el asset oficial macOS `realesrgan-ncnn-vulkan-20220424-macos.zip`, que incluye `realesrgan-x4plus.param/.bin`
 - `FaceRestoreEngine`: pendiente
 - `ProductIsolationEngine`: implementado para `Ecommerce` con foreground masking y recomposicion centrada sobre blanco
 - `ExportPipeline`: pendiente como modulo dedicado; hoy sigue integrado en `ImageEnhancer`

@@ -190,9 +190,9 @@ Setup local recomendado:
 ```
 
 Ese script:
-- descarga la release oficial macOS del binario
+- descarga el asset oficial macOS de `Real-ESRGAN` que ya incluye binario y modelos NCNN base
 - la deja en `APPS/JUST4PICT/.cache/realesrgan/`
-- prepara `APPS/JUST4PICT/.cache/realesrgan/models/`
+- copia `realesrgan-x4plus.param/.bin` a `APPS/JUST4PICT/.cache/realesrgan/models/`
 - y muestra los `export` necesarios para activar el backend externo
 
 ## Privacidad de historial IA

@@ -4,10 +4,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CACHE_DIR="$APP_ROOT/.cache/realesrgan"
-RELEASE_VERSION="v0.2.0"
-ARCHIVE_NAME="realesrgan-ncnn-vulkan-v0.2.0-macos.zip"
-ARCHIVE_URL="https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases/download/${RELEASE_VERSION}/${ARCHIVE_NAME}"
-EXTRACTED_DIR="$CACHE_DIR/realesrgan-ncnn-vulkan-v0.2.0-macos"
+RELEASE_VERSION="v0.2.5.0"
+ARCHIVE_NAME="realesrgan-ncnn-vulkan-20220424-macos.zip"
+ARCHIVE_URL="https://github.com/xinntao/Real-ESRGAN/releases/download/${RELEASE_VERSION}/${ARCHIVE_NAME}"
+EXTRACTED_DIR="$CACHE_DIR/realesrgan-ncnn-vulkan-20220424-macos"
 MODELS_DIR="$CACHE_DIR/models"
 
 mkdir -p "$CACHE_DIR"
@@ -18,13 +18,20 @@ curl -fsSL -o "$CACHE_DIR/$ARCHIVE_NAME" "$ARCHIVE_URL"
 
 echo "Extracting archive..."
 rm -rf "$EXTRACTED_DIR"
-unzip -o "$CACHE_DIR/$ARCHIVE_NAME" -d "$CACHE_DIR" >/dev/null
+mkdir -p "$EXTRACTED_DIR"
+unzip -o "$CACHE_DIR/$ARCHIVE_NAME" -d "$EXTRACTED_DIR" >/dev/null
 
 BIN_PATH="$EXTRACTED_DIR/realesrgan-ncnn-vulkan"
+chmod +x "$BIN_PATH" 2>/dev/null || true
 
 if [[ ! -x "$BIN_PATH" ]]; then
   echo "Binary not found after extraction: $BIN_PATH" >&2
   exit 1
+fi
+
+if [[ -f "$EXTRACTED_DIR/models/realesrgan-x4plus.param" && -f "$EXTRACTED_DIR/models/realesrgan-x4plus.bin" ]]; then
+  cp -f "$EXTRACTED_DIR/models/realesrgan-x4plus.param" "$MODELS_DIR/"
+  cp -f "$EXTRACTED_DIR/models/realesrgan-x4plus.bin" "$MODELS_DIR/"
 fi
 
 cat <<EOF
@@ -49,7 +56,7 @@ Diagnostic command:
   JUST4PICT_RUN_UPSCALE_DIAGNOSTICS=1 swift test --filter ImageEnhancerDiagnosticsTests/testUpscaleDiagnosticComparesLocalAgainstRealESRGANOnLowResSample
 
 Note:
-  The official macOS zip provides the executable, but not always the model files.
-  JUST4PICT will keep falling back to local Lanczos until both model files are present.
+  This official macOS asset includes the standard realesrgan-x4plus NCNN models.
+  JUST4PICT will keep falling back to local Lanczos if those files are later removed.
 
 EOF
