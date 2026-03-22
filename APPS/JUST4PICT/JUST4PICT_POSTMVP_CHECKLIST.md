@@ -43,11 +43,11 @@ Prioridades: `alta` · `media` · `baja`
 
 ## Arquitectura
 
-- [ ] **`CIContext` compartido entre todos los módulos** `media`
-  `ImageEnhancer` tiene `sharedContext` pero `LocalPhotoPipeline`, `ProductIsolationEngine` y `FaceRestoreEngine` crean contextos propios en cada instancia. El RSS de `529 MB` en el batch de 100 imágenes apunta aquí. Pasar el contexto compartido por inyección de dependencia.
+- [x] **`CIContext` compartido entre todos los módulos** `media`
+  Ya resuelto: `ImageEnhancer` centraliza `sharedContext` y lo inyecta en `ImageAnalyzer`, `LocalPhotoPipeline`, `UpscaleEngine` y `ProductIsolationEngine`. `FaceRestoreEngine` no crea contexto propio.
 
-- [ ] **`autoreleasepool` en el bucle del batch** `media`
-  Sin pool explícito en el bucle de `processBatch`, los objetos `CIImage` y `CGImage` se acumulan hasta que el pool del hilo los libera. El RSS de `1 GB` en el batch de 1000 imágenes lo confirma. Wrappear cada iteración en `autoreleasepool {}`.
+- [x] **`autoreleasepool` en el bucle del batch** `media`
+  Ya aplicado en export, preview y worker detached del batch. La repetición de 100 imágenes con `/usr/bin/time -l` bajó la RSS máxima observada de ~`529 MB` a ~`143 MB`.
 
 - [x] **`UpscaleEngine` como módulo dedicado** `baja`
   Ya extraído como módulo propio y además ampliado con backend local + `Real-ESRGAN`.
@@ -81,11 +81,10 @@ Prioridades: `alta` · `media` · `baja`
 ```
 1. Calentamiento del cielo + curva tonal de Paisaje  → correcciones en LocalPhotoPipeline / ImageAnalyzer
 2. Sharpen selectivo desaturado + test por escena    → calidad + cobertura
-3. CIContext compartido + autoreleasepool             → memoria y rendimiento en batch
-4. Doble protección facial                           → validación visual, posible ajuste
-5. Before/after con slider                           → UX
-6. Definir posición final de `Reconstruir IA`        → producto
-7. Limpieza de puntos ya resueltos                   → deuda técnica
+3. Doble protección facial                           → validación visual, posible ajuste
+4. Before/after con slider                           → UX
+5. Definir posición final de `Reconstruir IA`        → producto
+6. Limpieza de puntos ya resueltos                   → deuda técnica
 ```
 
 ---

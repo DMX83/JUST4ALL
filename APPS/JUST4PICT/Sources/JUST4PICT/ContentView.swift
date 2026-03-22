@@ -1193,19 +1193,21 @@ struct ContentView: View {
         }
 
         try await Task.detached(priority: .userInitiated) {
-            let worker = ImageEnhancer()
-            try worker.enhance(
-                inputURL: inputURL,
-                outputURL: outputURL,
-                preset: preset,
-                quality: quality,
-                format: format,
-                exportProfile: exportProfile,
-                upscaleTargetLongSide: upscaleTargetLongSide,
-                faceRestoreStrength: faceRestoreStrength,
-                tuning: aiTuning,
-                sceneOverride: sceneOverride
-            )
+            try autoreleasepool {
+                let worker = ImageEnhancer()
+                try worker.enhance(
+                    inputURL: inputURL,
+                    outputURL: outputURL,
+                    preset: preset,
+                    quality: quality,
+                    format: format,
+                    exportProfile: exportProfile,
+                    upscaleTargetLongSide: upscaleTargetLongSide,
+                    faceRestoreStrength: faceRestoreStrength,
+                    tuning: aiTuning,
+                    sceneOverride: sceneOverride
+                )
+            }
         }.value
     }
 

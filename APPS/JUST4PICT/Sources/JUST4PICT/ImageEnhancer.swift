@@ -196,36 +196,38 @@ final class ImageEnhancer {
         tuning: AIEnhancementTuning? = nil,
         sceneOverride: SceneType? = nil
     ) throws {
-        var image = try makeEnhancedImage(
-            inputURL: inputURL,
-            preset: preset,
-            upscaleToLongSide: resolvedUpscaleTargetLongSide(upscaleTargetLongSide),
-            faceRestoreStrength: faceRestoreStrength,
-            tuning: tuning,
-            sceneOverride: sceneOverride
-        )
-        image = applyExportResizeIfNeeded(
-            image: image,
-            targetLongSide: exportProfile.targetLongSide(for: preset)
-        )
+        try autoreleasepool {
+            var image = try makeEnhancedImage(
+                inputURL: inputURL,
+                preset: preset,
+                upscaleToLongSide: resolvedUpscaleTargetLongSide(upscaleTargetLongSide),
+                faceRestoreStrength: faceRestoreStrength,
+                tuning: tuning,
+                sceneOverride: sceneOverride
+            )
+            image = applyExportResizeIfNeeded(
+                image: image,
+                targetLongSide: exportProfile.targetLongSide(for: preset)
+            )
 
-        let extent = image.extent.integral
-        guard let cgImage = context.createCGImage(image, from: extent) else {
-            throw ImageEnhancerError.cannotRenderImage(inputURL)
-        }
+            let extent = image.extent.integral
+            guard let cgImage = context.createCGImage(image, from: extent) else {
+                throw ImageEnhancerError.cannotRenderImage(inputURL)
+            }
 
-        guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, format.utTypeIdentifier, 1, nil) else {
-            throw ImageEnhancerError.cannotCreateDestination(outputURL)
-        }
+            guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, format.utTypeIdentifier, 1, nil) else {
+                throw ImageEnhancerError.cannotCreateDestination(outputURL)
+            }
 
-        var destinationOptions: [CFString: Any] = [:]
-        if format.supportsLossyQuality {
-            destinationOptions[kCGImageDestinationLossyCompressionQuality] = min(max(quality, 0.1), 1.0)
-        }
+            var destinationOptions: [CFString: Any] = [:]
+            if format.supportsLossyQuality {
+                destinationOptions[kCGImageDestinationLossyCompressionQuality] = min(max(quality, 0.1), 1.0)
+            }
 
-        CGImageDestinationAddImage(destination, cgImage, destinationOptions as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else {
-            throw ImageEnhancerError.cannotFinalizeWrite(outputURL)
+            CGImageDestinationAddImage(destination, cgImage, destinationOptions as CFDictionary)
+            guard CGImageDestinationFinalize(destination) else {
+                throw ImageEnhancerError.cannotFinalizeWrite(outputURL)
+            }
         }
     }
 
@@ -242,25 +244,27 @@ final class ImageEnhancer {
         upscaleTargetLongSide: CGFloat? = nil,
         sceneOverride: SceneType? = nil
     ) throws -> NSImage {
-        let image = try makeEnhancedImage(
-            inputURL: inputURL,
-            preset: preset,
-            upscaleToLongSide: resolvedPreviewUpscaleTargetLongSide(upscaleTargetLongSide),
-            faceRestoreStrength: faceRestoreStrength,
-            tuning: tuning,
-            sceneOverride: sceneOverride
-        )
-        let extent = image.extent.integral
-        guard let cgImage = context.createCGImage(image, from: extent) else {
-            throw ImageEnhancerError.cannotRenderImage(inputURL)
-        }
+        try autoreleasepool {
+            let image = try makeEnhancedImage(
+                inputURL: inputURL,
+                preset: preset,
+                upscaleToLongSide: resolvedPreviewUpscaleTargetLongSide(upscaleTargetLongSide),
+                faceRestoreStrength: faceRestoreStrength,
+                tuning: tuning,
+                sceneOverride: sceneOverride
+            )
+            let extent = image.extent.integral
+            guard let cgImage = context.createCGImage(image, from: extent) else {
+                throw ImageEnhancerError.cannotRenderImage(inputURL)
+            }
 
-        let originalWidth = CGFloat(cgImage.width)
-        let originalHeight = CGFloat(cgImage.height)
-        let maxSide = max(originalWidth, originalHeight)
-        let scale = maxSide > maxDimension ? (maxDimension / maxSide) : 1.0
-        let size = NSSize(width: originalWidth * scale, height: originalHeight * scale)
-        return NSImage(cgImage: cgImage, size: size)
+            let originalWidth = CGFloat(cgImage.width)
+            let originalHeight = CGFloat(cgImage.height)
+            let maxSide = max(originalWidth, originalHeight)
+            let scale = maxSide > maxDimension ? (maxDimension / maxSide) : 1.0
+            let size = NSSize(width: originalWidth * scale, height: originalHeight * scale)
+            return NSImage(cgImage: cgImage, size: size)
+        }
     }
 
     private func resolvedUpscaleTargetLongSide(_ recipeTarget: CGFloat?) -> CGFloat? {

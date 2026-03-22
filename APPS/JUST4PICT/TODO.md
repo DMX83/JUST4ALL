@@ -180,14 +180,17 @@ Trabajo:
 - [~] convertir `EnhancementRecipe` en contrato central efectivo, no solo estructural
   Ya gobierna `scene`, `preset`, `format`, `quality`, `upscale` y `faceRestore`; aun falta cerrar mejor el resto del planner y futuras etapas opcionales.
 - [x] propagar `faceRestore` como contrato estable de receta en batch, preview y export
-- [ ] reutilizar `CIContext` compartido en todos los flujos
-- [ ] introducir `autoreleasepool` en lote grande
+- [x] reutilizar `CIContext` compartido en todos los flujos
+  `ImageEnhancer` centraliza `sharedContext` y lo inyecta ya en `ImageAnalyzer`, `LocalPhotoPipeline`, `UpscaleEngine` y `ProductIsolationEngine`.
+- [x] introducir `autoreleasepool` en los tramos pesados de export/preview y worker de batch
+  El motor local ya libera antes los objetos Core Image/Core Graphics en export, preview y ejecuciones detached del lote.
 - [x] evitar lectura de dimensiones con `NSImage` en el flujo IA; usar metadata/pixel size
 
 Verificacion:
 
 - [ ] medir que no se degrada la velocidad de preview
-- [ ] medir que el batch no crece en memoria de forma anomala
+- [~] medir que el batch no crece en memoria de forma anomala
+  La liberacion temprana ya esta cableada y la repeticion de 100 imagenes bajo `/usr/bin/time -l` bajo la RSS maxima observada de ~`529 MB` a ~`143 MB`.
 
 ## 3B) Calidad visual avanzada
 

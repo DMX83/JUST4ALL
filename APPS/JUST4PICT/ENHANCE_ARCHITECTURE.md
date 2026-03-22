@@ -27,6 +27,7 @@ Situacion del producto ahora:
   - `ImageAnalyzer` concentra analisis local de imagen,
   - `EnhancementPlanner` resuelve decisiones derivadas de receta/fallback,
   - `LocalPhotoPipeline` ejecuta el pipeline local
+- `ImageEnhancer` ya centraliza un `CIContext` compartido e inyecta esa dependencia a analisis, pipeline local, upscale y aislamiento de producto
 - `ContentView` sigue siendo el punto principal de orquestacion UI, pero ya no duplica tanto manejo de logs/resultados de batch y arranque de estado como en fases anteriores
 - existe una primera pasada de afinado visual en evaluacion sobre `LocalPhotoPipeline`:
   - balance de blancos adaptativo
@@ -67,6 +68,7 @@ Para evitar suposiciones falsas antes del siguiente cambio:
 - Si la `EnhancementRecipe` trae una `scene` valida, esa escena ya puede sobreescribir la deteccion local dentro del motor para mantener coherencia entre planner, preview y export.
 - La `IA` todavia no es la fuente de verdad completa del pipeline final.
 - El flujo IA ya toma dimensiones de entrada desde metadata/pixel size y no debe volver a depender de `NSImage` para esa lectura.
+- export, preview y worker detached de batch ya envuelven los tramos pesados de Core Image/Core Graphics en `autoreleasepool` para liberar antes objetos intermedios.
 - `faceRestore` ya esta cableado como contrato de planner/UI/pipeline y viaja por preview y export.
 - `faceRestore` ya aplica una mejora local selectiva sobre mascara facial.
 - Sigue sin ser un modelo dedicado de restauracion facial; la implementacion actual es deliberadamente conservadora.

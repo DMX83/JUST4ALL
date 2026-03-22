@@ -49,6 +49,27 @@ Lectura practica:
 - ya existe una medicion explicita de tiempo y memoria para el batch de 100
 - se puede usar como referencia rapida para comparar regresiones futuras
 
+Actualizacion post-MVP 2026-03-22:
+
+- tras cablear `autoreleasepool` en export, preview y worker detached del batch, se repitio la medicion de 100 imagenes
+- comando:
+
+```bash
+/usr/bin/time -l swift test --filter ImageEnhancerDiagnosticsTests/testProcessesHundredImageLocalBatchUsingRealRepoSamples
+```
+
+- resultado:
+  - duracion interna del test: `17.97s`
+  - tiempo real del comando: `20.49s`
+  - `maximum resident set size`: `143245312` bytes
+  - `peak memory footprint`: `16958136` bytes
+
+Lectura practica de esta pasada:
+
+- el tiempo queda en la misma zona util de la baseline
+- la memoria residente maxima baja de ~`529 MB` a ~`143 MB` en la pasada de 100 imagenes
+- la mejora es suficientemente grande como para considerar esta pasada de gestion de memoria valida
+
 Validacion de empaquetado de la baseline:
 
 - el 2026-03-22 se genero y valido `dist/JUST4PICT-0.1.0+20260322114546-6fe34bc.dmg`

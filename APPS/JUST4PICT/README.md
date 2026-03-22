@@ -123,6 +123,8 @@ Validacion baseline 2026-03-22:
 - La suite ahora incluye `LocalPhotoPipelineTests` para cubrir activacion/no-disparo del balance de blancos y diferencia medible del sharpen selectivo.
 - La QA diagnostica actual tambien cubre una muestra degradada controlada para `upscale` (`image_upscale_lowres.jpeg`).
 - El upscale ya tiene un `UpscaleEngine` dedicado.
+- El pipeline local ya reutiliza un `CIContext` compartido desde `ImageEnhancer` para analisis, pipeline, upscale y aislamiento de producto; no debe volver a fragmentarse en contextos paralelos sin una justificacion clara.
+- Export, preview y ejecuciones detached del lote ya envuelven los tramos Core Image/Core Graphics en `autoreleasepool` para contener mejor el pico de memoria.
 - `Real-ESRGAN` queda abierto como backend opcional por binario externo via `JUST4PICT_REAL_ESRGAN_BIN`.
 - Si ese binario no existe o no aplica a la imagen, el pipeline cae automaticamente al upscale local actual con Lanczos.
 
