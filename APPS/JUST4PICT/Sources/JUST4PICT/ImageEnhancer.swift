@@ -562,9 +562,7 @@ final class ImageEnhancer {
         upscaleToLongSide: CGFloat?
     ) -> CIImage {
         var currentImage = image
-        logger.notice(
-            "Applying dark photo recovery pipeline | lum=\(String(format: \"%.3f\", analysis.averageLuminance)) lowKey=\(analysis.isLowKey)"
-        )
+        logger.notice("Applying dark photo recovery pipeline | lum=\(String(format: \"%.3f\", analysis.averageLuminance)) lowKey=\(analysis.isLowKey)")
 
         // ── 1. Exposición adaptativa ─────────────────────────────────────────────
         // Cuanto más oscura la imagen, más boost necesita.
