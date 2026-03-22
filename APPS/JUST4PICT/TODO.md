@@ -134,6 +134,7 @@ Verificacion:
 - [x] Guardar sugerencia IA aplicada en historial (preset/calidad/prompt).
 - [x] Privacidad: guardar por defecto resumen de prompt IA en historial (no texto completo).
 - [x] Preview paralela `Original` / `PRO` / `IA`.
+- [x] Añadir comparador `before/after` con slider en preview sin eliminar las tres tarjetas actuales.
 - [x] IA devuelve receta local inicial (sombras, luces, vibrance, nitidez, contraste, saturacion, exposicion).
 - [x] Hacer que IA analice la imagen real por vision, no solo metadatos.
 - [x] Formalizar `EnhancementRecipe` como modelo central del pipeline.

@@ -126,6 +126,7 @@ struct ContentView: View {
     @State private var previewNeedsRefresh = false
     @State private var effectivePreviewPreset: EnhancementPreset = .auto
     @State private var effectivePreviewScene: ImageEnhancer.SceneType?
+    @State private var beforeAfterPosition: CGFloat = 0.5
     @State private var isShowingPreviewLightbox = false
     @State private var lightboxSelection: PreviewKind = .original
 
@@ -678,6 +679,17 @@ struct ContentView: View {
                             Text(previewNeedsRefresh ? "La preview está desactualizada. Pulsa Enhance para regenerarla." : "Pulsa Enhance para generar la mejora.")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
+                        }
+
+                        if let comparisonImage = currentComparisonImage {
+                            BeforeAfterSliderView(
+                                originalImage: originalPreviewImage,
+                                processedImage: comparisonImage,
+                                processedLabel: currentComparisonLabel,
+                                processedBadge: currentComparisonBadge,
+                                position: $beforeAfterPosition
+                            )
+                            .frame(maxWidth: .infinity, minHeight: 280, maxHeight: 320)
                         }
 
                         HStack(alignment: .top, spacing: 12) {
@@ -1812,6 +1824,37 @@ struct ContentView: View {
         "reconstrucción generativa conservadora para imágenes pequeñas o muy comprimidas"
     }
 
+    private var currentComparisonImage: NSImage? {
+        switch selectedMode {
+        case .local:
+            return proPreviewImage
+        case .ai, .reconstructAI:
+            return aiPreviewImage ?? proPreviewImage
+        }
+    }
+
+    private var currentComparisonLabel: String {
+        switch selectedMode {
+        case .local:
+            return "Procesado Pro"
+        case .ai:
+            return aiUsedFallbackForRun ? "Fallback local" : "IA"
+        case .reconstructAI:
+            return "Reconstrucción IA"
+        }
+    }
+
+    private var currentComparisonBadge: String? {
+        switch selectedMode {
+        case .local:
+            return "PRO"
+        case .ai:
+            return aiPreviewBadge
+        case .reconstructAI:
+            return "IA-R"
+        }
+    }
+
     private var aiPreviewBadge: String {
         aiUsedFallbackForRun ? "IA→PRO" : "IA"
     }
@@ -2102,5 +2145,109 @@ private struct PreviewLightboxView: View {
         zoomScale = scale
         dragOffset = .zero
         accumulatedOffset = .zero
+    }
+}
+
+private struct BeforeAfterSliderView: View {
+    let originalImage: NSImage
+    let processedImage: NSImage
+    let processedLabel: String
+    let processedBadge: String?
+    @Binding var position: CGFloat
+
+    var body: some View {
+        GeometryReader { geometry in
+            let clampedPosition = min(max(position, 0.0), 1.0)
+            let dividerX = max(0, min(geometry.size.width, geometry.size.width * clampedPosition))
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    Text("Before / After")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    comparisonPill(title: "Original", badge: nil)
+                    comparisonPill(title: processedLabel, badge: processedBadge)
+                }
+
+                ZStack {
+                    imageLayer(image: originalImage)
+
+                    imageLayer(image: processedImage)
+                        .mask(alignment: .leading) {
+                            Rectangle()
+                                .frame(width: dividerX)
+                        }
+
+                    Rectangle()
+                        .fill(Color.white.opacity(0.92))
+                        .frame(width: 2)
+                        .shadow(color: .black.opacity(0.18), radius: 3, x: 0, y: 0)
+                        .position(x: dividerX, y: geometry.size.height / 2)
+
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 26, height: 26)
+                        .overlay {
+                            Image(systemName: "arrow.left.and.right")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.black.opacity(0.75))
+                        }
+                        .shadow(color: .black.opacity(0.16), radius: 5, x: 0, y: 1)
+                        .position(x: dividerX, y: geometry.size.height / 2)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let newPosition = value.location.x / max(geometry.size.width, 1)
+                            position = min(max(newPosition, 0.0), 1.0)
+                        }
+                )
+
+                Slider(value: $position, in: 0...1)
+                    .controlSize(.small)
+            }
+        }
+    }
+
+    private func imageLayer(image: NSImage) -> some View {
+        Image(nsImage: image)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black.opacity(0.04))
+    }
+
+    private func comparisonPill(title: String, badge: String?) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            if let badge {
+                Text(badge)
+                    .font(.system(size: 9, weight: .semibold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(badgeColor(for: badge).opacity(0.14))
+                    .foregroundColor(badgeColor(for: badge))
+                    .clipShape(Capsule())
+            }
+        }
+    }
+
+    private func badgeColor(for badge: String) -> Color {
+        switch badge {
+        case "IA":
+            return .purple
+        case "IA→PRO", "IA-R":
+            return .orange
+        default:
+            return .blue
+        }
     }
 }

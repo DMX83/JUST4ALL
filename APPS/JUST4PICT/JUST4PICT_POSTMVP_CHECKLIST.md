@@ -59,8 +59,8 @@ Prioridades: `alta` · `media` · `baja`
 - [x] **Comparar PRO vs IA en Paisaje tras corregir balance de blancos** `alta`
   Ya existe `testAIDiagnosticComparesProAgainstAIOnLandscapeSample`. En la muestra real actual, IA eligió `Paisaje`, `PNG` y `q=1.0` sin mostrar una ventaja fuerte frente a `PRO`, así que el siguiente salto ya no parece estar en más ajuste fino ciego de IA para paisaje.
 
-- [ ] **Before/after con slider** `media`
-  En roadmap desde v0.2. Las tres cards de preview son funcionales pero para detectar halos o pérdida de detalle puntual el slider es mucho más efectivo. Especialmente útil para validar mejoras de sharpen y curva tonal.
+- [x] **Before/after con slider** `media`
+  Ya resuelto en preview como comparador adicional de inspección rápida, sin sustituir las tres cards existentes.
 
 - [x] **Fallback IA visible en UI** `media`
   Ya resuelto: la barra de estado y la tarjeta de preview muestran explícitamente `IA→PRO` cuando la recomendación IA cae a fallback local.
@@ -82,9 +82,8 @@ Prioridades: `alta` · `media` · `baja`
 1. Calentamiento del cielo + curva tonal de Paisaje  → correcciones en LocalPhotoPipeline / ImageAnalyzer
 2. Sharpen selectivo desaturado + test por escena    → calidad + cobertura
 3. Doble protección facial                           → validación visual, posible ajuste
-4. Before/after con slider                           → UX
-5. Definir posición final de `Reconstruir IA`        → producto
-6. Limpieza de puntos ya resueltos                   → deuda técnica
+4. Definir posición final de `Reconstruir IA`        → producto
+5. Limpieza de puntos ya resueltos                   → deuda técnica
 ```
 
 ---

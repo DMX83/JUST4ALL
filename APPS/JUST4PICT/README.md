@@ -87,6 +87,7 @@ Validacion baseline 2026-03-22:
 - La preview manual con boton `Enhance` debe seguir siendo estable:
   - sin auto-refresh agresivo,
   - con vista `Original / PRO / IA`,
+  - con comparador `before/after` por slider para inspeccion rapida,
   - y con doble click para visor ampliado.
 - `AUTO` debe seguir heredando `Retrato` cuando detecta cara. Cualquier refactor de escena debe preservar esa decision.
 - `AUTO` ya distingue mejor documento por texto + baja saturacion, foto oscura por luminancia/saturacion y producto `ecommerce` por fondo claro/uniforme y sujeto centrado, sin dejar de priorizar retrato cuando detecta cara.
