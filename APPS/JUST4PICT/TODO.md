@@ -75,7 +75,7 @@ Estado:
 
 - la baseline actual ya queda congelada y usable
 - ya existen guardias automáticas para ojos/cejas y validación visual suficiente para no reabrir el pipeline a ciegas
-- el único cierre pendiente real es validar 2 retratos adicionales antes de dar `Retrato/PRO` por totalmente rematado post-MVP
+- ya existen dos retratos adicionales validados con detección facial y guardia de detalle en ojos/cejas, uno de ellos como retrato degradado de baja resolución
 
 Verificacion:
 
@@ -83,7 +83,7 @@ Verificacion:
 - [x] Generar salidas visibles en `APPS/JUST4PICT/images/test/*-pro-sample.png`
 - [x] QA visual A/B contra salida anterior
 - [x] confirmar que el resultado mejora detalle sin perder naturalidad
-- [ ] validar con 2 retratos adicionales para cerrar `Retrato/PRO`
+- [x] validar con 2 retratos adicionales para cerrar `Retrato/PRO`
 
 ## 1B) Fase AUTO
 

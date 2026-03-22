@@ -159,7 +159,7 @@ Todo lo demas debe tratarse ya como afinado post-MVP, no como requisito de cierr
 Estado actual del cierre:
 
 - ya estan cerrados `AUTO`, `Documento`, `Ecommerce`, export por defecto, preview/export y QA visible
-- `Retrato/PRO` queda congelado para la baseline actual del MVP con test de referencia sobre la muestra fija del repo
+- `Retrato/PRO` queda congelado para la baseline actual del MVP con test de referencia sobre la muestra fija del repo y dos retratos adicionales validados con guardia automática de detalle facial, incluyendo un caso degradado de baja resolución
 - ya existe una pasada local validada de lote real de 100 imagenes (`QA_BATCH_LOCAL.md`)
 - ya existe una medicion explicita de tiempo y memoria para ese lote local de 100 imagenes
 - ya existe un DMG funcional validado para esta baseline (`dist/JUST4PICT-0.1.0+20260322114546-6fe34bc.dmg`)

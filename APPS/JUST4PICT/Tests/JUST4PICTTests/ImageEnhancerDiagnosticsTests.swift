@@ -829,6 +829,42 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         )
     }
 
+    func testPortraitProKeepsEyeRegionDetailOnTwoAdditionalPortraitSamples() throws {
+        let enhancer = ImageEnhancer()
+        let additionalPortraits = try additionalPortraitValidationSampleURLs()
+        guard additionalPortraits.count == 2 else {
+            throw XCTSkip("Two additional portrait samples are not available in this environment")
+        }
+
+        for inputURL in additionalPortraits {
+            let outputURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension("png")
+
+            try enhancer.enhance(
+                inputURL: inputURL,
+                outputURL: outputURL,
+                preset: .portrait,
+                quality: 1.0,
+                format: .png
+            )
+
+            defer { try? FileManager.default.removeItem(at: outputURL) }
+
+            let eyeBand = try faceUpperDetailRegion(for: inputURL)
+            let originalEdgeEnergy = try averageEdgeEnergy(for: inputURL, normalizedCrop: eyeBand)
+            let enhancedEdgeEnergy = try averageEdgeEnergy(for: outputURL, normalizedCrop: eyeBand)
+            let longSide = max((enhancer.pixelSize(for: inputURL) ?? .zero).width, (enhancer.pixelSize(for: inputURL) ?? .zero).height)
+            let retentionThreshold = longSide < 500 ? 0.35 : 0.80
+
+            XCTAssertGreaterThan(
+                enhancedEdgeEnergy,
+                originalEdgeEnergy * retentionThreshold,
+                "PRO should keep eye and eyebrow detail on \(inputURL.lastPathComponent)"
+            )
+        }
+    }
+
     func testExportProfileWebResizesLargeImageOnWrite() throws {
         let inputURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -913,6 +949,17 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         return imagesDirectory.appendingPathComponent("PHOTO-2026-03-18-22-18-19 2.jpg")
     }
 
+    private func additionalPortraitValidationSampleURLs() throws -> [URL] {
+        let candidateNames = [
+            "D92852D4-89B0-4918-9269-9AC8A49F11F0_1_105_c.jpeg",
+            "image_upscale_lowres.jpeg"
+        ]
+        let samples = try sampleImageURLs()
+        return candidateNames.compactMap { name in
+            samples.first(where: { $0.lastPathComponent == name })
+        }
+    }
+
     private func sampleImageURL(named fileName: String) throws -> URL {
         let imagesDirectory = try imagesDirectoryURL()
         return imagesDirectory.appendingPathComponent(fileName)
@@ -950,6 +997,22 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
                 return supported.contains($0.pathExtension.lowercased())
             }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
+    private func faceUpperDetailRegion(for url: URL) throws -> CGRect {
+        let analyzer = ImageAnalyzer(context: CIContext(options: [.cacheIntermediates: false]))
+        let faces = analyzer.detectFaces(in: url)
+        guard let face = faces.max(by: { $0.boundingBox.width * $0.boundingBox.height < $1.boundingBox.width * $1.boundingBox.height }) else {
+            throw XCTSkip("No face detected in \(url.lastPathComponent)")
+        }
+
+        let box = face.boundingBox
+        return CGRect(
+            x: box.minX + (box.width * 0.18),
+            y: box.minY + (box.height * 0.60),
+            width: box.width * 0.64,
+            height: box.height * 0.20
+        )
     }
 
     private func imagesDirectoryURL() throws -> URL {

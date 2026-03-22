@@ -36,8 +36,8 @@ Prioridades: `alta` · `media` · `baja`
 - [ ] **Test de sharpen selectivo por escena** `alta`
   El test existente en `LocalPhotoPipelineTests` solo verifica que `applySelectiveSharpen` produce un delta medible frente al legacy. No valida que el resultado sea correcto por escena (cipreses, bruma, texto denso). Añadir al menos un caso por escena crítica.
 
-- [ ] **Validar 2 retratos adicionales para cerrar Retrato/PRO** `media`
-  El TODO lo marca como pendiente. La baseline actual solo tiene una muestra fija en el repo. Necesita al menos 2 casos más antes de declarar Retrato/PRO cerrado definitivamente.
+- [x] **Validar 2 retratos adicionales para cerrar Retrato/PRO** `media`
+  Ya queda cubierto con validación automática sobre dos retratos adicionales del repo usando detección facial y una guardia de detalle en la banda de ojos/cejas; uno de esos casos es una miniatura degradada para no cerrar el preset solo sobre retratos cómodos.
 
 ---
 
