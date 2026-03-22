@@ -50,7 +50,11 @@ final class UpscaleEngine {
 
         if resolution.backend == .realESRGAN,
            let scaleFactor = resolution.scaleFactor,
-           let installation = Self.findRealESRGANInstallation(environment: ProcessInfo.processInfo.environment),
+           let installation = Self.findRealESRGANInstallation(
+                environment: ProcessInfo.processInfo.environment,
+                currentDirectoryPath: FileManager.default.currentDirectoryPath,
+                allowLocalCacheAutodiscovery: NSClassFromString("XCTestCase") == nil
+           ),
            let upscaledImage = try? upscaleWithRealESRGAN(
                 image: image,
                 installation: installation,
@@ -70,6 +74,8 @@ final class UpscaleEngine {
 
     static func resolveBackend(
         environment: [String: String],
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath,
+        allowLocalCacheAutodiscovery: Bool = NSClassFromString("XCTestCase") == nil,
         currentLongSide: CGFloat,
         targetLongSide: CGFloat
     ) -> UpscaleBackendResolution {
@@ -77,7 +83,11 @@ final class UpscaleEngine {
             return UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil)
         }
 
-        guard findRealESRGANInstallation(environment: environment) != nil else {
+        guard findRealESRGANInstallation(
+            environment: environment,
+            currentDirectoryPath: currentDirectoryPath,
+            allowLocalCacheAutodiscovery: allowLocalCacheAutodiscovery
+        ) != nil else {
             return UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil)
         }
 
@@ -91,10 +101,18 @@ final class UpscaleEngine {
     }
 
     static func findRealESRGANBinary(environment: [String: String]) -> URL? {
-        findRealESRGANInstallation(environment: environment)?.binaryURL
+        findRealESRGANInstallation(
+            environment: environment,
+            currentDirectoryPath: FileManager.default.currentDirectoryPath,
+            allowLocalCacheAutodiscovery: NSClassFromString("XCTestCase") == nil
+        )?.binaryURL
     }
 
-    private static func findRealESRGANInstallation(environment: [String: String]) -> RealESRGANInstallation? {
+    private static func findRealESRGANInstallation(
+        environment: [String: String],
+        currentDirectoryPath: String,
+        allowLocalCacheAutodiscovery: Bool
+    ) -> RealESRGANInstallation? {
         let modelName = "realesrgan-x4plus"
 
         if let explicit = environment["JUST4PICT_REAL_ESRGAN_BIN"], !explicit.isEmpty {
@@ -110,6 +128,23 @@ final class UpscaleEngine {
                     modelDirectoryURL: modelDirectoryURL,
                     modelName: modelName
                 )
+            }
+        }
+
+        if allowLocalCacheAutodiscovery {
+            for url in defaultLocalBinaryCandidates(currentDirectoryPath: currentDirectoryPath) {
+                if FileManager.default.isExecutableFile(atPath: url.path),
+                   let modelDirectoryURL = resolveModelDirectory(
+                        environment: environment,
+                        binaryURL: url,
+                        modelName: modelName
+                   ) {
+                    return RealESRGANInstallation(
+                        binaryURL: url,
+                        modelDirectoryURL: modelDirectoryURL,
+                        modelName: modelName
+                    )
+                }
             }
         }
 
@@ -132,6 +167,16 @@ final class UpscaleEngine {
         }
 
         return nil
+    }
+
+    private static func defaultLocalBinaryCandidates(currentDirectoryPath: String) -> [URL] {
+        let cwd = URL(fileURLWithPath: currentDirectoryPath, isDirectory: true)
+        let relativeCandidates = [
+            ".cache/realesrgan/realesrgan-ncnn-vulkan-20220424-macos/realesrgan-ncnn-vulkan",
+            "APPS/JUST4PICT/.cache/realesrgan/realesrgan-ncnn-vulkan-20220424-macos/realesrgan-ncnn-vulkan"
+        ]
+
+        return relativeCandidates.map { cwd.appendingPathComponent($0) }
     }
 
     private static func resolveModelDirectory(

@@ -173,6 +173,9 @@ Estado actual del cierre:
 - Variables opcionales:
   - `JUST4PICT_REAL_ESRGAN_BIN`
   - `JUST4PICT_REAL_ESRGAN_MODELS`
+- Si no defines esas variables, `JUST4PICT` intenta autodetectar el setup local en:
+  - `APPS/JUST4PICT/.cache/realesrgan/` cuando arrancas desde la raiz del repo
+  - `.cache/realesrgan/` cuando arrancas desde el directorio del modulo
 - `JUST4PICT_REAL_ESRGAN_BIN` debe apuntar al binario ejecutable, por ejemplo `realesrgan-ncnn-vulkan`
 - `JUST4PICT_REAL_ESRGAN_MODELS` debe apuntar al directorio que contiene al menos:
   - `realesrgan-x4plus.param`

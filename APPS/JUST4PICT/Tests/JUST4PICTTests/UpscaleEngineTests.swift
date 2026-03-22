@@ -3,8 +3,13 @@ import XCTest
 
 final class UpscaleEngineTests: XCTestCase {
     func testResolveBackendFallsBackToLocalWhenBinaryIsUnavailable() {
+        let emptyRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: emptyRoot, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: emptyRoot) }
+
         let resolution = UpscaleEngine.resolveBackend(
             environment: [:],
+            currentDirectoryPath: emptyRoot.path,
             currentLongSide: 900,
             targetLongSide: 2200
         )
@@ -46,6 +51,35 @@ final class UpscaleEngineTests: XCTestCase {
         )
 
         XCTAssertEqual(resolution, UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil))
+    }
+
+    func testResolveBackendFindsBundledProjectCacheWithoutEnvironmentExports() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let binaryDirectory = root
+            .appendingPathComponent(".cache", isDirectory: true)
+            .appendingPathComponent("realesrgan", isDirectory: true)
+            .appendingPathComponent("realesrgan-ncnn-vulkan-20220424-macos", isDirectory: true)
+        let modelsDirectory = binaryDirectory.appendingPathComponent("models", isDirectory: true)
+        try FileManager.default.createDirectory(at: binaryDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)
+
+        let binaryURL = binaryDirectory.appendingPathComponent("realesrgan-ncnn-vulkan")
+        try "#!/bin/sh\nexit 0\n".write(to: binaryURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: binaryURL.path)
+        try Data("param".utf8).write(to: modelsDirectory.appendingPathComponent("realesrgan-x4plus.param"))
+        try Data("bin".utf8).write(to: modelsDirectory.appendingPathComponent("realesrgan-x4plus.bin"))
+
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let resolution = UpscaleEngine.resolveBackend(
+            environment: [:],
+            currentDirectoryPath: root.path,
+            allowLocalCacheAutodiscovery: true,
+            currentLongSide: 900,
+            targetLongSide: 2200
+        )
+
+        XCTAssertEqual(resolution, UpscaleBackendResolution(backend: .realESRGAN, scaleFactor: 4))
     }
 
     private func makeFakeExecutable() throws -> URL {
