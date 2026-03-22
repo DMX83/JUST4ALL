@@ -188,7 +188,7 @@ Trabajo:
 
 - [ ] Dobles compresiones y reescalados innecesarios — `ImageExportWriter` aplica resize en dos etapas cuando recibe una `CIImage` ya procesada. Revisar si el resize de `applyExportResizeIfNeeded` interno y el `resizedCGImageIfNeeded` están duplicando trabajo.
 - [ ] `ImageExportWriter` instanciado sin contexto compartido desde `OpenAIImageReconstructionService` — usa `CIContext(options: [.cacheIntermediates: false])` en el init por defecto. Si el servicio de reconstrucción maneja imágenes grandes, puede ser costoso. Considerar pasar el contexto compartido.
-- [ ] `makeDarkPhotoRecoveryImage` recibe `analysis` pero no lo usa — el parámetro existe en la firma pero el cuerpo del método no lo usa para nada. O eliminarlo de la firma o aprovechar `analysis.isLowKey` / `analysis.averageLuminance` para ajustar la intensidad del boost de exposición de forma adaptativa.
+- [x] `makeDarkPhotoRecoveryImage` usa `analysis` de forma adaptativa — ahora ajusta exposición, sombras y reducción de ruido según `averageLuminance` e `isLowKey`. El logger registra ambos valores en cada ejecución del path darkPhoto.
 
 ### Baja prioridad
 
