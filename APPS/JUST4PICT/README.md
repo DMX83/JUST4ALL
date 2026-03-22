@@ -175,6 +175,10 @@ Estado actual del cierre:
 - `Reconstruir IA` queda disponible como modo opcional de preview y batch cuando la key existe.
 - Ese modo usa `gpt-image-1` sobre `/v1/images/edits` para intentar reconstruccion conservadora de imagenes muy pequenas o comprimidas.
 - La salida de `Reconstruir IA` siempre se escribe en un archivo aparte (`-reconstruct_ia`) y no sustituye silenciosamente a `PRO` ni a `Real-ESRGAN`.
+- Regla actual de producto:
+  - `Real-ESRGAN`: recomendado para imagenes pequenas no faciales donde hace falta recuperar detalle aparente sin abrir una reconstruccion generativa.
+  - `Reconstruir IA`: recomendado para miniaturas extremas, compresion severa o retratos muy degradados donde hace falta reconstruccion, no solo upscale.
+  - ambos caminos siguen siendo sugeridos, no autoactivados.
 
 ## Configuracion opcional de Real-ESRGAN
 

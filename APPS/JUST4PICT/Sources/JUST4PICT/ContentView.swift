@@ -621,6 +621,17 @@ struct ContentView: View {
         return autoDecisionLabel(for: effectivePreviewScene)
     }
 
+    private var rescueRecommendation: RescueRecommendation? {
+        guard let fileURL = selectedPreviewURL ?? inputFiles.first else { return nil }
+
+        let fileSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init)
+        return RescueRecommendationEngine.recommend(
+            pixelSize: enhancer.pixelSize(for: fileURL),
+            scene: effectivePreviewScene,
+            fileSizeBytes: fileSize
+        )
+    }
+
     private var filteredLogs: [String] {
         logs.filter { log in
             switch activityFilter {
@@ -679,6 +690,27 @@ struct ContentView: View {
                             Text(previewNeedsRefresh ? "La preview está desactualizada. Pulsa Enhance para regenerarla." : "Pulsa Enhance para generar la mejora.")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
+                        }
+
+                        if let rescueRecommendation {
+                            HStack(spacing: 8) {
+                                Text("Sugerencia rescate:")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.secondary)
+
+                                Text(rescueRecommendation.title)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(previewBadgeColor(for: rescueBadge(for: rescueRecommendation)).opacity(0.14))
+                                    .foregroundColor(previewBadgeColor(for: rescueBadge(for: rescueRecommendation)))
+                                    .clipShape(Capsule())
+
+                                Text(rescueRecommendation.summary)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                            }
                         }
 
                         if let comparisonImage = currentComparisonImage {
@@ -794,6 +826,8 @@ struct ContentView: View {
             return .purple
         case "IA→PRO":
             return .orange
+        case "ESR":
+            return .green
         case "IA-R":
             return .orange
         default:
@@ -1857,6 +1891,17 @@ struct ContentView: View {
 
     private var aiPreviewBadge: String {
         aiUsedFallbackForRun ? "IA→PRO" : "IA"
+    }
+
+    private func rescueBadge(for recommendation: RescueRecommendation) -> String {
+        switch recommendation {
+        case .pro:
+            return "PRO"
+        case .realESRGAN:
+            return "ESR"
+        case .reconstructAI:
+            return "IA-R"
+        }
     }
 
     private var aiPreviewSummary: String? {

@@ -149,7 +149,7 @@ Verificacion:
 - [~] Añadir modo `Reconstruir IA` para imagenes muy pequenas o comprimidas.
   Ya existe como modo opcional de preview y batch usando `gpt-image-1`.
   Se escribe siempre como salida aparte (`-reconstruct_ia`) y no sustituye el flujo `PRO`.
-  Falta validar visualmente si se queda como modo manual o si merece heuristica automatica por degradacion extrema.
+  Se mantiene como modo manual para miniaturas extremas o retratos muy degradados; la UI ya puede sugerirlo como rescate, pero no se activa automaticamente.
 - [x] Resize inteligente por preset/destino (`social`, `web`, `ecommerce`).
 - [ ] Correccion de horizonte y recorte de documento (Vision).
 - [ ] Perfil "Recuperar fotos oscuras".
@@ -162,7 +162,7 @@ Verificacion:
   El motor ya puede autodetectar ese setup local sin necesidad de `export` manual si arrancas desde el repo o desde `APPS/JUST4PICT`.
   La integracion actual lo evita por defecto en retratos y usa `x4` interno antes de remapear al tamano objetivo.
   Ya existe tambien un diagnostico opt-in para comparar `local` vs `Real-ESRGAN` sobre `image_upscale_lowres.jpeg`.
-  Queda pendiente la validacion visual real para decidir si supera de forma consistente al upscale local.
+  Se mantiene recomendado para imagenes pequenas no faciales; la UI ya puede sugerirlo como rescate sin activarlo automaticamente.
 - [~] Añadir modulo opcional de restauracion facial, apagado por defecto.
   Ya existe una primera version local, selectiva y conservadora; falta evaluar si se queda asi o pasa a motor dedicado.
 

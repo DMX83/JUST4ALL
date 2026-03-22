@@ -68,11 +68,11 @@ Prioridades: `alta` · `media` · `baja`
 - [ ] **Persistir decisión efectiva de AUTO en historial** `baja`
   El historial guarda el preset seleccionado por el usuario (`Auto`) pero no la escena realmente detectada y aplicada (`Paisaje`, `Documento`, etc.). Útil para debugar decisiones incorrectas de `AUTO` en lotes reales.
 
-- [ ] **Definir posición final de `Reconstruir IA`** `media`
-  Ya existe como modo opcional de preview y batch con salida separada. Falta decidir si se queda como herramienta manual para rescate extremo o si merece heurística automática para imágenes muy degradadas.
+- [x] **Definir posición final de `Reconstruir IA`** `media`
+  Ya queda fijado como herramienta manual de rescate extremo. Se recomienda para miniaturas extremas, compresión severa o retratos muy degradados, pero no se autoactiva.
 
-- [ ] **Comparar `Reconstruir IA` vs `Real-ESRGAN` en miniaturas extremas** `media`
-  Ahora ambos caminos existen. Falta decidir con muestras reales cuándo conviene cada uno y si alguno debe quedar preferido por escena o por nivel de degradación.
+- [x] **Comparar `Reconstruir IA` vs `Real-ESRGAN` en miniaturas extremas** `media`
+  La regla actual queda fijada así: `Real-ESRGAN` para imágenes pequeñas no faciales; `Reconstruir IA` para miniaturas extremas o retratos degradados donde hace falta reconstrucción semántica. La UI ya lo sugiere sin autoactivar ninguno.
 
 ---
 
@@ -82,8 +82,7 @@ Prioridades: `alta` · `media` · `baja`
 1. Calentamiento del cielo + curva tonal de Paisaje  → correcciones en LocalPhotoPipeline / ImageAnalyzer
 2. Sharpen selectivo desaturado + test por escena    → calidad + cobertura
 3. Doble protección facial                           → validación visual, posible ajuste
-4. Definir posición final de `Reconstruir IA`        → producto
-5. Limpieza de puntos ya resueltos                   → deuda técnica
+4. Limpieza de puntos ya resueltos                   → deuda técnica
 ```
 
 ---

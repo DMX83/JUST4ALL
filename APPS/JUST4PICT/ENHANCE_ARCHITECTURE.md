@@ -325,6 +325,10 @@ Estado actual del repo:
 - la estrategia actual evita `Real-ESRGAN` por defecto en retrato, y cuando lo usa lo hace como paso interno `x4` con resize final posterior
 - `OpenAIImageReconstructionService`: nuevo modulo opcional para reconstruccion generativa conservadora con `gpt-image-1`
 - `OpenAIImageReconstructionService`: se usa solo como modo explicito (`Reconstruir IA`), no como sustituto silencioso de `PRO`
+- decision de producto actual:
+  - `Real-ESRGAN` queda recomendado para imagen pequena no facial
+  - `Reconstruir IA` queda reservado para miniaturas extremas, compresion severa o retratos muy degradados
+  - la UI puede sugerir uno u otro, pero ninguno se autoactiva todavia
 - `FaceRestoreEngine`: pendiente
 - `ProductIsolationEngine`: implementado para `Ecommerce` con foreground masking y recomposicion centrada sobre blanco
 - `ExportPipeline`: pendiente como modulo dedicado; hoy sigue integrado en `ImageEnhancer`
