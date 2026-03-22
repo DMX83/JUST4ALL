@@ -246,9 +246,10 @@ Verificacion:
 ## 5) Release
 
 - [x] Congelar baseline visual de `PRO` antes de reabrir trabajo fuerte en `IA`.
-- [~] QA local en lotes de 100/1000 imagenes.
-  Ya existe una pasada validada de 100 imagenes; queda pendiente ampliar a 1000 si se quiere endurecer post-MVP.
-- [ ] Medir tiempos por preset y tamaño promedio.
+- [x] QA local en lotes de 100/1000 imagenes.
+  Ya existen pasadas validadas de 100 y 1000 imagenes en `QA_BATCH_LOCAL.md`.
+- [x] Medir tiempos por preset y tamaño promedio.
+  Referencia local documentada en `QA_BATCH_LOCAL.md`.
 - [ ] Firma/notarizacion.
 - [ ] Publicacion v0.1.0.
 - [x] Generar y validar DMG funcional de la baseline MVP actual.
@@ -311,8 +312,8 @@ Estado actual:
 
 Pendiente ya fuera del cierre del MVP:
 
-- [ ] ampliar QA de lote a 1000 imagenes si se quiere endurecer la baseline
-- [ ] medir tiempos por preset y por tamaño promedio
+- [x] ampliar QA de lote a 1000 imagenes si se quiere endurecer la baseline
+- [x] medir tiempos por preset y por tamaño promedio
 - [ ] firma/notarizacion
 - [ ] publicacion formal v0.1.0
 
@@ -335,8 +336,9 @@ Meta:
 Prioridad alta:
 
 - [ ] cerrar ajuste fino final de `Retrato/PRO`
-- [ ] QA de volumen con 100/1000 imagenes
-- [ ] medir tiempos/memoria y aplicar correcciones de batch
+- [x] QA de volumen con 100/1000 imagenes
+- [~] medir tiempos/memoria y aplicar correcciones de batch
+  Medicion base ya documentada; quedan solo correcciones si aparece regresion real.
 - [ ] evaluar `Ecommerce + IA` como opcion puntual para recortes complejos
 
 Prioridad media:

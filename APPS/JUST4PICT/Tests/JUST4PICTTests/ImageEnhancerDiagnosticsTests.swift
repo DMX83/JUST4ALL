@@ -4,6 +4,8 @@ import AppKit
 @testable import JUST4PICT
 
 final class ImageEnhancerDiagnosticsTests: XCTestCase {
+    private let longBenchmarkEnvironmentKey = "JUST4PICT_RUN_LONG_BENCHMARKS"
+
     func testDetectsPortraitAndProducesMeasurableChangeForUserSample() throws {
         let inputURL = try primarySampleImageURL()
         guard FileManager.default.fileExists(atPath: inputURL.path) else {
@@ -146,6 +148,113 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         XCTAssertEqual(outputs.count, 100)
         XCTAssertTrue(outputs.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
         print(String(format: "QA_BATCH_100 duration=%.2fs outputs=%d", elapsed, outputs.count))
+    }
+
+    func testProcessesThousandImageLocalBatchUsingRealRepoSamples() throws {
+        try requireLongBenchmarksEnabled()
+
+        let sourceSamples = try sampleImageURLs()
+        guard !sourceSamples.isEmpty else {
+            throw XCTSkip("No sample images available in this environment")
+        }
+
+        let repeatedInputs = (0..<1000).map { sourceSamples[$0 % sourceSamples.count] }
+        let enhancer = ImageEnhancer()
+        let outputDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("just4pict-batch-1000-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let startedAt = Date()
+        var outputs: [URL] = []
+
+        defer {
+            try? FileManager.default.removeItem(at: outputDirectory)
+        }
+
+        for (index, inputURL) in repeatedInputs.enumerated() {
+            let outputURL = outputDirectory.appendingPathComponent(String(format: "%04d-%@.png", index, inputURL.deletingPathExtension().lastPathComponent))
+            try enhancer.enhance(
+                inputURL: inputURL,
+                outputURL: outputURL,
+                preset: .auto,
+                quality: 1.0,
+                format: .png
+            )
+            outputs.append(outputURL)
+        }
+
+        let elapsed = Date().timeIntervalSince(startedAt)
+        XCTAssertEqual(outputs.count, 1000)
+        XCTAssertTrue(outputs.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
+        print(String(format: "QA_BATCH_1000 duration=%.2fs outputs=%d", elapsed, outputs.count))
+    }
+
+    func testMeasuresPresetLatencyAcrossRealRepoSamples() throws {
+        try requireLongBenchmarksEnabled()
+
+        let sourceSamples = try sampleImageURLs()
+        guard !sourceSamples.isEmpty else {
+            throw XCTSkip("No sample images available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        let outputDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("just4pict-preset-bench-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: outputDirectory)
+        }
+
+        for preset in EnhancementPreset.allCases {
+            var totalDuration: TimeInterval = 0
+            var processedCount = 0
+
+            for inputURL in sourceSamples {
+                let baseName = inputURL.deletingPathExtension().lastPathComponent
+                let outputURL = outputDirectory.appendingPathComponent("\(preset.rawValue.lowercased())-\(baseName).png")
+                try? FileManager.default.removeItem(at: outputURL)
+
+                let startedAt = Date()
+                try enhancer.enhance(
+                    inputURL: inputURL,
+                    outputURL: outputURL,
+                    preset: preset,
+                    quality: 1.0,
+                    format: .png
+                )
+                totalDuration += Date().timeIntervalSince(startedAt)
+                processedCount += 1
+                XCTAssertTrue(FileManager.default.fileExists(atPath: outputURL.path))
+            }
+
+            let averageDuration = totalDuration / Double(processedCount)
+            print(String(format: "BENCH_PRESET preset=%@ samples=%d total=%.2fs avg=%.3fs", preset.rawValue, processedCount, totalDuration, averageDuration))
+        }
+
+        let sizeBuckets = sizeBucketsForSamples(sourceSamples, enhancer: enhancer)
+        for bucket in sizeBuckets.sorted(by: { $0.key < $1.key }) {
+            let durations = try bucket.value.map { inputURL -> TimeInterval in
+                let baseName = inputURL.deletingPathExtension().lastPathComponent
+                let outputURL = outputDirectory.appendingPathComponent("auto-\(bucket.key)-\(baseName).png")
+                try? FileManager.default.removeItem(at: outputURL)
+
+                let startedAt = Date()
+                try enhancer.enhance(
+                    inputURL: inputURL,
+                    outputURL: outputURL,
+                    preset: .auto,
+                    quality: 1.0,
+                    format: .png
+                )
+                XCTAssertTrue(FileManager.default.fileExists(atPath: outputURL.path))
+                return Date().timeIntervalSince(startedAt)
+            }
+
+            let totalDuration = durations.reduce(0, +)
+            let averageDuration = totalDuration / Double(durations.count)
+            print(String(format: "BENCH_SIZE bucket=%@ samples=%d total=%.2fs avg=%.3fs", bucket.key, durations.count, totalDuration, averageDuration))
+        }
     }
 
     func testWritesPortraitFaceRestoreSampleForQuickQA() throws {
@@ -488,6 +597,35 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         try packageRootURL()
             .appendingPathComponent("images", isDirectory: true)
             .appendingPathComponent("test", isDirectory: true)
+    }
+
+    private func requireLongBenchmarksEnabled() throws {
+        let value = ProcessInfo.processInfo.environment[longBenchmarkEnvironmentKey]
+        guard value == "1" else {
+            throw XCTSkip("Set \(longBenchmarkEnvironmentKey)=1 to run long local benchmarks")
+        }
+    }
+
+    private func sizeBucketsForSamples(_ inputURLs: [URL], enhancer: ImageEnhancer) -> [String: [URL]] {
+        var buckets: [String: [URL]] = [:]
+        for inputURL in inputURLs {
+            let pixelSize = enhancer.pixelSize(for: inputURL) ?? .zero
+            let bucket = sizeBucketLabel(for: pixelSize)
+            buckets[bucket, default: []].append(inputURL)
+        }
+        return buckets
+    }
+
+    private func sizeBucketLabel(for size: CGSize) -> String {
+        let longSide = max(size.width, size.height)
+        switch longSide {
+        case ..<1200:
+            return "small"
+        case ..<2500:
+            return "medium"
+        default:
+            return "large"
+        }
     }
 
     private func averageRGBA(

@@ -142,6 +142,7 @@ Estado actual del cierre:
 - ya existe una medicion explicita de tiempo y memoria para ese lote local de 100 imagenes
 - ya existe un DMG funcional validado para esta baseline (`dist/JUST4PICT-0.1.0+20260322101203-72d60f7.dmg`)
 - con esto, `JUST4PICT` puede darse por cerrado como MVP funcional y el trabajo nuevo debe tratarse como afinado post-MVP
+- como referencia post-MVP, ya hay tambien QA local validada de 100 y 1000 imagenes y una medicion simple por preset/tamaño en `QA_BATCH_LOCAL.md`
 
 ## Configuracion IA local
 
