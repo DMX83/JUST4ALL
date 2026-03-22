@@ -1,5 +1,10 @@
 APARTADO DONDE ESTARAN TODAS LAS IDEAS DE APLICACIONES A IMPLEMENTAR EN LA PLATAFORMA JUST4ALL.
 
+Nota:
+
+- `JUST4CONVERT`, `JUST4FOLDERS` y `JUST4PICT` ya no son solo idea/MVP inicial; existen y tienen modulo activo dentro del repo.
+- Este archivo debe usarse como backlog corto de nuevas apps, no como estado real de las ya implementadas.
+
 APLICACIONES:
 
 1. JUST4ALL (PRINCIPAL)

@@ -54,7 +54,7 @@
 - **Lenguaje**: Swift (SwiftUI)
 - **Función**: Mejoramiento automático de imágenes por lotes, presets inteligentes, pipeline Core Image, sugerencia IA (OpenAI) para presets/calidad.
 - **Build**: Xcode/SPM, script DMG.
-- **Notas**: Exporta a JPG, PNG, HEIC, WEBP, TIFF. Upscale automático, logging QA, integración IA opcional.
+- **Notas**: Exporta a JPG, PNG, HEIC, WEBP, TIFF. Upscale automático, logging QA, integración IA opcional. Baseline MVP cerrada con QA local 100/1000 y release unsigned.
 
 ---
 
@@ -72,7 +72,8 @@
 
 - **JUST4FOLDERS**: Incluye scripts de performance, smoke tests y checklist manual de UI.
 - **JUST4PDF**: Testing manual, sin integración CI explícita.
-- **JUST4ALL y otras subapps**: Testing manual, sin tests automatizados detectados.
+- **JUST4PICT**: Incluye suite automatizada (`swift test`), muestras QA visibles y benchmarks locales opt-in.
+- **JUST4ALL y otras subapps**: Testing principalmente manual; la cobertura automatizada sigue siendo desigual fuera de `JUST4PICT`.
 - **CI/CD**: No se detecta pipeline CI/CD automatizado, pero se recomienda para builds y releases reproducibles.
 
 ### Release
@@ -109,6 +110,7 @@
 - **Procesamiento paralelo**: Uso intensivo de procesamiento batch y paralelo para eficiencia (80% núcleos por defecto).
 - **Manejo de errores y UX**: Diagnóstico visible por item, reintentos rápidos, feedback de progreso para evitar bloqueos de UI.
 - **QA manual**: Checklists y smoke tests documentados, especialmente en JUST4FOLDERS.
+- **QA automatizada localizada**: `JUST4PICT` ya actúa como referencia interna de tests y benchmarks del ecosistema.
 - **Distribución**: DMGs versionados y publicados en GitHub Releases, descargados automáticamente por el hub.
 - **Integración IA**: Sugerencias automáticas, privacidad de prompts, integración opcional y no intrusiva.
 
@@ -118,7 +120,7 @@
 
 - **ffmpeg**: Debe estar presente y ejecutable en JUST4CONVERT, no se distribuye por defecto.
 - **Build reproducible**: Asegurar que los scripts de build generen artefactos consistentes y firmados.
-- **Testing**: Falta de tests automatizados en la mayoría de subapps; se recomienda implementar CI/CD y tests unitarios.
+- **Testing**: Falta de tests automatizados en buena parte del ecosistema; `JUST4PICT` es hoy el módulo más avanzado en esa parte.
 - **Sandboxing**: Manejar correctamente los bookmarks y permisos en macOS para evitar errores de acceso.
 - **Integración IA**: Documentar y versionar prompts y lógica IA para trazabilidad.
 

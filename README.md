@@ -23,7 +23,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - JUST4PDF: `APPS/JUST4PDF/README.md` y `APPS/JUST4PDF/TODO.md`
 - JUST4CONVERT: `APPS/JUST4CONVERT/README.md`
 - JUST4FOLDERS: `APPS/JUST4FOLDERS/README.md` y `APPS/JUST4FOLDERS/TODO.md`
-- JUST4PICT: `APPS/JUST4PICT/README.md`, `APPS/JUST4PICT/TODO.md` y `APPS/JUST4PICT/ROADMAP_V1.md`
+- JUST4PICT: `APPS/JUST4PICT/README.md`, `APPS/JUST4PICT/TODO.md`, `APPS/JUST4PICT/ENHANCE_ARCHITECTURE.md`, `APPS/JUST4PICT/QA_BATCH_LOCAL.md`
 
 ## Submodulos
 
@@ -78,6 +78,7 @@ El repositorio contiene al menos los siguientes submodulos:
   - Presets automaticos (Auto, Retrato, Paisaje, Documento, Ecommerce).
   - Pipeline de mejora con Core Image (auto-ajuste, color, denoise, sharpen).
   - Export en JPG/PNG/HEIC/WEBP/TIFF con colisiones resueltas.
+  - Baseline MVP cerrada: QA local 100/1000, DMG validado y release unsigned publicada.
 
 ## Build y ejecucion (alto nivel)
 
@@ -101,7 +102,7 @@ El repositorio contiene al menos los siguientes submodulos:
 ### JUST4PICT
 
 - App nativa macOS en SwiftUI para mejoramiento automatico de imagenes.
-- Incluye procesamiento por lotes, presets y export multi-formato.
+- Incluye procesamiento por lotes, presets, export multi-formato y QA local reproducible.
 - Ver detalles en `APPS/JUST4PICT/README.md`.
 
 ### JUST4ALL

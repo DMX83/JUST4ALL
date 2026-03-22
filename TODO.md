@@ -31,7 +31,7 @@
 - [x] Agregar presets basicos (bitrate audio, resolucion/fps video, calidad imagen).
 - [x] Agregar progreso basico en UI durante conversion.
 - [x] Agregar soporte batch (cola multi-archivo).
-- [ ] Agregar historial de conversion y ultima salida.
+- [x] Agregar historial de conversion y ultima salida.
 - [ ] Alinear bundle id, nombre de app y recursos con JUST4ALL.
 - [x] Empaquetar DMG para JUST4CONVERT.
 
@@ -94,18 +94,19 @@
 - [x] Persistencia en historial de sugerencia IA aplicada (preset/calidad/prompt).
 - [x] Privacidad historial IA: resumen de prompt por defecto (sin prompt completo persistido).
 - [x] Publicar primer release DMG versionado + checksum.
+- [x] Cerrar baseline MVP del modulo (QA 100/1000, DMG validado, release unsigned).
 
 ### Detalles de implementacion sugeridos
 
-- [ ] Formatos: mapear cada formato a presets AVFoundation/ImageIO y validar compatibilidad por extension.
+- [x] Formatos: mapear cada formato a presets ImageIO y validar compatibilidad por extension.
 - [ ] Presets por item: almacenar presets en modelo de cola y permitir editar desde la lista.
-- [ ] Progreso: mostrar barra por item + estado global y evitar bloquear UI.
+- [x] Progreso: mostrar barra por item + estado global y evitar bloquear UI.
 - [ ] Concurrencia: limitar workers (p. ej. 80% de nucleos) y exponer preferencia.
-- [ ] Nombres: reglas simples (ej: nombre_original + preset + fecha) y opcion de auto-incremento.
-- [ ] Carpetas: lectura recursiva con limite de profundidad configurable.
-- [ ] Errores: conservar causa y stack compacto; boton "Copiar error".
+- [x] Nombres: reglas simples con sufijos versionados y opcion de auto-incremento por colision.
+- [x] Carpetas: lectura recursiva funcional para lote.
+- [x] Errores: conservar causa visible por item y permitir reintento.
 - [ ] Aceleracion: exponer toggle y advertir compatibilidad segun el formato.
-- [ ] Historial: persistir en UserDefaults con limite configurable.
+- [x] Historial: persistir en almacenamiento local con limite configurable.
 
 ## Fase 4 - Experiencia de hub
 
