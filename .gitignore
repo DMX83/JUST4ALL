@@ -61,3 +61,7 @@ next-env.d.ts
 
 # local git metadata backups
 /.git_backups/
+
+# local tool caches
+**/.cache/
+**/.codex-home/
