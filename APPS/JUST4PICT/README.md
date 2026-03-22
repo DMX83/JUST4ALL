@@ -98,6 +98,7 @@ Validacion baseline 2026-03-22:
 - Cuando la recomendacion IA no esta disponible, la UI ya lo hace visible de forma explicita con estado y badge `IA→PRO`; no debe volver a parecer que se ejecuto IA real cuando en realidad se uso fallback local.
 - La receta IA ya puede influir en `scene`, `preset`, `format`, `quality` y `upscale`.
 - Cuando la receta IA trae una `scene` valida, esa escena ya puede sobreescribir la deteccion local para mantener coherencia entre la decision IA y el pipeline ejecutado.
+- En la muestra real actual de `Paisaje`, la comparativa diagnostica `PRO` vs `IA` no muestra una ventaja fuerte de IA: la recomendacion acaba eligiendo `Paisaje`, `PNG` y `q=1.0`, muy cerca de la baseline local.
 - El balance de blancos adaptativo de `PRO` ya usa referencia de altas luces cuando existe suficiente blanco fiable en la escena, con fallback al promedio global cuando no la hay.
 - En `Paisaje`, esa correccion ahora es mas conservadora: acepta nubes gris-claro como referencia util, pero mezcla la correccion de forma gradual para no calentar cielo ni bruma.
 - El sharpen selectivo ya calcula aristas desde luminancia desaturada, no desde color completo, para reducir falsos bordes cromaticos.

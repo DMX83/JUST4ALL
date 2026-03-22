@@ -56,8 +56,8 @@ Prioridades: `alta` · `media` · `baja`
 
 ## UX y producto
 
-- [ ] **Comparar PRO vs IA en Paisaje tras corregir balance de blancos** `alta`
-  Decisión de producto todavía útil: si después de la corrección del balance de blancos IA sigue siendo claramente mejor con el mismo motor local, el gap es de criterio por imagen y el siguiente paso es planificación/criterio, no más afinado ciego de filtros.
+- [x] **Comparar PRO vs IA en Paisaje tras corregir balance de blancos** `alta`
+  Ya existe `testAIDiagnosticComparesProAgainstAIOnLandscapeSample`. En la muestra real actual, IA eligió `Paisaje`, `PNG` y `q=1.0` sin mostrar una ventaja fuerte frente a `PRO`, así que el siguiente salto ya no parece estar en más ajuste fino ciego de IA para paisaje.
 
 - [ ] **Before/after con slider** `media`
   En roadmap desde v0.2. Las tres cards de preview son funcionales pero para detectar halos o pérdida de detalle puntual el slider es mucho más efectivo. Especialmente útil para validar mejoras de sharpen y curva tonal.
@@ -80,13 +80,12 @@ Prioridades: `alta` · `media` · `baja`
 
 ```
 1. Calentamiento del cielo + curva tonal de Paisaje  → correcciones en LocalPhotoPipeline / ImageAnalyzer
-2. Comparativa PRO vs IA en Paisaje                  → decisión de producto
-3. Sharpen selectivo desaturado + test por escena    → calidad + cobertura
-4. CIContext compartido + autoreleasepool             → memoria y rendimiento en batch
-5. Doble protección facial                           → validación visual, posible ajuste
-6. Before/after con slider                           → UX
-7. Definir posición final de `Reconstruir IA`        → producto
-8. Limpieza de puntos ya resueltos                   → deuda técnica
+2. Sharpen selectivo desaturado + test por escena    → calidad + cobertura
+3. CIContext compartido + autoreleasepool             → memoria y rendimiento en batch
+4. Doble protección facial                           → validación visual, posible ajuste
+5. Before/after con slider                           → UX
+6. Definir posición final de `Reconstruir IA`        → producto
+7. Limpieza de puntos ya resueltos                   → deuda técnica
 ```
 
 ---

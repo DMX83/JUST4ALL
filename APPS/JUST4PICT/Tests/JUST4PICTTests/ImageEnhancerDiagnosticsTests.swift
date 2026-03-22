@@ -407,6 +407,103 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: aiURL.path))
     }
 
+    func testAIDiagnosticComparesProAgainstAIOnLandscapeSample() async throws {
+        let value = ProcessInfo.processInfo.environment[aiDiagnosticEnvironmentKey]
+        guard value == "1" else {
+            throw XCTSkip("Set \(aiDiagnosticEnvironmentKey)=1 to run AI network diagnostics")
+        }
+
+        let inputURL = try sampleImageURL(named: "image_paisaje_orig.jpeg")
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Landscape sample not available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        guard let pixelSize = enhancer.pixelSize(for: inputURL) else {
+            throw XCTSkip("Could not resolve pixel size for \(inputURL.lastPathComponent)")
+        }
+
+        let advisor = OpenAIImageAdvisor()
+        let recommendation = try await advisor.recommendHD(
+            inputURL: inputURL,
+            fileName: inputURL.lastPathComponent,
+            width: Int(pixelSize.width),
+            height: Int(pixelSize.height),
+            currentPreset: .landscape,
+            currentFormat: .png
+        )
+
+        let resolution = EnhancementPlanner.resolve(
+            recommendation: recommendation,
+            basePreset: .landscape,
+            baseFormat: .png,
+            baseQuality: 1.0
+        )
+
+        let proURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+        let aiURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+
+        defer {
+            try? FileManager.default.removeItem(at: proURL)
+            try? FileManager.default.removeItem(at: aiURL)
+        }
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: proURL,
+            preset: .landscape,
+            quality: 1.0,
+            format: .png
+        )
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: aiURL,
+            preset: resolution.preset,
+            quality: resolution.quality,
+            format: .png,
+            upscaleTargetLongSide: resolution.upscaleTargetLongSide,
+            faceRestoreStrength: resolution.faceRestoreStrength,
+            tuning: resolution.aiTuning,
+            sceneOverride: resolution.recipe?.mappedScene
+        )
+
+        let proStats = try averageRGBA(for: proURL)
+        let aiStats = try averageRGBA(for: aiURL)
+        let skyRegion = CGRect(x: 0.0, y: 0.55, width: 1.0, height: 0.45)
+        let mistRegion = CGRect(x: 0.0, y: 0.35, width: 1.0, height: 0.25)
+        let proSkyStats = try averageRGBA(for: proURL, normalizedCrop: skyRegion)
+        let aiSkyStats = try averageRGBA(for: aiURL, normalizedCrop: skyRegion)
+        let proMistStats = try averageRGBA(for: proURL, normalizedCrop: mistRegion)
+        let aiMistStats = try averageRGBA(for: aiURL, normalizedCrop: mistRegion)
+        let groundBand = CGRect(x: 0.0, y: 0.0, width: 1.0, height: 0.35)
+        let proGroundEnergy = try averageEdgeEnergy(for: proURL, normalizedCrop: groundBand)
+        let aiGroundEnergy = try averageEdgeEnergy(for: aiURL, normalizedCrop: groundBand)
+
+        let globalDelta = abs(proStats.r - aiStats.r)
+            + abs(proStats.g - aiStats.g)
+            + abs(proStats.b - aiStats.b)
+        let skyDelta = abs(proSkyStats.r - aiSkyStats.r)
+            + abs(proSkyStats.g - aiSkyStats.g)
+            + abs(proSkyStats.b - aiSkyStats.b)
+        let mistDelta = abs(proMistStats.r - aiMistStats.r)
+            + abs(proMistStats.g - aiMistStats.g)
+            + abs(proMistStats.b - aiMistStats.b)
+
+        print("AI_LANDSCAPE_DIAG preset=\(resolution.preset.rawValue) scene=\(resolution.recipe?.mappedScene.map(String.init(describing:)) ?? "nil")")
+        print("AI_LANDSCAPE_DIAG reason=\(resolution.aiReason ?? "-")")
+        print("AI_LANDSCAPE_DIAG recipe=\(resolution.recipe.map { "\($0.preset) \($0.exportFormat) q=\($0.exportQuality)" } ?? "nil")")
+        print(String(format: "AI_LANDSCAPE_DIAG global_delta=%.5f sky_delta=%.5f mist_delta=%.5f pro_ground=%.5f ai_ground=%.5f", globalDelta, skyDelta, mistDelta, proGroundEnergy, aiGroundEnergy))
+
+        XCTAssertFalse(recommendation.reason.isEmpty)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: proURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: aiURL.path))
+    }
+
     func testUpscaleDiagnosticComparesLocalAgainstRealESRGANOnLowResSample() throws {
         let value = ProcessInfo.processInfo.environment[upscaleDiagnosticEnvironmentKey]
         guard value == "1" else {

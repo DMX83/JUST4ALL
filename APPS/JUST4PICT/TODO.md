@@ -143,6 +143,8 @@ Verificacion:
   Ya existe `testLandscapeProBaselineStaysWithinCurrentReferenceWindow` para blindar cielo, suelo y bruma en `image_paisaje_orig.jpeg`.
 - [x] Hacer visible en UI cuando el modo `IA` cae a fallback local.
   La barra de estado y la tarjeta de preview ya distinguen `IA` real de `IA→PRO` para evitar ambigüedad cuando la recomendación no está disponible.
+- [x] Comparar `PRO` vs `IA` en la muestra real de `Paisaje`.
+  El diagnostico opt-in `testAIDiagnosticComparesProAgainstAIOnLandscapeSample` ya muestra que `IA` eligio `Paisaje`, `PNG` y `q=1.0`, con delta moderado pero sin ventaja fuerte frente a `PRO`.
 - [~] Añadir modo `Reconstruir IA` para imagenes muy pequenas o comprimidas.
   Ya existe como modo opcional de preview y batch usando `gpt-image-1`.
   Se escribe siempre como salida aparte (`-reconstruct_ia`) y no sustituye el flujo `PRO`.
