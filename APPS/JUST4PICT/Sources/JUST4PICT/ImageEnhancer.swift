@@ -181,6 +181,7 @@ final class ImageEnhancer {
     private lazy var analyzer = ImageAnalyzer(context: context)
     private lazy var localPipeline = LocalPhotoPipeline(context: context, upscaleEngine: upscaleEngine)
     private lazy var productIsolationEngine = ProductIsolationEngine(context: context)
+    private lazy var documentCorrectionEngine = DocumentCorrectionEngine(context: context)
     private lazy var exportWriter = ImageExportWriter(context: context)
     private let defaultHDLongSide: CGFloat = 1600
     private let logger = Logger(subsystem: "com.dmx83.just4pict", category: "ImageEnhancer")
@@ -302,16 +303,25 @@ final class ImageEnhancer {
             throw ImageEnhancerError.cannotLoadImage(inputURL)
         }
 
+        // Deteccion de escena base
         let faceObservations = analyzer.detectFaces(in: inputURL)
         let localDetectedScene = analyzer.detectSceneType(inputURL: inputURL, precomputedFaces: faceObservations)
         let detectedScene = sceneOverride ?? localDetectedScene
-        let analysis = analyzer.analyzePhotograph(image)
-        let faceMask = createFaceProtectionMask(faceObservations: faceObservations, extent: image.extent.integral)
 
+        // Correccion geometrica temprana (Documentos)
+        // Se aplica antes del analisis tonal para que el histograma ignore el fondo recortado
+        let effectivePreset = effectivePreset(for: preset, detectedScene: detectedScene)
+        image = documentCorrectionEngine.applyIfNeeded(to: image, scene: detectedScene, preset: effectivePreset)
+
+        // Analisis y mascaras sobre la imagen geometricamente final
+        let analysis = analyzer.analyzePhotograph(image)
+        // Nota: Si hubo recorte de documento, la mascara facial basada en coordenadas originales podria desviarse.
+        // En documentos asumimos que la prioridad es el texto/papel y no la proteccion facial precisa.
+        let faceMask = createFaceProtectionMask(faceObservations: faceObservations, extent: image.extent.integral)
+        
         let pipeline = resolvePipelineConfig(for: preset, detectedScene: detectedScene)
         let options = pipeline.options
         let recoveryProfile = pipeline.recoveryProfile
-        let effectivePreset = effectivePreset(for: preset, detectedScene: detectedScene)
 
         if recoveryProfile == .conservativePortrait {
             logger.notice(
@@ -349,13 +359,22 @@ final class ImageEnhancer {
             logger.notice(
                 "Photo recipe activated | file=\(inputURL.lastPathComponent, privacy: .public) preset=\(preset.rawValue, privacy: .public) scene=\(self.sceneLabel(detectedScene), privacy: .public) localScene=\(self.sceneLabel(localDetectedScene), privacy: .public)"
             )
-            image = localPipeline.makePhotographImage(
-                image: image,
-                scene: detectedScene,
-                tuning: tuning,
-                analysis: analysis,
-                upscaleToLongSide: upscaleToLongSide
-            )
+            if detectedScene == .darkPhoto {
+                // TODO: Move this specific pipeline logic to LocalPhotoPipeline for better separation of concerns.
+                image = makeDarkPhotoRecoveryImage(
+                    image: image,
+                    analysis: analysis,
+                    upscaleToLongSide: upscaleToLongSide
+                )
+            } else {
+                image = localPipeline.makePhotographImage(
+                    image: image,
+                    scene: detectedScene,
+                    tuning: tuning,
+                    analysis: analysis,
+                    upscaleToLongSide: upscaleToLongSide
+                )
+            }
             image = productIsolationEngine.applyIfNeeded(
                 to: image,
                 sourceURL: inputURL,
@@ -529,5 +548,56 @@ final class ImageEnhancer {
         blur.inputImage = mask
         blur.radius = 10.0
         return (blur.outputImage ?? mask).cropped(to: mask.extent)
+    }
+
+    private func makeDarkPhotoRecoveryImage(image: CIImage, analysis: ImageAnalysis, upscaleToLongSide: CGFloat?) -> CIImage {
+        var currentImage = image
+        logger.notice("Applying dark photo recovery pipeline.")
+
+        // 1. Lift shadows and boost exposure
+        let shadowsHighlights = CIFilter.highlightsAndShadows()
+        shadowsHighlights.inputImage = currentImage
+        shadowsHighlights.shadowAmount = 0.85
+        shadowsHighlights.highlightAmount = 0.95
+        currentImage = shadowsHighlights.outputImage ?? currentImage
+
+        let exposure = CIFilter.exposureAdjust()
+        exposure.inputImage = currentImage
+        exposure.ev = 0.5
+        currentImage = exposure.outputImage ?? currentImage
+
+        // 2. Restore color and contrast
+        if let vibrance = CIFilter(name: "CIVibrance") {
+            vibrance.setValue(currentImage, forKey: kCIInputImageKey)
+            vibrance.setValue(0.25, forKey: "inputAmount")
+            currentImage = vibrance.outputImage ?? currentImage
+        }
+
+        let colorControls = CIFilter.colorControls()
+        colorControls.inputImage = currentImage
+        colorControls.saturation = 1.1
+        colorControls.contrast = 1.08
+        currentImage = colorControls.outputImage ?? currentImage
+
+        // 3. Aggressive noise reduction
+        let noiseReduction = CIFilter.noiseReduction()
+        noiseReduction.inputImage = currentImage
+        noiseReduction.noiseLevel = 0.08
+        noiseReduction.sharpness = 0.1 // Keep low to avoid amplifying noise before final sharpen
+        currentImage = noiseReduction.outputImage ?? currentImage
+
+        // 4. Upscale if needed
+        if let upscaleToLongSide {
+            currentImage = upscaleEngine.apply(to: currentImage, targetLongSide: upscaleToLongSide)
+        }
+
+        // 5. Final sharpening pass
+        let sharpen = CIFilter.unsharpMask()
+        sharpen.inputImage = currentImage
+        sharpen.radius = 1.8
+        sharpen.intensity = 0.35
+        currentImage = sharpen.outputImage ?? currentImage
+
+        return currentImage.cropped(to: currentImage.extent)
     }
 }

@@ -71,11 +71,15 @@ Meta:
 
 - que `Retrato/PRO` sea el preset de referencia del producto
 
-Estado:
+Trabajo:
 
-- la baseline actual ya queda congelada y usable
-- ya existen guardias automáticas para ojos/cejas y validación visual suficiente para no reabrir el pipeline a ciegas
-- ya existen dos retratos adicionales validados con detección facial y guardia de detalle en ojos/cejas, uno de ellos como retrato degradado de baja resolución
+- [ ] mantener tono y exposicion neutros como base estable
+- [ ] añadir detalle local moderado en pelo, ropa y bordes
+- [ ] proteger piel y cara durante el sharpen
+- [ ] introducir micro-punch muy leve sin cerrar negros ni quemar blancos
+- [ ] evaluar `temperature/tint` muy sutil para corregir dominantes de piel
+- [ ] definir limites de seguridad para no volver a resultados oscuros/calentados
+- [ ] validar con la foto fija del repo y al menos 2 retratos adicionales
 
 Verificacion:
 
@@ -83,7 +87,7 @@ Verificacion:
 - [x] Generar salidas visibles en `APPS/JUST4PICT/images/test/*-pro-sample.png`
 - [x] QA visual A/B contra salida anterior
 - [x] confirmar que el resultado mejora detalle sin perder naturalidad
-- [x] validar con 2 retratos adicionales para cerrar `Retrato/PRO`
+- [ ] validar con 2 retratos adicionales para cerrar `Retrato/PRO`
 
 ## 1B) Fase AUTO
 
@@ -94,8 +98,8 @@ Meta:
 Trabajo:
 
 - [x] si detecta cara, usar exactamente el pipeline final de `Retrato`
-- [x] si detecta texto denso, usar `Documento`
-- [x] si detecta baja luminancia, activar perfil de recuperacion de fotos oscuras
+- [ ] si detecta texto denso, usar `Documento`
+- [x] si detecta baja luminancia, activar perfil de recuperacion de fotos oscuras (implementado en ImageEnhancer)
 - [x] mejorar clasificacion de paisaje/generico con analisis de luminancia y textura
 - [x] documentar decision efectiva de `AUTO` en logs y UI
 - [x] congelar el perfil de export al iniciar lote/reintento para evitar mezclas dentro del mismo batch
@@ -130,27 +134,15 @@ Verificacion:
 - [x] Guardar sugerencia IA aplicada en historial (preset/calidad/prompt).
 - [x] Privacidad: guardar por defecto resumen de prompt IA en historial (no texto completo).
 - [x] Preview paralela `Original` / `PRO` / `IA`.
-- [x] Añadir comparador `before/after` con slider en preview sin eliminar las tres tarjetas actuales.
 - [x] IA devuelve receta local inicial (sombras, luces, vibrance, nitidez, contraste, saturacion, exposicion).
 - [x] Hacer que IA analice la imagen real por vision, no solo metadatos.
 - [x] Formalizar `EnhancementRecipe` como modelo central del pipeline.
 - [x] Separar `ImageAnalyzer`, `EnhancementPlanner` y `LocalPhotoPipeline`.
 - [x] Mostrar en UI la receta IA completa aplicada.
-- [x] Fijar baseline numerica de `Paisaje` con muestra real del repo.
-  Ya existe `testLandscapeProBaselineStaysWithinCurrentReferenceWindow` para blindar cielo, suelo y bruma en `image_paisaje_orig.jpeg`.
-- [x] Hacer visible en UI cuando el modo `IA` cae a fallback local.
-  La barra de estado y la tarjeta de preview ya distinguen `IA` real de `IA→PRO` para evitar ambigüedad cuando la recomendación no está disponible.
-- [x] Comparar `PRO` vs `IA` en la muestra real de `Paisaje`.
-  El diagnostico opt-in `testAIDiagnosticComparesProAgainstAIOnLandscapeSample` ya muestra que `IA` eligio `Paisaje`, `PNG` y `q=1.0`, con delta moderado pero sin ventaja fuerte frente a `PRO`.
-- [x] Añadir modo `Reconstruir IA` para imagenes muy pequenas o comprimidas.
-  Ya existe como modo opcional de preview y batch usando `gpt-image-1`.
-  Se escribe siempre como salida aparte (`-reconstruct_ia`) y no sustituye el flujo `PRO`.
-  Se mantiene como modo manual para miniaturas extremas o retratos muy degradados; la UI ya puede sugerirlo como rescate, pero no se activa automaticamente.
 - [x] Resize inteligente por preset/destino (`social`, `web`, `ecommerce`).
-- [ ] Correccion de horizonte y recorte de documento (Vision).
-- [ ] Perfil "Recuperar fotos oscuras".
-- [x] Perfil "Optimizar para web < 300KB".
-  Ya existe como `Web <300KB`, con resize mas agresivo y compresion iterativa best-effort para `JPG/HEIC/WEBP`.
+- [x] Correccion de horizonte y recorte de documento (Vision).
+- [x] Perfil "Recuperar fotos oscuras".
+- [x] Perfil "Optimizar para web < 300KB" (implementado en ImageExportWriter).
 - [x] Introducir `UpscaleEngine` dedicado para fotos pequenas.
 - [ ] Evaluar `Core ML` como motor serio de enhancement/upscale.
 - [~] Evaluar `Real-ESRGAN` como benchmark de calidad para upscale.
@@ -159,7 +151,7 @@ Verificacion:
   El motor ya puede autodetectar ese setup local sin necesidad de `export` manual si arrancas desde el repo o desde `APPS/JUST4PICT`.
   La integracion actual lo evita por defecto en retratos y usa `x4` interno antes de remapear al tamano objetivo.
   Ya existe tambien un diagnostico opt-in para comparar `local` vs `Real-ESRGAN` sobre `image_upscale_lowres.jpeg`.
-  Se mantiene recomendado para imagenes pequenas no faciales; la UI ya puede sugerirlo como rescate sin activarlo automaticamente.
+  Queda pendiente la validacion visual real para decidir si supera de forma consistente al upscale local.
 - [~] Añadir modulo opcional de restauracion facial, apagado por defecto.
   Ya existe una primera version local, selectiva y conservadora; falta evaluar si se queda asi o pasa a motor dedicado.
 
@@ -178,17 +170,14 @@ Trabajo:
 - [~] convertir `EnhancementRecipe` en contrato central efectivo, no solo estructural
   Ya gobierna `scene`, `preset`, `format`, `quality`, `upscale` y `faceRestore`; aun falta cerrar mejor el resto del planner y futuras etapas opcionales.
 - [x] propagar `faceRestore` como contrato estable de receta en batch, preview y export
-- [x] reutilizar `CIContext` compartido en todos los flujos
-  `ImageEnhancer` centraliza `sharedContext` y lo inyecta ya en `ImageAnalyzer`, `LocalPhotoPipeline`, `UpscaleEngine` y `ProductIsolationEngine`.
-- [x] introducir `autoreleasepool` en los tramos pesados de export/preview y worker de batch
-  El motor local ya libera antes los objetos Core Image/Core Graphics en export, preview y ejecuciones detached del lote.
+- [ ] reutilizar `CIContext` compartido en todos los flujos
+- [ ] introducir `autoreleasepool` en lote grande
 - [x] evitar lectura de dimensiones con `NSImage` en el flujo IA; usar metadata/pixel size
 
 Verificacion:
 
 - [ ] medir que no se degrada la velocidad de preview
-- [~] medir que el batch no crece en memoria de forma anomala
-  La liberacion temprana ya esta cableada y la repeticion de 100 imagenes bajo `/usr/bin/time -l` bajo la RSS maxima observada de ~`529 MB` a ~`143 MB`.
+- [ ] medir que el batch no crece en memoria de forma anomala
 
 ## 3B) Calidad visual avanzada
 
@@ -243,16 +232,15 @@ Trabajo:
 - [x] asegurar `PNG` como salida por defecto de maxima calidad en la UI
 - [ ] asegurar exportacion maxima en `PNG` y `JPG` segun caso
 - [x] introducir resize inteligente por destino (`social`, `web`, `ecommerce`)
-- [x] evitar dobles compresiones y reescalados innecesarios
+- [ ] evitar dobles compresiones y reescalados innecesarios
 - [ ] evaluar si el recorte de producto necesita controles manuales o margen configurable para catalogo estricto
-- [x] evaluar una variante opcional `Ecommerce + IA` para reconstruccion/limpieza de bordes complejos cuando Vision no recorte bien el producto
+- [ ] evaluar una variante opcional `Ecommerce + IA` para reconstruccion/limpieza de bordes complejos cuando Vision no recorte bien el producto
 
 Verificacion:
 
 - [x] comparar preview vs archivo exportado
   Cobertura añadida para coherencia general y resize real de export.
 - [ ] medir tamaño final y fidelidad visual
-- [x] `Reconstruir IA` ya usa export writer comun y, en escena/preset `Ecommerce`, aplica prompt especifico para limpieza de bordes y recomposicion sobre blanco sin autoactivarse
 
 ## 3D) IA de producto
 
@@ -317,12 +305,10 @@ Hitos:
 
 - [x] `Retrato/PRO` usable como baseline visual
 - [x] `AUTO` fiable para retrato, paisaje y nocturna base
-- [x] `Documento` refinado y validado con muestra real
-- [~] `Paisaje` refinado
-  Ya existe baseline numérica y afinado de cielo/bruma; queda solo validación adicional si aparecen regresiones en nuevas muestras.
-- [x] arquitectura modular estable
-- [x] upscale dedicado evaluado
-- [x] QA de volumen completada
+- [ ] `Documento` y `Paisaje` refinados
+- [ ] arquitectura modular estable
+- [ ] upscale dedicado evaluado
+- [ ] QA de volumen completada
 - [ ] release candidata lista para firma
 
 ## 7) Cierre de MVP
@@ -374,6 +360,7 @@ Fuera del MVP:
 - upscale dedicado
 - Core ML / Real-ESRGAN
 - afinado visual fino por escena
+- optimizacion web `< 300KB`
 - correccion avanzada de documento con recorte/horizonte
 
 ## 8) Afinado Post-MVP
@@ -388,16 +375,17 @@ Prioridad alta:
 - [x] QA de volumen con 100/1000 imagenes
 - [~] medir tiempos/memoria y aplicar correcciones de batch
   Medicion base ya documentada; quedan solo correcciones si aparece regresion real.
-- [x] evaluar `Ecommerce + IA` como opcion puntual para recortes complejos
-  Queda resuelto como variante manual dentro de `Reconstruir IA` cuando el preset o la escena efectiva son `Ecommerce`.
+- [ ] evaluar `Ecommerce + IA` como opcion puntual para recortes complejos
 
 Prioridad media:
 
-- [x] persistir en historial la decision efectiva de `AUTO`
+- [ ] persistir en historial la decision efectiva de `AUTO`
 - [ ] evitar dobles compresiones y reescalados innecesarios
 - [ ] añadir controles o margen configurable al aislamiento de producto
 - [ ] convertir `EnhancementRecipe` en contrato central efectivo
 
 Prioridad baja:
 
+- [ ] before/after con slider
+- [ ] perfil web `< 300KB`
 - [ ] evaluar motores dedicados de upscale/restauracion
