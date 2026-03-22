@@ -36,7 +36,7 @@ El objetivo es que el preset "pro" logre una mejora de imagen perceptiblemente s
 
 1. Procesar un set de retratos y comparar visualmente el resultado "pro" antes y después de los cambios.
 2. Validar que la mejora es perceptible, natural y sin artefactos en la piel o fondo.
-3. QA manual con script A/B (`scripts/qa_ab_portrait.sh`) para comparar "pro" vs "legacy".
+3. QA manual con la muestra fija del repo y las salidas visibles en `images/test`.
 4. Revisar logs para asegurar que los nuevos pasos del pipeline se ejecutan correctamente.
 
 **Decisiones**

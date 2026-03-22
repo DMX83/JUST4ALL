@@ -121,7 +121,7 @@ final class LocalPhotoPipeline {
             output = applyDocumentWhiteFinish(image: output)
         }
 
-        if profile == .conservativePortrait || profile == .legacyConservativePortrait {
+        if profile == .conservativePortrait {
             output = applyPortraitSafetyFinish(image: output, profile: profile)
         }
 
@@ -165,8 +165,6 @@ final class LocalPhotoPipeline {
 
         let adaptiveNoiseLevel: CGFloat
         switch profile {
-        case .legacyConservativePortrait:
-            adaptiveNoiseLevel = min(max(0.006 + (scale - 1.0) * 0.004, 0.006), 0.018)
         case .conservativePortrait:
             adaptiveNoiseLevel = min(max(0.003 + (scale - 1.0) * 0.002, 0.003), 0.007)
         case .standard:
@@ -176,8 +174,6 @@ final class LocalPhotoPipeline {
 
         let sharpenUpperBound: CGFloat
         switch profile {
-        case .legacyConservativePortrait:
-            sharpenUpperBound = 0.18
         case .conservativePortrait:
             sharpenUpperBound = 0.045
         case .standard:
@@ -191,9 +187,6 @@ final class LocalPhotoPipeline {
         let radiusUpperBound: CGFloat
         let intensityUpperBound: CGFloat
         switch profile {
-        case .legacyConservativePortrait:
-            radiusUpperBound = 1.1
-            intensityUpperBound = 0.14
         case .conservativePortrait:
             radiusUpperBound = 0.7
             intensityUpperBound = 0.04
@@ -255,15 +248,9 @@ final class LocalPhotoPipeline {
 
         switch effectivePreset {
         case .portrait:
-            if profile == .legacyConservativePortrait {
-                shadowAmount = 0.18
-                highlightAmount = 0.04
-                exposureEV = 0.05
-            } else {
-                shadowAmount = 0.08
-                highlightAmount = 0.035
-                exposureEV = -0.01
-            }
+            shadowAmount = 0.08
+            highlightAmount = 0.035
+            exposureEV = -0.01
         case .landscape:
             shadowAmount = 0.18
             highlightAmount = 0.08
@@ -677,8 +664,8 @@ final class LocalPhotoPipeline {
         let colorControls = CIFilter.colorControls()
         colorControls.inputImage = image
         colorControls.brightness = 0.0
-        colorControls.contrast = profile == .legacyConservativePortrait ? 1.0 : 0.985
-        colorControls.saturation = profile == .legacyConservativePortrait ? 0.99 : 0.96
+        colorControls.contrast = 0.985
+        colorControls.saturation = 0.96
 
         let baseImage = colorControls.outputImage ?? image
         return applyPortraitHighlightCompression(image: baseImage)

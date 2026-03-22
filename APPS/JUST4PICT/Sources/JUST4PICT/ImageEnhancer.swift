@@ -137,7 +137,6 @@ enum ImageEnhancerError: LocalizedError {
 enum RecoveryProfile {
     case standard
     case conservativePortrait
-    case legacyConservativePortrait
 }
 
 struct CoreTuning {
@@ -310,7 +309,7 @@ final class ImageEnhancer {
         let recoveryProfile = pipeline.recoveryProfile
         let effectivePreset = effectivePreset(for: preset, detectedScene: detectedScene)
 
-        if recoveryProfile == .conservativePortrait || recoveryProfile == .legacyConservativePortrait {
+        if recoveryProfile == .conservativePortrait {
             logger.notice(
                 "Conservative portrait recovery activated | mode=\(self.recoveryProfileLabel(recoveryProfile), privacy: .public) file=\(inputURL.lastPathComponent, privacy: .public) preset=\(preset.rawValue, privacy: .public) scene=\(self.sceneLabel(detectedScene), privacy: .public)"
             )
@@ -448,22 +447,13 @@ final class ImageEnhancer {
     }
 
     private func resolveRecoveryProfile(preset: EnhancementPreset, detectedScene: SceneType?) -> RecoveryProfile {
-        let useLegacy = portraitRecoveryMode() == "legacy"
-
         if preset == .portrait {
-            return useLegacy ? .legacyConservativePortrait : .conservativePortrait
+            return .conservativePortrait
         }
         if preset == .auto, detectedScene == .portrait {
-            return useLegacy ? .legacyConservativePortrait : .conservativePortrait
+            return .conservativePortrait
         }
         return .standard
-    }
-
-    private func portraitRecoveryMode() -> String {
-        let raw = ProcessInfo.processInfo.environment["JUST4PICT_PORTRAIT_PROFILE"]?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        return raw == "legacy" ? "legacy" : "pro"
     }
 
     private func sceneLabel(_ scene: SceneType?) -> String {
@@ -491,8 +481,6 @@ final class ImageEnhancer {
             return "standard"
         case .conservativePortrait:
             return "portrait-pro"
-        case .legacyConservativePortrait:
-            return "portrait-legacy"
         }
     }
 

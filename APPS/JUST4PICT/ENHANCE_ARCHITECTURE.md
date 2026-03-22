@@ -37,6 +37,7 @@ Estos puntos ya estan estabilizados y deben preservarse en cualquier refactor o 
 - La calidad por defecto es `1.0`; no se debe volver a una salida con perdida por defecto.
 - La preview es manual y se dispara con `Enhance`; no debe reintroducirse auto-refresh costoso o agresivo.
 - `PRO` es la baseline visual principal. La integracion IA no puede degradar `PRO` ni mezclar responsabilidades.
+- `Retrato/PRO` ya no mantiene una variante `legacy` activa; la baseline actual es unica y se valida contra la muestra fija del repo.
 - `AUTO` ya hereda `Retrato` cuando detecta cara. Ese comportamiento es contrato actual del producto.
 - El historial IA guarda resumen de prompt por defecto y evita persistir el prompt completo salvo eleccion explicita.
 - El naming de salida versionado y con manejo de colisiones debe seguir intacto.

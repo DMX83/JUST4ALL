@@ -80,6 +80,7 @@ Validacion baseline 2026-03-22:
 - `PNG` es la salida por defecto del proyecto y debe seguir siendo la primera opcion visible en la UI.
 - La calidad por defecto del proyecto es `1.0`; no se debe reintroducir `JPG` con compresion por defecto.
 - El modo `PRO` es la referencia visual del producto y no debe degradarse al introducir logica nueva de `IA`.
+- `Retrato/PRO` mantiene una unica baseline activa; ya no se conserva un modo `legacy` paralelo dentro del pipeline.
 - La preview manual con boton `Enhance` debe seguir siendo estable:
   - sin auto-refresh agresivo,
   - con vista `Original / PRO / IA`,

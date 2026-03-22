@@ -57,6 +57,7 @@ Objetivo de producto:
 - [x] Deteccion adicional de paisaje vertical por contenido para evitar depender solo del ratio.
 - [x] Ajuste fino inicial de `PRO` para retrato, paisaje y nocturna sobre muestras reales del repo.
 - [x] Ajuste fino final de `Retrato/PRO` para la baseline actual del MVP.
+- [x] Limpiar residuos del pipeline antiguo de retrato y mantener una sola baseline `PRO`.
 - [x] Afinar `AUTO` en nocturna y generico oscuro con una receta base mas inteligente.
 - [x] Mejorar deteccion `AUTO` para documento mas alla de cara/texto/ratio.
 - [x] Mejorar deteccion `AUTO` para producto/ecommerce mas alla de cara/texto/ratio.
