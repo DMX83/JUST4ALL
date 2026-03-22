@@ -90,7 +90,7 @@ Validacion baseline 2026-03-22:
   - y con doble click para visor ampliado.
 - `AUTO` debe seguir heredando `Retrato` cuando detecta cara. Cualquier refactor de escena debe preservar esa decision.
 - `AUTO` ya distingue mejor documento por texto + baja saturacion, foto oscura por luminancia/saturacion y producto `ecommerce` por fondo claro/uniforme y sujeto centrado, sin dejar de priorizar retrato cuando detecta cara.
-- `AUTO` ya esta validado tambien con muestras reales del repo para `document` y `ecommerce` (`image_doc_orig.jpeg`, `image_product_orig.jpeg`).
+- `AUTO` ya esta validado tambien con muestras reales del repo para `document` y `ecommerce` (`images_document_orig.jpeg`, `image_commerce_orig.jpeg`).
 - La heuristica `ecommerce` ya contempla tambien foto de catalogo movil real, no solo estudio con fondo blanco puro.
 - En `Ecommerce`, el pipeline ya puede detectar el producto principal, eliminar el fondo y recomponerlo centrado sobre fondo blanco.
 - En `Documento`, el pipeline ahora fuerza un remate mas claro para evitar fondos grises en export de hojas blancas.
@@ -118,6 +118,7 @@ Validacion baseline 2026-03-22:
   - historial local,
   - y tests de diagnostico/QA del modulo.
 - La suite ahora incluye `LocalPhotoPipelineTests` para cubrir activacion/no-disparo del balance de blancos y diferencia medible del sharpen selectivo.
+- La QA diagnostica actual tambien cubre una muestra degradada controlada para `upscale` (`image_upscale_lowres.jpeg`).
 
 ## Recomendaciones de producto (siguiente paso)
 

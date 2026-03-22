@@ -112,9 +112,9 @@ Verificacion:
 - [x] prueba con paisaje
 - [x] prueba unitaria de clasificacion para documento
 - [x] prueba con foto oscura
-- [x] prueba diagnostica con `APPS/JUST4PICT/images/image_doc_orig.jpeg`
-- [x] prueba diagnostica con `APPS/JUST4PICT/images/image_product_orig.jpeg`
-- [x] generar salidas QA visibles `image_doc_orig-auto-sample.png` y `image_product_orig-auto-sample.png`
+- [x] prueba diagnostica con `APPS/JUST4PICT/images/images_document_orig.jpeg`
+- [x] prueba diagnostica con `APPS/JUST4PICT/images/image_commerce_orig.jpeg`
+- [x] generar salidas QA visibles `images_document_orig-auto-sample.png` y `image_commerce_orig-auto-sample.png`
 - [x] verificar por test que las esquinas del export `Ecommerce` quedan blancas en la muestra real
 
 ## 2) UX batch
@@ -205,6 +205,7 @@ Verificacion:
 - [ ] confirmar que no aparecen halos ni plastificado
 - [x] añadir tests unitarios para activacion/no-disparo del balance de blancos
 - [x] añadir test unitario para diferencia medible del sharpen selectivo frente al sharpen legacy
+- [x] añadir muestra degradada controlada para validar `upscale` local (`image_upscale_lowres.jpeg`)
 
 ## 3C) Calidad de exportacion
 

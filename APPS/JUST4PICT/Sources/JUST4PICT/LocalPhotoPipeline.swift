@@ -420,15 +420,19 @@ final class LocalPhotoPipeline {
     private func applyDocumentWhiteFinish(image: CIImage) -> CIImage {
         let colorControls = CIFilter.colorControls()
         colorControls.inputImage = image
-        colorControls.brightness = 0.18
-        colorControls.contrast = 1.16
+        colorControls.brightness = 0.28
+        colorControls.contrast = 1.18
         colorControls.saturation = 0.0
         let brightened = colorControls.outputImage ?? image
 
         let exposure = CIFilter.exposureAdjust()
         exposure.inputImage = brightened
-        exposure.ev = 0.22
-        return exposure.outputImage ?? brightened
+        exposure.ev = 0.34
+
+        let whitePoint = CIFilter.gammaAdjust()
+        whitePoint.inputImage = exposure.outputImage ?? brightened
+        whitePoint.power = 0.86
+        return whitePoint.outputImage ?? (exposure.outputImage ?? brightened)
     }
 
     private func applyAppleLikePhotoEnhancement(

@@ -92,8 +92,8 @@ final class ImageAnalyzer {
         }
 
         if let analysis,
-           ecommerceHint && textObservationCount <= 3 &&
-            (analysis.isHighKey || analysis.averageLuminance > 0.58) {
+           ecommerceHint && textObservationCount <= 5 &&
+            (analysis.isHighKey || analysis.averageLuminance > 0.48) {
             return .ecommerce
         }
 
@@ -296,16 +296,16 @@ final class ImageAnalyzer {
         let averageBorderSaturation = borderSaturations.reduce(0, +) / Double(borderSaturations.count)
         let centerSaturation = max(center.r, center.g, center.b) - min(center.r, center.g, center.b)
 
-        let brightEnoughBackground = averageBorderLuminance > 0.56
+        let brightEnoughBackground = averageBorderLuminance > 0.50
         let reasonablyUniformCorners = (maxBorderLuminance - minBorderLuminance) < 0.50
-        let neutralEnoughBorder = averageBorderSaturation <= 0.22
-        let centerSeparatedFromBackground = centerSaturation > averageBorderSaturation + 0.10 || center.luminance < averageBorderLuminance - 0.05
+        let neutralEnoughBorder = averageBorderSaturation <= 0.28
+        let centerSeparatedFromBackground = centerSaturation > averageBorderSaturation + 0.08 || center.luminance < averageBorderLuminance - 0.04
         let aspectRatio = extent.width / extent.height
         let catalogStyleProduct = aspectRatio > 0.55 &&
             aspectRatio < 1.15 &&
-            averageBorderLuminance > 0.45 &&
+            averageBorderLuminance > 0.38 &&
             neutralEnoughBorder &&
-            centerSaturation > averageBorderSaturation + 0.28
+            centerSaturation > averageBorderSaturation + 0.20
 
         return (brightEnoughBackground && reasonablyUniformCorners && neutralEnoughBorder && centerSeparatedFromBackground)
             || catalogStyleProduct

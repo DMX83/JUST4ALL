@@ -285,23 +285,15 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
     }
 
     func testDetectsDocumentSceneFromRealRepoSample() throws {
-        let inputURL = try sampleImageURL(named: "image_doc_orig.jpeg")
-        guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            throw XCTSkip("Document sample image not available in this environment")
-        }
-
         let enhancer = ImageEnhancer()
+        let inputURL = try sampleImageURL(matching: .document, enhancer: enhancer)
         let detectedScene = enhancer.detectSceneType(inputURL: inputURL)
         XCTAssertEqual(detectedScene, .document)
     }
 
     func testDocumentAutoKeepsBrightBackgroundOnRealRepoSample() throws {
-        let inputURL = try sampleImageURL(named: "image_doc_orig.jpeg")
-        guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            throw XCTSkip("Document sample image not available in this environment")
-        }
-
         let enhancer = ImageEnhancer()
+        let inputURL = try sampleImageURL(matching: .document, enhancer: enhancer)
         let outputURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("png")
@@ -323,27 +315,23 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
     }
 
     func testDetectsEcommerceSceneFromRealRepoSample() throws {
-        let inputURL = try sampleImageURL(named: "image_product_orig.jpeg")
-        guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            throw XCTSkip("Ecommerce sample image not available in this environment")
-        }
-
         let enhancer = ImageEnhancer()
+        let inputURL = try sampleImageURL(matching: .ecommerce, enhancer: enhancer)
         let detectedScene = enhancer.detectSceneType(inputURL: inputURL)
         XCTAssertEqual(detectedScene, .ecommerce)
     }
 
     func testWritesDocumentAndEcommerceSamplesForQuickQA() throws {
-        let sampleNames = ["image_doc_orig.jpeg", "image_product_orig.jpeg"]
         let enhancer = ImageEnhancer()
         let outputDirectory = try sampleOutputDirectory()
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
-        for sampleName in sampleNames {
-            let inputURL = try sampleImageURL(named: sampleName)
-            guard FileManager.default.fileExists(atPath: inputURL.path) else {
-                throw XCTSkip("Sample image \(sampleName) not available in this environment")
-            }
+        let sampleURLs = [
+            try sampleImageURL(matching: .document, enhancer: enhancer),
+            try sampleImageURL(matching: .ecommerce, enhancer: enhancer)
+        ]
+
+        for inputURL in sampleURLs {
 
             let baseName = inputURL.deletingPathExtension().lastPathComponent
             let outputURL = outputDirectory.appendingPathComponent("\(baseName)-auto-sample.png")
@@ -363,12 +351,8 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
     }
 
     func testEcommerceAutoPlacesDetectedProductOnWhiteBackground() throws {
-        let inputURL = try sampleImageURL(named: "image_product_orig.jpeg")
-        guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            throw XCTSkip("Ecommerce sample image not available in this environment")
-        }
-
         let enhancer = ImageEnhancer()
+        let inputURL = try sampleImageURL(matching: .ecommerce, enhancer: enhancer)
         let outputURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("png")
@@ -393,6 +377,31 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
             XCTAssertGreaterThan(sample.g, 0.90)
             XCTAssertGreaterThan(sample.b, 0.90)
         }
+    }
+
+    func testLowResolutionCompressedSampleUpscalesToHD() throws {
+        let inputURL = try sampleImageURL(named: "image_upscale_lowres.jpeg")
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Low-resolution upscale sample not available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png
+        )
+
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+
+        let size = try pixelSize(for: outputURL)
+        XCTAssertGreaterThanOrEqual(max(size.width, size.height), 1600)
     }
 
     func testPreviewAndExportStayMeasurablyAlignedForSameRecipeInputs() throws {
@@ -543,6 +552,9 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
 
     private func primarySampleImageURL() throws -> URL {
         let samples = try sampleImageURLs()
+        if let portrait = samples.first(where: { $0.lastPathComponent == "PHOTO-2026-03-18-22-18-19 5.jpg" }) {
+            return portrait
+        }
         if let portrait = samples.first(where: { $0.lastPathComponent == "PHOTO-2026-03-18-22-18-19 2.jpg" }) {
             return portrait
         }
@@ -551,7 +563,7 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
             let packageRoot = try packageRootURL()
             return packageRoot
                 .appendingPathComponent("images", isDirectory: true)
-                .appendingPathComponent("PHOTO-2026-03-18-22-18-19 2.jpg")
+                .appendingPathComponent("PHOTO-2026-03-18-22-18-19 5.jpg")
         }
         return first
     }
@@ -564,6 +576,17 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
     private func sampleImageURL(named fileName: String) throws -> URL {
         let imagesDirectory = try imagesDirectoryURL()
         return imagesDirectory.appendingPathComponent(fileName)
+    }
+
+    private func sampleImageURL(
+        matching scene: ImageEnhancer.SceneType,
+        enhancer: ImageEnhancer
+    ) throws -> URL {
+        let samples = try sampleImageURLs()
+        if let matched = samples.first(where: { enhancer.detectSceneType(inputURL: $0) == scene }) {
+            return matched
+        }
+        throw XCTSkip("No sample image for scene \(String(describing: scene)) available in this environment")
     }
 
     private func sampleImageURLs() throws -> [URL] {
@@ -579,6 +602,9 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         return urls
             .filter {
                 guard let values = try? $0.resourceValues(forKeys: [.isRegularFileKey]), values.isRegularFile == true else {
+                    return false
+                }
+                if $0.lastPathComponent == ".DS_Store" {
                     return false
                 }
                 return supported.contains($0.pathExtension.lowercased())
