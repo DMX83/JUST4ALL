@@ -65,8 +65,8 @@ Prioridades: `alta` · `media` · `baja`
 - [x] **Fallback IA visible en UI** `media`
   Ya resuelto: la barra de estado y la tarjeta de preview muestran explícitamente `IA→PRO` cuando la recomendación IA cae a fallback local.
 
-- [ ] **Persistir decisión efectiva de AUTO en historial** `baja`
-  El historial guarda el preset seleccionado por el usuario (`Auto`) pero no la escena realmente detectada y aplicada (`Paisaje`, `Documento`, etc.). Útil para debugar decisiones incorrectas de `AUTO` en lotes reales.
+- [x] **Persistir decisión efectiva de AUTO en historial** `baja`
+  Ya resuelto: el historial conserva la escena realmente aplicada cuando el lote se ejecuta desde `Auto`.
 
 - [x] **Definir posición final de `Reconstruir IA`** `media`
   Ya queda fijado como herramienta manual de rescate extremo. Se recomienda para miniaturas extremas, compresión severa o retratos muy degradados, pero no se autoactiva.
@@ -82,8 +82,7 @@ Prioridades: `alta` · `media` · `baja`
 1. Calentamiento del cielo + curva tonal de Paisaje  → correcciones en LocalPhotoPipeline / ImageAnalyzer
 2. Sharpen selectivo desaturado + test por escena    → calidad + cobertura
 3. Doble protección facial                           → validación visual, posible ajuste
-4. Persistir decisión efectiva de AUTO en historial  → producto / debug
-5. Limpieza de puntos ya resueltos                   → deuda técnica
+4. Limpieza de puntos ya resueltos                   → deuda técnica
 ```
 
 ---

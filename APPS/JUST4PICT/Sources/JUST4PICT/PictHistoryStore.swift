@@ -6,6 +6,7 @@ struct PictHistoryEntry: Codable, Hashable, Identifiable {
     let inputFileName: String
     let outputPath: String
     let preset: String
+    let effectiveAutoDecision: String?
     let format: String
     let aiSuggestedPreset: String?
     let aiSuggestedQuality: Double?
@@ -43,6 +44,7 @@ struct PictHistoryStore {
         inputFileName: String,
         outputURL: URL,
         preset: EnhancementPreset,
+        effectiveAutoDecision: String? = nil,
         format: OutputFormat,
         aiSuggestedPreset: String? = nil,
         aiSuggestedQuality: Double? = nil,
@@ -60,6 +62,7 @@ struct PictHistoryStore {
             inputFileName: inputFileName,
             outputPath: outputURL.path,
             preset: preset.rawValue,
+            effectiveAutoDecision: effectiveAutoDecision,
             format: format.rawValue,
             aiSuggestedPreset: aiSuggestedPreset,
             aiSuggestedQuality: aiSuggestedQuality,

@@ -900,6 +900,12 @@ struct ContentView: View {
                                             .foregroundColor(.secondary)
                                             .lineLimit(1)
                                     }
+                                    if let effectiveAutoDecision = entry.effectiveAutoDecision, !effectiveAutoDecision.isEmpty {
+                                        Text("AUTO -> \(effectiveAutoDecision)")
+                                            .font(.system(size: 9, weight: .medium))
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                    }
                                 }
 
                                 Spacer()
@@ -988,6 +994,7 @@ struct ContentView: View {
         inputURL: URL,
         outputURL: URL,
         mode: EnhancementMode,
+        sourcePreset: EnhancementPreset,
         resolution: AIRunResolution,
         totalCount: Int,
         retry: Bool = false
@@ -997,7 +1004,8 @@ struct ContentView: View {
             current: historyEntries,
             inputFileName: inputURL.lastPathComponent,
             outputURL: outputURL,
-            preset: resolution.preset,
+            preset: sourcePreset,
+            effectiveAutoDecision: historyAutoDecision(for: inputURL, sourcePreset: sourcePreset, resolution: resolution),
             format: resolution.format,
             aiSuggestedPreset: resolution.aiSuggestedPreset,
             aiSuggestedQuality: resolution.aiSuggestedQuality,
@@ -1023,6 +1031,21 @@ struct ContentView: View {
         let retryPrefix = retry ? "Reintento " : ""
         appendLog("\(modeLogPrefix(mode)) ❌ \(retryPrefix)\(inputURL.lastPathComponent): \(error.localizedDescription)")
         recomputeCounters(total: totalCount)
+    }
+
+    private func historyAutoDecision(
+        for inputURL: URL,
+        sourcePreset: EnhancementPreset,
+        resolution: AIRunResolution
+    ) -> String? {
+        guard sourcePreset == .auto else { return nil }
+
+        if let scene = resolution.recipe?.mappedScene {
+            return autoDecisionLabel(for: scene)
+        }
+
+        let detectedScene = enhancer.detectSceneType(inputURL: inputURL)
+        return autoDecisionLabel(for: detectedScene)
     }
 
     private func processBatch() {
@@ -1103,6 +1126,7 @@ struct ContentView: View {
                             inputURL: input,
                             outputURL: outputURL,
                             mode: modeSnapshot,
+                            sourcePreset: snapshot.preset,
                             resolution: runResolution,
                             totalCount: files.count
                         )
@@ -1189,6 +1213,7 @@ struct ContentView: View {
                         inputURL: file,
                         outputURL: outputURL,
                         mode: modeSnapshot,
+                        sourcePreset: snapshot.preset,
                         resolution: runResolution,
                         totalCount: inputFiles.count,
                         retry: true

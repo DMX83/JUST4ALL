@@ -391,7 +391,7 @@ Prioridad alta:
 
 Prioridad media:
 
-- [ ] persistir en historial la decision efectiva de `AUTO`
+- [x] persistir en historial la decision efectiva de `AUTO`
 - [ ] evitar dobles compresiones y reescalados innecesarios
 - [ ] añadir controles o margen configurable al aislamiento de producto
 - [ ] convertir `EnhancementRecipe` en contrato central efectivo

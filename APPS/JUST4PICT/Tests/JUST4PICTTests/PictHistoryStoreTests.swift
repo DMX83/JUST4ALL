@@ -28,6 +28,26 @@ final class PictHistoryStoreTests: XCTestCase {
         XCTAssertEqual(store.load(), entries)
     }
 
+    func testPrependStoresEffectiveAutoDecisionWhenAvailable() {
+        let defaults = makeDefaults()
+        let store = PictHistoryStore(defaults: defaults)
+        let outputURL = URL(fileURLWithPath: "/tmp/out.png")
+
+        let entries = store.prepend(
+            current: [],
+            inputFileName: "input.jpg",
+            outputURL: outputURL,
+            preset: .auto,
+            effectiveAutoDecision: "Documento",
+            format: .png
+        )
+
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries[0].preset, EnhancementPreset.auto.rawValue)
+        XCTAssertEqual(entries[0].effectiveAutoDecision, "Documento")
+        XCTAssertEqual(store.load(), entries)
+    }
+
     func testPrependKeepsNewestEntriesFirstAndRespectsMaxEntries() {
         let defaults = makeDefaults()
         let store = PictHistoryStore(defaults: defaults)

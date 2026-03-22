@@ -112,6 +112,7 @@ Validacion baseline 2026-03-22:
 - Ese recorte sigue siendo local; no reconstruye bordes ambiguos ni contenido parcialmente perdido. Si hace falta un recorte mas limpio, el siguiente paso correcto es una variante opcional con IA.
 - El resize por destino se aplica solo al export final; la preview sigue mostrando el pipeline sin ese remuestreo de salida.
 - La UI ya muestra mejor la decision efectiva de `AUTO` durante la preview para evitar ambigüedad sobre el preset realmente aplicado.
+- El historial ya persiste tambien la decision efectiva de `AUTO` (`AUTO -> Retrato`, `Documento`, `Paisaje`, etc.) cuando el lote se ejecuto desde `Auto`.
 - El log de `AUTO` al cargar archivos debe seguir dejando claro que informa sobre la preview actual, no sobre una prediccion fija para todo el lote.
 - El lote debe respetar el perfil de export seleccionado al iniciar; no debe mezclar destinos si el usuario cambia la UI a mitad de proceso.
 - En `AUTO`, `ecommerce` puede seguir ganando con texto ligero si la imagen mantiene rasgos claros de producto; `documento` debe reservarse para densidad de texto real.
