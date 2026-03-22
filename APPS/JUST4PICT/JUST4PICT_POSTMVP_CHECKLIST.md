@@ -8,8 +8,8 @@ Prioridades: `alta` · `media` · `baja`
 
 ## Calidad visual
 
-- [ ] **Baseline numérica de Paisaje** `alta`
-  Crear test equivalente a `testPortraitProBaselineStaysWithinCurrentReferenceWindow` con ventanas RGB para la muestra de paisaje del repo. Sin esto, cualquier cambio futuro puede degradar Paisaje sin que nadie lo detecte.
+- [x] **Baseline numérica de Paisaje** `alta`
+  Ya existe `testLandscapeProBaselineStaysWithinCurrentReferenceWindow` con ventanas RGB para cielo, suelo y bruma sobre la muestra real `image_paisaje_orig.jpeg`.
 
 - [ ] **Calentamiento del cielo en Paisaje** `alta`
   Verificar que la lógica actual de altas luces para cielo nublado sigue siendo suficientemente neutra en escenas con nubes gris-claro. El umbral ya fue bajado y el blend suavizado, pero falta fijar una validación numérica que detecte recalentamiento del cielo antes de futuras regresiones.
@@ -62,8 +62,8 @@ Prioridades: `alta` · `media` · `baja`
 - [ ] **Before/after con slider** `media`
   En roadmap desde v0.2. Las tres cards de preview son funcionales pero para detectar halos o pérdida de detalle puntual el slider es mucho más efectivo. Especialmente útil para validar mejoras de sharpen y curva tonal.
 
-- [ ] **Fallback IA visible en UI** `media`
-  Cuando la API no está disponible, el modo IA ejecuta exactamente el mismo pipeline que PRO sin que el usuario lo sepa. Hay un log en el panel de actividad pero no hay ninguna indicación visual en la sección de preview. El usuario ve "IA" activo pero recibe PRO.
+- [x] **Fallback IA visible en UI** `media`
+  Ya resuelto: la barra de estado y la tarjeta de preview muestran explícitamente `IA→PRO` cuando la recomendación IA cae a fallback local.
 
 - [ ] **Persistir decisión efectiva de AUTO en historial** `baja`
   El historial guarda el preset seleccionado por el usuario (`Auto`) pero no la escena realmente detectada y aplicada (`Paisaje`, `Documento`, etc.). Útil para debugar decisiones incorrectas de `AUTO` en lotes reales.
@@ -80,15 +80,13 @@ Prioridades: `alta` · `media` · `baja`
 
 ```
 1. Calentamiento del cielo + curva tonal de Paisaje  → correcciones en LocalPhotoPipeline / ImageAnalyzer
-2. Baseline numérica de Paisaje                      → nuevo test en ImageEnhancerDiagnosticsTests
-3. Comparativa PRO vs IA en Paisaje                  → decisión de producto
-4. Sharpen selectivo desaturado + test por escena    → calidad + cobertura
-5. CIContext compartido + autoreleasepool             → memoria y rendimiento en batch
-6. Doble protección facial                           → validación visual, posible ajuste
-7. Before/after con slider                           → UX
-8. Fallback IA visible                               → UX
-9. Definir posición final de `Reconstruir IA`        → producto
-10. Limpieza de puntos ya resueltos                  → deuda técnica
+2. Comparativa PRO vs IA en Paisaje                  → decisión de producto
+3. Sharpen selectivo desaturado + test por escena    → calidad + cobertura
+4. CIContext compartido + autoreleasepool             → memoria y rendimiento en batch
+5. Doble protección facial                           → validación visual, posible ajuste
+6. Before/after con slider                           → UX
+7. Definir posición final de `Reconstruir IA`        → producto
+8. Limpieza de puntos ya resueltos                   → deuda técnica
 ```
 
 ---

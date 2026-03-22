@@ -87,6 +87,63 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         XCTAssertLessThan(faceStats.b, 0.56)
     }
 
+    func testLandscapeProBaselineStaysWithinCurrentReferenceWindow() throws {
+        let inputURL = try sampleImageURL(named: "image_paisaje_orig.jpeg")
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Landscape baseline sample not available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            preset: .auto,
+            quality: 1.0,
+            format: .png
+        )
+
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+
+        let fullStats = try averageRGBA(for: outputURL)
+        let skyStats = try averageRGBA(for: outputURL, normalizedCrop: CGRect(x: 0.0, y: 0.55, width: 1.0, height: 0.45))
+        let groundStats = try averageRGBA(for: outputURL, normalizedCrop: CGRect(x: 0.0, y: 0.0, width: 1.0, height: 0.45))
+        let mistStats = try averageRGBA(for: outputURL, normalizedCrop: CGRect(x: 0.0, y: 0.35, width: 1.0, height: 0.25))
+
+        XCTAssertGreaterThan(fullStats.r, 0.53)
+        XCTAssertLessThan(fullStats.r, 0.63)
+        XCTAssertGreaterThan(fullStats.g, 0.62)
+        XCTAssertLessThan(fullStats.g, 0.70)
+        XCTAssertGreaterThan(fullStats.b, 0.70)
+        XCTAssertLessThan(fullStats.b, 0.77)
+
+        XCTAssertGreaterThan(skyStats.r, 0.60)
+        XCTAssertLessThan(skyStats.r, 0.69)
+        XCTAssertGreaterThan(skyStats.g, 0.72)
+        XCTAssertLessThan(skyStats.g, 0.81)
+        XCTAssertGreaterThan(skyStats.b, 0.88)
+        XCTAssertLessThan(skyStats.b, 0.96)
+        XCTAssertGreaterThan(skyStats.b, skyStats.g)
+        XCTAssertGreaterThan(skyStats.g, skyStats.r)
+
+        XCTAssertGreaterThan(groundStats.r, 0.47)
+        XCTAssertLessThan(groundStats.r, 0.56)
+        XCTAssertGreaterThan(groundStats.g, 0.49)
+        XCTAssertLessThan(groundStats.g, 0.58)
+        XCTAssertGreaterThan(groundStats.b, 0.36)
+        XCTAssertLessThan(groundStats.b, 0.46)
+
+        XCTAssertGreaterThan(mistStats.r, 0.47)
+        XCTAssertLessThan(mistStats.r, 0.55)
+        XCTAssertGreaterThan(mistStats.g, 0.57)
+        XCTAssertLessThan(mistStats.g, 0.65)
+        XCTAssertGreaterThan(mistStats.b, 0.64)
+        XCTAssertLessThan(mistStats.b, 0.72)
+    }
+
     func testWritesRepoSampleOutputsForQuickQA() throws {
         let inputURLs = try sampleImageURLs()
         guard !inputURLs.isEmpty else {

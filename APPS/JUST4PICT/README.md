@@ -95,6 +95,7 @@ Validacion baseline 2026-03-22:
 - En `Ecommerce`, el pipeline ya puede detectar el producto principal, eliminar el fondo y recomponerlo centrado sobre fondo blanco.
 - En `Documento`, el pipeline ahora fuerza un remate mas claro para evitar fondos grises en export de hojas blancas.
 - La `IA` actual debe entenderse como capa de decision y ajuste; no debe reemplazar sin control el pipeline local.
+- Cuando la recomendacion IA no esta disponible, la UI ya lo hace visible de forma explicita con estado y badge `IA→PRO`; no debe volver a parecer que se ejecuto IA real cuando en realidad se uso fallback local.
 - La receta IA ya puede influir en `scene`, `preset`, `format`, `quality` y `upscale`.
 - Cuando la receta IA trae una `scene` valida, esa escena ya puede sobreescribir la deteccion local para mantener coherencia entre la decision IA y el pipeline ejecutado.
 - El balance de blancos adaptativo de `PRO` ya usa referencia de altas luces cuando existe suficiente blanco fiable en la escena, con fallback al promedio global cuando no la hay.

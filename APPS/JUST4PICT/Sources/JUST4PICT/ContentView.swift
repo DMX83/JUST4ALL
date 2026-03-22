@@ -116,6 +116,7 @@ struct ContentView: View {
     @State private var aiReasonForRun: String?
     @State private var aiTuningForRun: AIEnhancementTuning?
     @State private var aiRecipeForRun: EnhancementRecipe?
+    @State private var aiUsedFallbackForRun = false
     @State private var aiResolutionCache: [AIResolutionCacheKey: AIRunResolution] = [:]
     @State private var storeFullAIPromptInHistory = false
     @State private var selectedMode: EnhancementMode = .local
@@ -276,8 +277,8 @@ struct ContentView: View {
                 PreviewLightboxItem(
                     kind: .ai,
                     image: aiPreviewImage,
-                    badge: "IA",
-                    summary: aiRecipeForRun.map(aiRecipeSummary)
+                    badge: aiPreviewBadge,
+                    summary: aiPreviewSummary
                 )
             )
         }
@@ -600,7 +601,13 @@ struct ContentView: View {
             }
             return "Modo activo: Procesado Pro (motor local)"
         case .ai:
-            return isAnalyzingWithAI ? "IA analizando imagen..." : "Modo activo: IA · asesor inteligente + motor local · \(aiStatusMessage)"
+            if isAnalyzingWithAI {
+                return "IA analizando imagen..."
+            }
+            let prefix = aiUsedFallbackForRun
+                ? "Modo activo: IA · fallback local visible"
+                : "Modo activo: IA · asesor inteligente + motor local"
+            return "\(prefix) · \(aiStatusMessage)"
         case .reconstructAI:
             return openAIReconstruction.isAvailable
                 ? "Modo activo: Reconstruir IA · reconstrucción generativa conservadora"
@@ -678,9 +685,9 @@ struct ContentView: View {
                             previewCard(title: "Procesado Pro", badge: "PRO", image: proPreviewImage, summary: proPreviewSummary, placeholder: "Pulsa Enhance para generar preview PRO")
                             previewCard(
                                 title: selectedMode == .reconstructAI ? "Reconstrucción IA" : "IA",
-                                badge: selectedMode == .reconstructAI ? "IA-R" : "IA",
+                                badge: selectedMode == .reconstructAI ? "IA-R" : aiPreviewBadge,
                                 image: aiPreviewImage,
-                                summary: selectedMode == .reconstructAI ? reconstructionPreviewSummary : aiRecipeForRun.map(aiRecipeSummary),
+                                summary: selectedMode == .reconstructAI ? reconstructionPreviewSummary : aiPreviewSummary,
                                 placeholder: selectedMode == .reconstructAI
                                     ? "Activa Reconstruir IA y pulsa Enhance para comparar"
                                     : (aiTuningForRun == nil ? "Activa IA y pulsa Enhance para comparar" : "Pulsa Enhance para generar preview IA")
@@ -773,6 +780,8 @@ struct ContentView: View {
         switch badge {
         case "IA":
             return .purple
+        case "IA→PRO":
+            return .orange
         case "IA-R":
             return .orange
         default:
@@ -926,6 +935,7 @@ struct ContentView: View {
         aiReasonForRun = nil
         aiTuningForRun = nil
         aiRecipeForRun = nil
+        aiUsedFallbackForRun = false
     }
 
     private func recordSuccessfulRun(
@@ -1452,6 +1462,7 @@ struct ContentView: View {
         aiReasonForRun = resolution.aiReason
         aiTuningForRun = resolution.aiTuning
         aiRecipeForRun = resolution.recipe
+        aiUsedFallbackForRun = resolution.usedFallback
 
         if resolution.usedFallback {
             appendLog("[IA] ⚠️ IA no disponible para \(fileURL.lastPathComponent). Se usa fallback local.")
@@ -1797,6 +1808,17 @@ struct ContentView: View {
 
     private var reconstructionPreviewSummary: String {
         "reconstrucción generativa conservadora para imágenes pequeñas o muy comprimidas"
+    }
+
+    private var aiPreviewBadge: String {
+        aiUsedFallbackForRun ? "IA→PRO" : "IA"
+    }
+
+    private var aiPreviewSummary: String? {
+        if aiUsedFallbackForRun {
+            return "IA no disponible en esta ejecución; se muestra fallback local con el pipeline PRO actual."
+        }
+        return aiRecipeForRun.map(aiRecipeSummary)
     }
 
     private func autoDecisionLabel(for scene: ImageEnhancer.SceneType?) -> String {

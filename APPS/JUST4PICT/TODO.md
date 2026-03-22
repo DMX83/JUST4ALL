@@ -139,6 +139,10 @@ Verificacion:
 - [x] Formalizar `EnhancementRecipe` como modelo central del pipeline.
 - [x] Separar `ImageAnalyzer`, `EnhancementPlanner` y `LocalPhotoPipeline`.
 - [x] Mostrar en UI la receta IA completa aplicada.
+- [x] Fijar baseline numerica de `Paisaje` con muestra real del repo.
+  Ya existe `testLandscapeProBaselineStaysWithinCurrentReferenceWindow` para blindar cielo, suelo y bruma en `image_paisaje_orig.jpeg`.
+- [x] Hacer visible en UI cuando el modo `IA` cae a fallback local.
+  La barra de estado y la tarjeta de preview ya distinguen `IA` real de `IA→PRO` para evitar ambigüedad cuando la recomendación no está disponible.
 - [~] Añadir modo `Reconstruir IA` para imagenes muy pequenas o comprimidas.
   Ya existe como modo opcional de preview y batch usando `gpt-image-1`.
   Se escribe siempre como salida aparte (`-reconstruct_ia`) y no sustituye el flujo `PRO`.
