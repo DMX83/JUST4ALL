@@ -28,6 +28,11 @@ Situacion del producto ahora:
   - `EnhancementPlanner` resuelve decisiones derivadas de receta/fallback,
   - `LocalPhotoPipeline` ejecuta el pipeline local
 - `ContentView` sigue siendo el punto principal de orquestacion UI, pero ya no duplica tanto manejo de logs/resultados de batch y arranque de estado como en fases anteriores
+- existe una primera pasada de afinado visual en evaluacion sobre `LocalPhotoPipeline`:
+  - balance de blancos adaptativo
+  - curva tonal por escena
+  - sharpen selectivo por mascara de bordes
+- esa pasada ya mantiene la suite verde, pero todavia debe validarse visualmente antes de congelarse como nueva baseline
 
 ## Invariantes actuales antes de tocar IA
 

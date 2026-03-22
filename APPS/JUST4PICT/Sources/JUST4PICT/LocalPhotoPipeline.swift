@@ -311,13 +311,15 @@ final class LocalPhotoPipeline {
             contrast: 1.004,
             saturation: min(max(resolvedTuning.saturation, 0.995), 1.0),
             vibrance: min(max(resolvedTuning.vibrance, 0.0), 0.015),
-            sharpen: min(max(resolvedTuning.sharpen, 0.024), 0.040),
-            sharpenRadius: min(max(resolvedTuning.sharpenRadius, 0.26), 0.33)
+            sharpen: min(max(resolvedTuning.sharpen, 0.025), 0.036),
+            sharpenRadius: min(max(resolvedTuning.sharpenRadius, 0.25), 0.31)
         )
 
         let output = applyCoreTuning(
             image: image,
             tuning: portraitTuning,
+            scene: .portrait,
+            analysis: analysis,
             faceMask: faceMask
         )
 
@@ -327,6 +329,8 @@ final class LocalPhotoPipeline {
     private func applyCoreTuning(
         image: CIImage,
         tuning: CoreTuning,
+        scene: ImageEnhancer.SceneType?,
+        analysis: PhotoAnalysis,
         faceMask: CIImage? = nil
     ) -> CIImage {
         var output = image
@@ -349,9 +353,15 @@ final class LocalPhotoPipeline {
         let colorControls = CIFilter.colorControls()
         colorControls.inputImage = output
         colorControls.brightness = 0.0
-        colorControls.contrast = Float(tuning.contrast)
+        colorControls.contrast = 1.0
         colorControls.saturation = Float(tuning.saturation)
         output = colorControls.outputImage ?? output
+
+        output = applyAdaptiveToneCurve(
+            image: output,
+            scene: scene,
+            contrast: tuning.contrast
+        )
 
         if abs(tuning.vibrance) > 0.0001 {
             let vibrance = CIFilter.vibrance()
@@ -360,12 +370,15 @@ final class LocalPhotoPipeline {
             output = vibrance.outputImage ?? output
         }
 
+        output = applyAdaptiveWhiteBalance(image: output, analysis: analysis)
+
         if tuning.sharpen > 0.0 {
-            let sharpen = CIFilter.sharpenLuminance()
-            sharpen.inputImage = output
-            sharpen.sharpness = Float(tuning.sharpen)
-            sharpen.radius = Float(tuning.sharpenRadius)
-            let sharpened = sharpen.outputImage ?? output
+            let sharpened = applySelectiveSharpen(
+                image: output,
+                amount: tuning.sharpen,
+                radius: tuning.sharpenRadius,
+                edgeBlurRadius: faceMask == nil ? 3.2 : 5.5
+            )
 
             if let faceMask {
                 let protectFaces = CIFilter.blendWithMask()
@@ -455,26 +468,123 @@ final class LocalPhotoPipeline {
         let colorControls = CIFilter.colorControls()
         colorControls.inputImage = output
         colorControls.brightness = 0.0
-        colorControls.contrast = Float(resolvedTuning.contrast)
+        colorControls.contrast = 1.0
         colorControls.saturation = Float(resolvedTuning.saturation)
         output = colorControls.outputImage ?? output
+
+        output = applyAdaptiveToneCurve(
+            image: output,
+            scene: scene,
+            contrast: resolvedTuning.contrast
+        )
 
         let vibrance = CIFilter.vibrance()
         vibrance.inputImage = output
         vibrance.amount = Float(resolvedTuning.vibrance)
         output = vibrance.outputImage ?? output
 
+        output = applyAdaptiveWhiteBalance(image: output, analysis: analysis)
+
         if scene == .portrait {
             output = applyPortraitAISafetyFinish(image: output)
         }
 
-        let sharpen = CIFilter.sharpenLuminance()
-        sharpen.inputImage = output
-        sharpen.sharpness = Float(resolvedTuning.sharpen)
-        sharpen.radius = Float(resolvedTuning.sharpenRadius)
-        output = sharpen.outputImage ?? output
+        output = applySelectiveSharpen(
+            image: output,
+            amount: resolvedTuning.sharpen,
+            radius: resolvedTuning.sharpenRadius,
+            edgeBlurRadius: scene == .portrait ? 5.0 : 3.0
+        )
 
         return output
+    }
+
+    private func applyAdaptiveWhiteBalance(image: CIImage, analysis: PhotoAnalysis) -> CIImage {
+        let redBlueDelta = analysis.averageRed - analysis.averageBlue
+        let greenBias = analysis.averageGreen - ((analysis.averageRed + analysis.averageBlue) / 2.0)
+
+        guard abs(redBlueDelta) > 0.025 || abs(greenBias) > 0.015 else {
+            return image
+        }
+
+        let temperatureOffset = max(min(redBlueDelta * 2400.0, 400.0), -400.0)
+        let tintOffset = max(min(-greenBias * 80.0, 4.0), -4.0)
+
+        let filter = CIFilter.temperatureAndTint()
+        filter.inputImage = image
+        filter.neutral = CIVector(x: 6500, y: 0)
+        filter.targetNeutral = CIVector(x: CGFloat(6500.0 - temperatureOffset), y: CGFloat(tintOffset))
+        return filter.outputImage ?? image
+    }
+
+    private func applyAdaptiveToneCurve(
+        image: CIImage,
+        scene: ImageEnhancer.SceneType?,
+        contrast: Double
+    ) -> CIImage {
+        let modulation = max(min(1.0 + ((contrast - 1.0) * 6.0), 1.25), 0.75)
+
+        let basePoints: [(CGFloat, CGFloat)]
+        switch scene {
+        case .portrait:
+            basePoints = [(0.00, 0.00), (0.25, 0.245), (0.50, 0.515), (0.75, 0.775), (1.00, 1.00)]
+        case .landscape:
+            basePoints = [(0.00, 0.00), (0.25, 0.20), (0.50, 0.54), (0.75, 0.82), (1.00, 1.00)]
+        default:
+            basePoints = [(0.00, 0.00), (0.25, 0.22), (0.50, 0.53), (0.75, 0.80), (1.00, 1.00)]
+        }
+
+        let curve = CIFilter.toneCurve()
+        curve.inputImage = image
+        curve.point0 = toneCurvePoint(x: basePoints[0].0, y: basePoints[0].1, modulation: modulation)
+        curve.point1 = toneCurvePoint(x: basePoints[1].0, y: basePoints[1].1, modulation: modulation)
+        curve.point2 = toneCurvePoint(x: basePoints[2].0, y: basePoints[2].1, modulation: modulation)
+        curve.point3 = toneCurvePoint(x: basePoints[3].0, y: basePoints[3].1, modulation: modulation)
+        curve.point4 = toneCurvePoint(x: basePoints[4].0, y: basePoints[4].1, modulation: modulation)
+        return curve.outputImage ?? image
+    }
+
+    private func toneCurvePoint(x: CGFloat, y: CGFloat, modulation: Double) -> CGPoint {
+        let delta = Double(y - x)
+        let adjustedY = max(0.0, min(1.0, Double(x) + (delta * modulation)))
+        return CGPoint(x: x, y: CGFloat(adjustedY))
+    }
+
+    private func applySelectiveSharpen(
+        image: CIImage,
+        amount: Double,
+        radius: Double,
+        edgeBlurRadius: Double
+    ) -> CIImage {
+        let sharpen = CIFilter.sharpenLuminance()
+        sharpen.inputImage = image
+        sharpen.sharpness = Float(amount)
+        sharpen.radius = Float(radius)
+        let sharpened = sharpen.outputImage ?? image
+
+        let edges = CIFilter.edges()
+        edges.inputImage = image
+        edges.intensity = Float(max(amount * 9.0, 1.0))
+        guard let edgeMap = edges.outputImage else {
+            return sharpened
+        }
+
+        let blurredMask = edgeMap
+            .clampedToExtent()
+            .applyingGaussianBlur(sigma: max(edgeBlurRadius, 1.0))
+            .cropped(to: image.extent)
+
+        let maskContrast = CIFilter.colorControls()
+        maskContrast.inputImage = blurredMask
+        maskContrast.contrast = 1.35
+        maskContrast.saturation = 0.0
+        let resolvedMask = maskContrast.outputImage ?? blurredMask
+
+        let blend = CIFilter.blendWithMask()
+        blend.inputImage = sharpened
+        blend.backgroundImage = image
+        blend.maskImage = resolvedMask
+        return blend.outputImage ?? sharpened
     }
 
     private func defaultAITuning(for scene: ImageEnhancer.SceneType?, analysis: PhotoAnalysis) -> AIEnhancementTuning {

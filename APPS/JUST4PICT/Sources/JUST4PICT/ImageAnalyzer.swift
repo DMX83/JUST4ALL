@@ -5,10 +5,31 @@ import ImageIO
 import Vision
 
 struct PhotoAnalysis {
+    let averageRed: Double
+    let averageGreen: Double
+    let averageBlue: Double
     let averageLuminance: Double
     let averageSaturation: Double
     let isLowKey: Bool
     let isHighKey: Bool
+
+    init(
+        averageRed: Double = 0.5,
+        averageGreen: Double = 0.5,
+        averageBlue: Double = 0.5,
+        averageLuminance: Double,
+        averageSaturation: Double,
+        isLowKey: Bool,
+        isHighKey: Bool
+    ) {
+        self.averageRed = averageRed
+        self.averageGreen = averageGreen
+        self.averageBlue = averageBlue
+        self.averageLuminance = averageLuminance
+        self.averageSaturation = averageSaturation
+        self.isLowKey = isLowKey
+        self.isHighKey = isHighKey
+    }
 }
 
 final class ImageAnalyzer {
@@ -149,6 +170,9 @@ final class ImageAnalyzer {
         let luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
 
         return PhotoAnalysis(
+            averageRed: r,
+            averageGreen: g,
+            averageBlue: b,
             averageLuminance: luminance,
             averageSaturation: max(r, g, b) - min(r, g, b),
             isLowKey: luminance < 0.42,

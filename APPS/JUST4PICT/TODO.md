@@ -180,12 +180,18 @@ Meta:
 
 Trabajo:
 
-- [ ] sustituir contraste global por `CIToneCurve` donde aporte valor real
-- [ ] introducir sharpen selectivo por mascara de bordes
+- [~] sustituir contraste global por `CIToneCurve` donde aporte valor real
+- [~] introducir sharpen selectivo por mascara de bordes
+- [~] introducir correccion adaptativa de balance de blancos en `PRO` y fotografia general
 - [ ] refinar la mascara facial para proteger piel y mantener ojos/cabello
 - [ ] evaluar microcontraste moderado por escena
 - [ ] añadir validacion perceptual simple para detectar sobreprocesado
 - [ ] bloquear automaticamente recetas que cierren demasiado la imagen
+
+Nota:
+
+- existe una primera pasada aplicada desde `mejoras.md` con curva tonal, sharpen selectivo y balance de blancos adaptativo
+- esta pasada sigue en evaluacion visual antes de consolidarla como baseline nueva
 
 Verificacion:
 
