@@ -77,6 +77,15 @@ private struct AIResolutionCacheKey: Hashable {
     let baseFormat: OutputFormat
 }
 
+private struct BatchRunSnapshot {
+    let mode: EnhancementMode
+    let outputDirectory: URL?
+    let preset: EnhancementPreset
+    let format: OutputFormat
+    let quality: Double
+    let exportProfile: ExportProfile
+}
+
 struct ContentView: View {
     @State private var inputFiles: [URL] = []
     @State private var outputDirectory: URL?
@@ -894,22 +903,8 @@ struct ContentView: View {
         let modeSnapshot = selectedMode
 
         batchTask = Task {
-            let snapshot = await MainActor.run { () -> (
-                mode: EnhancementMode,
-                outputDirectory: URL?,
-                preset: EnhancementPreset,
-                format: OutputFormat,
-                quality: Double,
-                exportProfile: ExportProfile
-            ) in
-                return (
-                    modeSnapshot,
-                    outputDirectory,
-                    preset,
-                    activeFormat,
-                    activeQuality,
-                    outputSettings.exportProfile
-                )
+            let snapshot = await MainActor.run {
+                makeBatchRunSnapshot(for: modeSnapshot)
             }
 
             for (index, input) in files.enumerated() {
@@ -938,20 +933,7 @@ struct ContentView: View {
                         shouldUpdateUIState: false
                     )
                 } else {
-                    runResolution = AIRunResolution(
-                        preset: snapshot.preset,
-                        format: snapshot.format,
-                        quality: snapshot.quality,
-                        upscaleTargetLongSide: nil,
-                        faceRestoreStrength: nil,
-                        aiSuggestedPreset: nil,
-                        aiSuggestedQuality: nil,
-                        aiReason: nil,
-                        aiPrompt: nil,
-                        aiTuning: nil,
-                        recipe: nil,
-                        usedFallback: false
-                    )
+                    runResolution = localRunResolution(from: snapshot)
                 }
 
                 let destinationDirectory = snapshot.outputDirectory ?? input.deletingLastPathComponent()
@@ -1029,15 +1011,8 @@ struct ContentView: View {
         statusMessage = "Reintentando \(file.lastPathComponent)..."
 
         Task {
-            let snapshot = await MainActor.run { () -> (
-                mode: EnhancementMode,
-                preset: EnhancementPreset,
-                quality: Double,
-                format: OutputFormat,
-                outputDirectory: URL?,
-                exportProfile: ExportProfile
-            ) in
-                (modeSnapshot, preset, activeQuality, activeFormat, outputDirectory, outputSettings.exportProfile)
+            let snapshot = await MainActor.run {
+                makeBatchRunSnapshot(for: modeSnapshot)
             }
 
             let runResolution: AIRunResolution
@@ -1050,20 +1025,7 @@ struct ContentView: View {
                     shouldUpdateUIState: true
                 )
             } else {
-                    runResolution = AIRunResolution(
-                        preset: snapshot.preset,
-                        format: snapshot.format,
-                        quality: snapshot.quality,
-                        upscaleTargetLongSide: nil,
-                        faceRestoreStrength: nil,
-                        aiSuggestedPreset: nil,
-                    aiSuggestedQuality: nil,
-                    aiReason: nil,
-                    aiPrompt: nil,
-                    aiTuning: nil,
-                    recipe: nil,
-                    usedFallback: false
-                )
+                runResolution = localRunResolution(from: snapshot)
             }
 
             let destinationDirectory = snapshot.outputDirectory ?? file.deletingLastPathComponent()
@@ -1150,6 +1112,34 @@ struct ContentView: View {
                 tuning: aiTuning
             )
         }.value
+    }
+
+    private func makeBatchRunSnapshot(for mode: EnhancementMode) -> BatchRunSnapshot {
+        BatchRunSnapshot(
+            mode: mode,
+            outputDirectory: outputDirectory,
+            preset: preset,
+            format: activeFormat,
+            quality: activeQuality,
+            exportProfile: outputSettings.exportProfile
+        )
+    }
+
+    private func localRunResolution(from snapshot: BatchRunSnapshot) -> AIRunResolution {
+        AIRunResolution(
+            preset: snapshot.preset,
+            format: snapshot.format,
+            quality: snapshot.quality,
+            upscaleTargetLongSide: nil,
+            faceRestoreStrength: nil,
+            aiSuggestedPreset: nil,
+            aiSuggestedQuality: nil,
+            aiReason: nil,
+            aiPrompt: nil,
+            aiTuning: nil,
+            recipe: nil,
+            usedFallback: false
+        )
     }
 
     private func markRemainingAsCancelled(files: [URL], startingAt index: Int) {
@@ -1316,8 +1306,8 @@ struct ContentView: View {
     }
 
     private func imagePixelDimensions(for fileURL: URL) -> (width: Int, height: Int) {
-        let image = NSImage(contentsOf: fileURL)
-        return (Int(image?.size.width ?? 0), Int(image?.size.height ?? 0))
+        let size = enhancer.pixelSize(for: fileURL)
+        return (Int(size?.width ?? 0), Int(size?.height ?? 0))
     }
 
     @MainActor
@@ -1572,11 +1562,15 @@ struct ContentView: View {
                 selectedPreviewURL = inputFiles.first
             }
             preparePreviewForSelection()
-            if preset == .auto, let previewURL = selectedPreviewURL ?? inputFiles.first {
-                let scene = enhancer.detectSceneType(inputURL: previewURL)
-                logs.insert("[PRO] AUTO analizará \(previewURL.lastPathComponent) como \(autoDecisionLabel(for: scene))", at: 0)
-            }
+            logAutoPreviewDecisionIfNeeded()
         }
+    }
+
+    private func logAutoPreviewDecisionIfNeeded() {
+        guard preset == .auto, let previewURL = selectedPreviewURL ?? inputFiles.first else { return }
+        let scene = enhancer.detectSceneType(inputURL: previewURL)
+        let queueSuffix = inputFiles.count > 1 ? " · preview de lote (\(inputFiles.count) imágenes)" : ""
+        logs.insert("[PRO] AUTO preview analizará \(previewURL.lastPathComponent) como \(autoDecisionLabel(for: scene))\(queueSuffix)", at: 0)
     }
 
     @MainActor

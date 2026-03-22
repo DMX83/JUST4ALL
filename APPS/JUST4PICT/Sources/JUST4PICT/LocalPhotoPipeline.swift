@@ -70,6 +70,23 @@ final class LocalPhotoPipeline {
         upscaleToLongSide: CGFloat?
     ) -> CIImage {
         var output = image
+        let effectivePreset: EnhancementPreset
+        if preset == .auto {
+            switch detectedScene {
+            case .portrait:
+                effectivePreset = .portrait
+            case .document:
+                effectivePreset = .document
+            case .landscape:
+                effectivePreset = .landscape
+            case .ecommerce:
+                effectivePreset = .ecommerce
+            case .darkPhoto, .generic, .none:
+                effectivePreset = .auto
+            }
+        } else {
+            effectivePreset = preset
+        }
 
         if options.enableAutoAdjust {
             let autoFilters = output.autoAdjustmentFilters(options: [
@@ -99,6 +116,10 @@ final class LocalPhotoPipeline {
             detectedScene: detectedScene,
             profile: profile
         )
+
+        if effectivePreset == .document {
+            output = applyDocumentWhiteFinish(image: output)
+        }
 
         if profile == .conservativePortrait || profile == .legacyConservativePortrait {
             output = applyPortraitSafetyFinish(image: output, profile: profile)
@@ -252,9 +273,9 @@ final class LocalPhotoPipeline {
             highlightAmount = 0.06
             exposureEV = 0.06
         case .document:
-            shadowAmount = 0.08
-            highlightAmount = 0.03
-            exposureEV = 0.03
+            shadowAmount = 0.04
+            highlightAmount = 0.01
+            exposureEV = 0.12
         case .auto where detectedScene == .darkPhoto:
             shadowAmount = 0.26
             highlightAmount = 0.14
@@ -389,6 +410,20 @@ final class LocalPhotoPipeline {
         protectFaces.backgroundImage = detailed
         protectFaces.maskImage = faceMask
         return protectFaces.outputImage ?? detailed
+    }
+
+    private func applyDocumentWhiteFinish(image: CIImage) -> CIImage {
+        let colorControls = CIFilter.colorControls()
+        colorControls.inputImage = image
+        colorControls.brightness = 0.18
+        colorControls.contrast = 1.16
+        colorControls.saturation = 0.0
+        let brightened = colorControls.outputImage ?? image
+
+        let exposure = CIFilter.exposureAdjust()
+        exposure.inputImage = brightened
+        exposure.ev = 0.22
+        return exposure.outputImage ?? brightened
     }
 
     private func applyAppleLikePhotoEnhancement(

@@ -156,6 +156,7 @@ final class ImageEnhancer {
     private let context = ImageEnhancer.sharedContext
     private lazy var analyzer = ImageAnalyzer(context: context)
     private lazy var localPipeline = LocalPhotoPipeline(context: context)
+    private lazy var productIsolationEngine = ProductIsolationEngine(context: context)
     private let defaultHDLongSide: CGFloat = 1600
     private let logger = Logger(subsystem: "com.dmx83.just4pict", category: "ImageEnhancer")
 
@@ -224,6 +225,10 @@ final class ImageEnhancer {
         guard CGImageDestinationFinalize(destination) else {
             throw ImageEnhancerError.cannotFinalizeWrite(outputURL)
         }
+    }
+
+    func pixelSize(for inputURL: URL) -> CGSize? {
+        analyzer.pixelSize(for: inputURL)
     }
 
     func enhancedPreviewImage(
@@ -303,6 +308,7 @@ final class ImageEnhancer {
         let pipeline = resolvePipelineConfig(for: preset, detectedScene: detectedScene)
         let options = pipeline.options
         let recoveryProfile = pipeline.recoveryProfile
+        let effectivePreset = effectivePreset(for: preset, detectedScene: detectedScene)
 
         if recoveryProfile == .conservativePortrait || recoveryProfile == .legacyConservativePortrait {
             logger.notice(
@@ -321,6 +327,12 @@ final class ImageEnhancer {
                 analysis: analysis,
                 faceMask: faceMask,
                 upscaleToLongSide: upscaleToLongSide
+            )
+            image = productIsolationEngine.applyIfNeeded(
+                to: image,
+                sourceURL: inputURL,
+                preset: effectivePreset,
+                scene: detectedScene
             )
 
             return FaceRestoreEngine.applyIfNeeded(
@@ -341,6 +353,12 @@ final class ImageEnhancer {
                 analysis: analysis,
                 upscaleToLongSide: upscaleToLongSide
             )
+            image = productIsolationEngine.applyIfNeeded(
+                to: image,
+                sourceURL: inputURL,
+                preset: effectivePreset,
+                scene: detectedScene
+            )
 
             return FaceRestoreEngine.applyIfNeeded(
                 to: image,
@@ -356,6 +374,12 @@ final class ImageEnhancer {
             profile: recoveryProfile,
             options: options,
             upscaleToLongSide: upscaleToLongSide
+        )
+        image = productIsolationEngine.applyIfNeeded(
+            to: image,
+            sourceURL: inputURL,
+            preset: effectivePreset,
+            scene: detectedScene
         )
 
         return FaceRestoreEngine.applyIfNeeded(

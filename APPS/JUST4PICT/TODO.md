@@ -60,6 +60,9 @@ Objetivo de producto:
 - [x] Afinar `AUTO` en nocturna y generico oscuro con una receta base mas inteligente.
 - [x] Mejorar deteccion `AUTO` para documento mas alla de cara/texto/ratio.
 - [x] Mejorar deteccion `AUTO` para producto/ecommerce mas alla de cara/texto/ratio.
+- [x] Extender `AUTO -> Ecommerce` para cubrir muestra real de catalogo movil, no solo producto sobre fondo blanco puro.
+- [x] Detectar producto principal en `Ecommerce`, quitar fondo y recomponerlo centrado sobre blanco.
+- [x] Corregir `Documento` para que mantenga fondo blanco visible y no derive a grises oscuros en la muestra real.
 
 ## 1A) Fase Retrato Pro
 
@@ -99,6 +102,8 @@ Trabajo:
 - [x] mejorar clasificacion de paisaje/generico con analisis de luminancia y textura
 - [x] documentar decision efectiva de `AUTO` en logs y UI
 - [x] congelar el perfil de export al iniciar lote/reintento para evitar mezclas dentro del mismo batch
+- [x] validar `AUTO` con muestras reales del repo para `document` y `ecommerce`
+- [x] hacer menos ambiguo el log de `AUTO` al cargar lotes; debe reflejar que se trata de la preview actual
 
 Verificacion:
 
@@ -106,6 +111,10 @@ Verificacion:
 - [x] prueba con paisaje
 - [x] prueba unitaria de clasificacion para documento
 - [x] prueba con foto oscura
+- [x] prueba diagnostica con `APPS/JUST4PICT/images/image_doc_orig.jpeg`
+- [x] prueba diagnostica con `APPS/JUST4PICT/images/image_product_orig.jpeg`
+- [x] generar salidas QA visibles `image_doc_orig-auto-sample.png` y `image_product_orig-auto-sample.png`
+- [x] verificar por test que las esquinas del export `Ecommerce` quedan blancas en la muestra real
 
 ## 2) UX batch
 
@@ -154,6 +163,7 @@ Trabajo:
 - [x] propagar `faceRestore` como contrato estable de receta en batch, preview y export
 - [ ] reutilizar `CIContext` compartido en todos los flujos
 - [ ] introducir `autoreleasepool` en lote grande
+- [x] evitar lectura de dimensiones con `NSImage` en el flujo IA; usar metadata/pixel size
 
 Verificacion:
 
@@ -195,6 +205,8 @@ Trabajo:
 - [ ] asegurar exportacion maxima en `PNG` y `JPG` segun caso
 - [x] introducir resize inteligente por destino (`social`, `web`, `ecommerce`)
 - [ ] evitar dobles compresiones y reescalados innecesarios
+- [ ] evaluar si el recorte de producto necesita controles manuales o margen configurable para catalogo estricto
+- [ ] evaluar una variante opcional `Ecommerce + IA` para reconstruccion/limpieza de bordes complejos cuando Vision no recorte bien el producto
 
 Verificacion:
 

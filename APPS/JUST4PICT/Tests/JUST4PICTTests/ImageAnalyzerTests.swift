@@ -101,4 +101,24 @@ final class ImageAnalyzerTests: XCTestCase {
 
         XCTAssertEqual(scene, .ecommerce)
     }
+
+    func testInferSceneTypeAllowsRealisticEcommerceWithoutStudioHighKeyLighting() {
+        let analysis = PhotoAnalysis(
+            averageLuminance: 0.56,
+            averageSaturation: 0.40,
+            isLowKey: false,
+            isHighKey: false
+        )
+
+        let scene = ImageAnalyzer.inferSceneType(
+            hasFaces: false,
+            textObservationCount: 0,
+            pixelSize: CGSize(width: 768, height: 1024),
+            analysis: analysis,
+            landscapeHint: false,
+            ecommerceHint: false
+        )
+
+        XCTAssertEqual(scene, .ecommerce)
+    }
 }

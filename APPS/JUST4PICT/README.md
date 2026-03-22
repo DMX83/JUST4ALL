@@ -79,13 +79,22 @@ swift run
   - y con doble click para visor ampliado.
 - `AUTO` debe seguir heredando `Retrato` cuando detecta cara. Cualquier refactor de escena debe preservar esa decision.
 - `AUTO` ya distingue mejor documento por texto + baja saturacion, foto oscura por luminancia/saturacion y producto `ecommerce` por fondo claro/uniforme y sujeto centrado, sin dejar de priorizar retrato cuando detecta cara.
+- `AUTO` ya esta validado tambien con muestras reales del repo para `document` y `ecommerce` (`image_doc_orig.jpeg`, `image_product_orig.jpeg`).
+- La heuristica `ecommerce` ya contempla tambien foto de catalogo movil real, no solo estudio con fondo blanco puro.
+- En `Ecommerce`, el pipeline ya puede detectar el producto principal, eliminar el fondo y recomponerlo centrado sobre fondo blanco.
+- En `Documento`, el pipeline ahora fuerza un remate mas claro para evitar fondos grises en export de hojas blancas.
 - La `IA` actual debe entenderse como capa de decision y ajuste; no debe reemplazar sin control el pipeline local.
 - La receta IA ya puede influir en `preset`, `format`, `quality` y `upscale`.
 - `faceRestore` ya existe como etapa local selectiva y conservadora sobre rostros detectados.
 - Sigue sin ser un modelo dedicado de restauracion facial; hoy actua como refuerzo suave de detalle/tono en mascara facial.
 - La resolucion IA por imagen se cachea en memoria durante la sesion para evitar llamadas repetidas sobre la misma foto en el mismo contexto base.
+- El flujo IA ya obtiene dimensiones de entrada por metadata/pixel size, sin depender de `NSImage` para esa lectura.
+- La recomposicion de producto sobre fondo blanco usa Vision foreground masking y debe mantenerse como mejora optica aislada del preset `Ecommerce`.
+- Ese recorte de foreground queda activo en macOS 14+; fuera de ese rango el flujo debe degradar a no-op seguro.
+- Ese recorte sigue siendo local; no reconstruye bordes ambiguos ni contenido parcialmente perdido. Si hace falta un recorte mas limpio, el siguiente paso correcto es una variante opcional con IA.
 - El resize por destino se aplica solo al export final; la preview sigue mostrando el pipeline sin ese remuestreo de salida.
 - La UI ya muestra mejor la decision efectiva de `AUTO` durante la preview para evitar ambigüedad sobre el preset realmente aplicado.
+- El log de `AUTO` al cargar archivos debe seguir dejando claro que informa sobre la preview actual, no sobre una prediccion fija para todo el lote.
 - El lote debe respetar el perfil de export seleccionado al iniciar; no debe mezclar destinos si el usuario cambia la UI a mitad de proceso.
 - En `AUTO`, `ecommerce` puede seguir ganando con texto ligero si la imagen mantiene rasgos claros de producto; `documento` debe reservarse para densidad de texto real.
 - El historial IA debe seguir guardando por defecto solo resumen del prompt, no el prompt completo.

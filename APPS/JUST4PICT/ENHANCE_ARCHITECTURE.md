@@ -12,6 +12,9 @@ Baseline activa validada manualmente:
 - `AUTO` ya hereda `Retrato` cuando detecta cara
 - `AUTO` ya detecta mejor paisaje vertical por contenido, documento por texto+saturacion, producto `ecommerce` por fondo claro/uniforme y contiene mejor la nocturna
 - muestra fija de QA en `APPS/JUST4PICT/images/PHOTO-2026-03-18-22-18-19 2.jpg`
+- muestras reales adicionales de QA para escena:
+  - `APPS/JUST4PICT/images/image_doc_orig.jpeg`
+  - `APPS/JUST4PICT/images/image_product_orig.jpeg`
 - QA multiprueba con salidas visibles en `APPS/JUST4PICT/images/test/*-pro-sample.png`
 
 Situacion del producto ahora:
@@ -52,6 +55,7 @@ Para evitar suposiciones falsas antes del siguiente cambio:
 - La resolucion IA por imagen ya puede reutilizarse desde cache local en sesion para evitar analisis repetidos.
 - `preset`, `exportFormat`, `exportQuality` y `upscale` ya pueden influir en la ejecucion real.
 - La `IA` todavia no es la fuente de verdad completa del pipeline final.
+- El flujo IA ya toma dimensiones de entrada desde metadata/pixel size y no debe volver a depender de `NSImage` para esa lectura.
 - `faceRestore` ya esta cableado como contrato de planner/UI/pipeline y viaja por preview y export.
 - `faceRestore` ya aplica una mejora local selectiva sobre mascara facial.
 - Sigue sin ser un modelo dedicado de restauracion facial; la implementacion actual es deliberadamente conservadora.
@@ -59,6 +63,10 @@ Para evitar suposiciones falsas antes del siguiente cambio:
 - La decision efectiva de `AUTO` ya se refleja mejor en la UI de preview para que el usuario vea que pipeline se esta aplicando.
 - El perfil de export se considera parte del snapshot del lote; no debe variar a mitad de una ejecucion ya iniciada.
 - La clasificacion `ecommerce` debe seguir funcionando con branding ligero; `document` debe quedar reservado para imagenes realmente dominadas por texto.
+- La clasificacion `ecommerce` ya no debe depender solo de fondo blanco puro; tambien debe cubrir fotos reales de catalogo movil con sujeto centrado y poco texto.
+- En `Ecommerce`, el producto principal ya puede aislarse con Vision foreground masking y recomponerse centrado sobre fondo blanco.
+- Esa etapa debe mantenerse encapsulada fuera del pipeline fotografico general y caer a no-op seguro cuando la mascara no sea fiable o la API no este disponible.
+- `Documento` ya incorpora un remate especifico para recuperar fondo blanco y evitar exportaciones demasiado grises sobre hojas claras.
 
 ## Regla para la siguiente fase
 
@@ -284,10 +292,12 @@ Separar implementacion por modulos:
 Estado actual del repo:
 
 - `ImageAnalyzer`: implementado para escena/caras/texto/luminancia
+- `ImageAnalyzer`: ya reutilizable tambien para lectura de pixel size desde metadata
 - `EnhancementPlanner`: implementado para resolucion de receta IA y fallback
 - `LocalPhotoPipeline`: implementado para pipeline local de mejora
 - `UpscaleEngine`: pendiente como modulo dedicado; hoy vive dentro del pipeline local
 - `FaceRestoreEngine`: pendiente
+- `ProductIsolationEngine`: implementado para `Ecommerce` con foreground masking y recomposicion centrada sobre blanco
 - `ExportPipeline`: pendiente como modulo dedicado; hoy sigue integrado en `ImageEnhancer`
 
 Responsabilidades:
@@ -295,6 +305,8 @@ Responsabilidades:
 - `ImageAnalyzer`: Vision + OpenAI
 - `EnhancementPlanner`: crea `EnhancementRecipe`
 - `LocalPhotoPipeline`: Core Image base
+- `ProductIsolationEngine`: recorte de producto y recomposicion sobre fondo blanco en `Ecommerce`
+- `ProductIsolationEngine`: sigue siendo una etapa local; una reconstruccion mas limpia de bordes complejos requeriria una fase generativa opcional
 - `UpscaleEngine`: SR opcional
 - `FaceRestoreEngine`: modulo facial opcional
 - `ExportPipeline`: render final y guardado
@@ -323,17 +335,23 @@ Referencia fija:
 - entradas adicionales:
   - `APPS/JUST4PICT/images/32474560-ED95-47FF-96E9-2ACD793D0A30_1_105_c.jpeg`
   - `APPS/JUST4PICT/images/58706BD4-3915-4068-80EF-B7B11F7D2EC6_1_105_c.jpeg`
+  - `APPS/JUST4PICT/images/image_doc_orig.jpeg`
+  - `APPS/JUST4PICT/images/image_product_orig.jpeg`
 
 Salidas QA:
 
 - `APPS/JUST4PICT/images/test/*-pro-sample.png`
+- `APPS/JUST4PICT/images/test/image_doc_orig-auto-sample.png`
+- `APPS/JUST4PICT/images/test/image_product_orig-auto-sample.png`
 
 Uso actual:
 
 - retrato para cerrar `PRO`
 - paisaje para validar `AUTO` fuera de retrato
 - nocturna para contener mejor sombras, color y brillo global
-- salida: `APPS/JUST4PICT/images/test/portrait-pro-sample.png`
+- documento para fijar `AUTO -> Documento` con muestra real
+- ecommerce para fijar `AUTO -> Ecommerce` con muestra real
+- salida de referencia retrato: `APPS/JUST4PICT/images/test/PHOTO-2026-03-18-22-18-19 2-pro-sample.png`
 
 Objetivo:
 
