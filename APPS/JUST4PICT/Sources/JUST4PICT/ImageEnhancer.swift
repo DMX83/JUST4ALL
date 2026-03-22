@@ -550,23 +550,62 @@ final class ImageEnhancer {
         return (blur.outputImage ?? mask).cropped(to: mask.extent)
     }
 
-    private func makeDarkPhotoRecoveryImage(image: CIImage, analysis: PhotoAnalysis, upscaleToLongSide: CGFloat?) -> CIImage {
+    // CORRECCIÓN — makeDarkPhotoRecoveryImage
+    // Archivo: APPS/JUST4PICT/Sources/JUST4PICT/ImageEnhancer.swift
+    //
+    // El parámetro `analysis` ya no es una firma mentirosa:
+    // se usa para adaptar exposición, sombras y reducción de ruido
+    // según la luminancia media y el perfil tonal real de la imagen.
+    private func makeDarkPhotoRecoveryImage(
+        image: CIImage,
+        analysis: PhotoAnalysis,
+        upscaleToLongSide: CGFloat?
+    ) -> CIImage {
         var currentImage = image
-        logger.notice("Applying dark photo recovery pipeline.")
+        logger.notice(
+            "Applying dark photo recovery pipeline | lum=\(String(format: \"%.3f\", analysis.averageLuminance)) lowKey=\(analysis.isLowKey)"
+        )
 
-        // 1. Lift shadows and boost exposure
+        // ── 1. Exposición adaptativa ─────────────────────────────────────────────
+        // Cuanto más oscura la imagen, más boost necesita.
+        // Tres franjas calibradas sobre el rango esperado de darkPhoto
+        // (isLowKey => luminance < 0.42, con el núcleo real entre 0.18 y 0.38).
+        //   < 0.28  → imagen muy oscura, boost fuerte
+        //   0.28–0.34 → oscura moderada, boost medio
+        //   ≥ 0.34  → rozando el umbral, boost suave
+        // Techo en 0.72 EV para no quemar altas luces en imágenes con zonas claras.
+        let lum = analysis.averageLuminance
+        let exposureEV: Float
+        switch lum {
+        case ..<0.28:
+            exposureEV = 0.68
+        case 0.28..<0.34:
+            exposureEV = 0.50
+        default:
+            exposureEV = 0.34
+        }
+
+        // ── 2. Sombras adaptativas ───────────────────────────────────────────────
+        // isLowKey indica imagen dominantemente oscura: abre sombras con más fuerza.
+        // Si no es lowKey (imagen puntualmente subexpuesta pero con zonas medias),
+        // un shadowAmount excesivo destruye el contraste percibido.
+        let shadowAmount: Float = analysis.isLowKey ? 0.88 : 0.64
+        let highlightAmount: Float = analysis.isLowKey ? 0.92 : 0.96
+
         let shadowsHighlights = CIFilter.highlightShadowAdjust()
         shadowsHighlights.inputImage = currentImage
-        shadowsHighlights.shadowAmount = 0.85
-        shadowsHighlights.highlightAmount = 0.95
+        shadowsHighlights.shadowAmount = shadowAmount
+        shadowsHighlights.highlightAmount = highlightAmount
         currentImage = shadowsHighlights.outputImage ?? currentImage
 
         let exposure = CIFilter.exposureAdjust()
         exposure.inputImage = currentImage
-        exposure.ev = 0.5
+        exposure.ev = exposureEV
         currentImage = exposure.outputImage ?? currentImage
 
-        // 2. Restore color and contrast
+        // ── 3. Color y contraste ─────────────────────────────────────────────────
+        // Sin cambio respecto a la versión anterior: vibrance moderado
+        // y un toque de contraste/saturación para recuperar color sin saturar.
         if let vibrance = CIFilter(name: "CIVibrance") {
             vibrance.setValue(currentImage, forKey: kCIInputImageKey)
             vibrance.setValue(0.25, forKey: "inputAmount")
@@ -579,14 +618,19 @@ final class ImageEnhancer {
         colorControls.contrast = 1.08
         currentImage = colorControls.outputImage ?? currentImage
 
-        // 3. Aggressive noise reduction
+        // ── 4. Reducción de ruido adaptativa ────────────────────────────────────
+        // Imágenes muy oscuras tienen más ruido digital: subir noiseLevel
+        // cuando la luminancia es baja. Techo conservador para no
+        // plastificar la imagen antes del sharpen final.
+        let noiseLevel: Float = lum < 0.28 ? 0.10 : 0.08
+
         let noiseReduction = CIFilter.noiseReduction()
         noiseReduction.inputImage = currentImage
-        noiseReduction.noiseLevel = 0.08
-        noiseReduction.sharpness = 0.1 // Keep low to avoid amplifying noise before final sharpen
+        noiseReduction.noiseLevel = noiseLevel
+        noiseReduction.sharpness = 0.1
         currentImage = noiseReduction.outputImage ?? currentImage
 
-        // 4. Upscale if needed
+        // ── 5. Upscale opcional ──────────────────────────────────────────────────
         if let upscaleToLongSide {
             let upscaleResult = upscaleEngine.upscaleIfNeeded(
                 image: currentImage,
@@ -596,7 +640,7 @@ final class ImageEnhancer {
             currentImage = upscaleResult.image
         }
 
-        // 5. Final sharpening pass
+        // ── 6. Sharpen final ─────────────────────────────────────────────────────
         let sharpen = CIFilter.unsharpMask()
         sharpen.inputImage = currentImage
         sharpen.radius = 1.8
