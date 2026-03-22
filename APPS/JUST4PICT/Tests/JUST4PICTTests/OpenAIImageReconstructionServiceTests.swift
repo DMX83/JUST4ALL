@@ -29,4 +29,38 @@ final class OpenAIImageReconstructionServiceTests: XCTestCase {
     func testDefaultPromptIsNotEmpty() {
         XCTAssertFalse(OpenAIImageReconstructionService.defaultPrompt().isEmpty)
     }
+
+    func testEcommercePromptMentionsWhiteBackgroundAndBranding() {
+        let prompt = OpenAIImageReconstructionService.defaultPrompt(for: .ecommerceCleanup)
+
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("white background"))
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("branding"))
+    }
+
+    func testRecommendedIntentUsesEcommerceForEcommercePreset() {
+        let intent = OpenAIImageReconstructionService.recommendedIntent(
+            preset: .ecommerce,
+            scene: nil
+        )
+
+        XCTAssertEqual(intent, .ecommerceCleanup)
+    }
+
+    func testRecommendedIntentUsesEcommerceForDetectedEcommerceScene() {
+        let intent = OpenAIImageReconstructionService.recommendedIntent(
+            preset: .auto,
+            scene: .ecommerce
+        )
+
+        XCTAssertEqual(intent, .ecommerceCleanup)
+    }
+
+    func testRecommendedIntentKeepsGeneralForPortrait() {
+        let intent = OpenAIImageReconstructionService.recommendedIntent(
+            preset: .portrait,
+            scene: .portrait
+        )
+
+        XCTAssertEqual(intent, .general)
+    }
 }

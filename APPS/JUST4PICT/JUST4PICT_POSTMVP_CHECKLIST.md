@@ -74,6 +74,12 @@ Prioridades: `alta` · `media` · `baja`
 - [x] **Comparar `Reconstruir IA` vs `Real-ESRGAN` en miniaturas extremas** `media`
   La regla actual queda fijada así: `Real-ESRGAN` para imágenes pequeñas no faciales; `Reconstruir IA` para miniaturas extremas o retratos degradados donde hace falta reconstrucción semántica. La UI ya lo sugiere sin autoactivar ninguno.
 
+- [x] **`Ecommerce + IA` como rescate opcional** `media`
+  Ya queda resuelto como variante manual de `Reconstruir IA`: cuando el preset o la escena efectiva son `Ecommerce`, la reconstrucción usa un prompt específico para limpiar bordes complejos y recomponer sobre blanco sin activarse sola.
+
+- [x] **Unificar la política de export entre `PRO` y `Reconstruir IA`** `media`
+  Ya resuelto con `ImageExportWriter`: resize por destino, `Web <300KB>` y compresión iterativa viven en un camino común y evitan duplicar lógica de exportación.
+
 ---
 
 ## Orden de ataque recomendado

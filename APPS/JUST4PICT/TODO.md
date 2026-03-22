@@ -142,7 +142,7 @@ Verificacion:
   La barra de estado y la tarjeta de preview ya distinguen `IA` real de `IA→PRO` para evitar ambigüedad cuando la recomendación no está disponible.
 - [x] Comparar `PRO` vs `IA` en la muestra real de `Paisaje`.
   El diagnostico opt-in `testAIDiagnosticComparesProAgainstAIOnLandscapeSample` ya muestra que `IA` eligio `Paisaje`, `PNG` y `q=1.0`, con delta moderado pero sin ventaja fuerte frente a `PRO`.
-- [~] Añadir modo `Reconstruir IA` para imagenes muy pequenas o comprimidas.
+- [x] Añadir modo `Reconstruir IA` para imagenes muy pequenas o comprimidas.
   Ya existe como modo opcional de preview y batch usando `gpt-image-1`.
   Se escribe siempre como salida aparte (`-reconstruct_ia`) y no sustituye el flujo `PRO`.
   Se mantiene como modo manual para miniaturas extremas o retratos muy degradados; la UI ya puede sugerirlo como rescate, pero no se activa automaticamente.
@@ -243,15 +243,16 @@ Trabajo:
 - [x] asegurar `PNG` como salida por defecto de maxima calidad en la UI
 - [ ] asegurar exportacion maxima en `PNG` y `JPG` segun caso
 - [x] introducir resize inteligente por destino (`social`, `web`, `ecommerce`)
-- [ ] evitar dobles compresiones y reescalados innecesarios
+- [x] evitar dobles compresiones y reescalados innecesarios
 - [ ] evaluar si el recorte de producto necesita controles manuales o margen configurable para catalogo estricto
-- [ ] evaluar una variante opcional `Ecommerce + IA` para reconstruccion/limpieza de bordes complejos cuando Vision no recorte bien el producto
+- [x] evaluar una variante opcional `Ecommerce + IA` para reconstruccion/limpieza de bordes complejos cuando Vision no recorte bien el producto
 
 Verificacion:
 
 - [x] comparar preview vs archivo exportado
   Cobertura añadida para coherencia general y resize real de export.
 - [ ] medir tamaño final y fidelidad visual
+- [x] `Reconstruir IA` ya usa export writer comun y, en escena/preset `Ecommerce`, aplica prompt especifico para limpieza de bordes y recomposicion sobre blanco sin autoactivarse
 
 ## 3D) IA de producto
 
@@ -387,7 +388,8 @@ Prioridad alta:
 - [x] QA de volumen con 100/1000 imagenes
 - [~] medir tiempos/memoria y aplicar correcciones de batch
   Medicion base ya documentada; quedan solo correcciones si aparece regresion real.
-- [ ] evaluar `Ecommerce + IA` como opcion puntual para recortes complejos
+- [x] evaluar `Ecommerce + IA` como opcion puntual para recortes complejos
+  Queda resuelto como variante manual dentro de `Reconstruir IA` cuando el preset o la escena efectiva son `Ecommerce`.
 
 Prioridad media:
 

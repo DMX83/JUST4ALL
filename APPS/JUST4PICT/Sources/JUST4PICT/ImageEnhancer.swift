@@ -181,6 +181,7 @@ final class ImageEnhancer {
     private lazy var analyzer = ImageAnalyzer(context: context)
     private lazy var localPipeline = LocalPhotoPipeline(context: context, upscaleEngine: upscaleEngine)
     private lazy var productIsolationEngine = ProductIsolationEngine(context: context)
+    private lazy var exportWriter = ImageExportWriter(context: context)
     private let defaultHDLongSide: CGFloat = 1600
     private let logger = Logger(subsystem: "com.dmx83.just4pict", category: "ImageEnhancer")
 
@@ -221,7 +222,7 @@ final class ImageEnhancer {
         sceneOverride: SceneType? = nil
     ) throws {
         try autoreleasepool {
-            var image = try makeEnhancedImage(
+            let image = try makeEnhancedImage(
                 inputURL: inputURL,
                 preset: preset,
                 upscaleToLongSide: resolvedUpscaleTargetLongSide(upscaleTargetLongSide),
@@ -229,22 +230,15 @@ final class ImageEnhancer {
                 tuning: tuning,
                 sceneOverride: sceneOverride
             )
-            image = applyExportResizeIfNeeded(
+
+            try exportWriter.write(
                 image: image,
-                targetLongSide: exportProfile.targetLongSide(for: preset)
-            )
-
-            let extent = image.extent.integral
-            guard let cgImage = context.createCGImage(image, from: extent) else {
-                throw ImageEnhancerError.cannotRenderImage(inputURL)
-            }
-
-            try writeImage(
-                cgImage,
+                sourceURL: inputURL,
                 to: outputURL,
                 format: format,
                 quality: quality,
-                exportProfile: exportProfile
+                exportProfile: exportProfile,
+                preset: preset
             )
         }
     }
@@ -294,98 +288,6 @@ final class ImageEnhancer {
     private func resolvedPreviewUpscaleTargetLongSide(_ recipeTarget: CGFloat?) -> CGFloat? {
         guard let recipeTarget, recipeTarget > 0 else { return nil }
         return recipeTarget
-    }
-
-    private func applyExportResizeIfNeeded(image: CIImage, targetLongSide: CGFloat?) -> CIImage {
-        guard let targetLongSide, targetLongSide > 0 else {
-            return image
-        }
-
-        let extent = image.extent.integral
-        let currentLongSide = max(extent.width, extent.height)
-        guard currentLongSide > targetLongSide else {
-            return image
-        }
-
-        let scale = targetLongSide / currentLongSide
-        let filter = CIFilter.lanczosScaleTransform()
-        filter.inputImage = image
-        filter.scale = Float(scale)
-        filter.aspectRatio = 1.0
-        return (filter.outputImage ?? image).cropped(to: (filter.outputImage ?? image).extent.integral)
-    }
-
-    private func writeImage(
-        _ cgImage: CGImage,
-        to outputURL: URL,
-        format: OutputFormat,
-        quality: Double,
-        exportProfile: ExportProfile
-    ) throws {
-        if let byteBudget = exportProfile.targetByteBudget,
-           format.supportsLossyQuality {
-            let minimumQuality = exportProfile.minimumLossyQuality ?? 0.58
-            let requestedQuality = min(max(quality, 0.1), 1.0)
-            let qualityCandidates = lossyQualityCandidates(
-                startingAt: requestedQuality,
-                minimum: minimumQuality
-            )
-
-            for candidateQuality in qualityCandidates {
-                try writeCGImage(
-                    cgImage,
-                    to: outputURL,
-                    format: format,
-                    quality: candidateQuality
-                )
-
-                let fileSize = (try? outputURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? .max
-                if fileSize <= byteBudget {
-                    return
-                }
-            }
-
-            let finalSize = (try? outputURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? .max
-            if finalSize <= byteBudget {
-                return
-            }
-            throw ImageEnhancerError.cannotFitByteBudget(outputURL, byteBudget)
-        }
-
-        try writeCGImage(cgImage, to: outputURL, format: format, quality: quality)
-    }
-
-    private func writeCGImage(
-        _ cgImage: CGImage,
-        to outputURL: URL,
-        format: OutputFormat,
-        quality: Double
-    ) throws {
-        guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, format.utTypeIdentifier, 1, nil) else {
-            throw ImageEnhancerError.cannotCreateDestination(outputURL)
-        }
-
-        var destinationOptions: [CFString: Any] = [:]
-        if format.supportsLossyQuality {
-            destinationOptions[kCGImageDestinationLossyCompressionQuality] = min(max(quality, 0.1), 1.0)
-        }
-
-        CGImageDestinationAddImage(destination, cgImage, destinationOptions as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else {
-            throw ImageEnhancerError.cannotFinalizeWrite(outputURL)
-        }
-    }
-
-    private func lossyQualityCandidates(startingAt start: Double, minimum: Double) -> [Double] {
-        let baseSteps: [Double] = [start, 0.90, 0.84, 0.78, 0.72, 0.66, 0.62, minimum]
-        var values: [Double] = []
-        for step in baseSteps {
-            let clamped = min(max(step, minimum), 1.0)
-            if !values.contains(where: { abs($0 - clamped) < 0.0001 }) {
-                values.append(clamped)
-            }
-        }
-        return values
     }
 
     private func makeEnhancedImage(

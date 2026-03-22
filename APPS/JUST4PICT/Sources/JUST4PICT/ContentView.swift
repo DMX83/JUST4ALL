@@ -1254,11 +1254,19 @@ struct ContentView: View {
         }
 
         if mode == .reconstructAI {
+            let intent = reconstructionIntent(
+                for: inputURL,
+                preset: preset,
+                sceneOverride: sceneOverride
+            )
             try await openAIReconstruction.reconstructImage(
                 inputURL: inputURL,
                 outputURL: outputURL,
                 format: format,
-                quality: quality
+                quality: quality,
+                exportProfile: exportProfile,
+                preset: preset,
+                intent: intent
             )
             return
         }
@@ -1670,7 +1678,14 @@ struct ContentView: View {
             proPreviewImage = proPreview
 
             if selectedMode == .reconstructAI {
-                let reconstructedPreview = try await openAIReconstruction.reconstructPreviewImage(inputURL: selectedPreviewURL)
+                let reconstructedPreview = try await openAIReconstruction.reconstructPreviewImage(
+                    inputURL: selectedPreviewURL,
+                    intent: reconstructionIntent(
+                        for: selectedPreviewURL,
+                        preset: preset,
+                        sceneOverride: effectivePreviewScene
+                    )
+                )
                 if Task.isCancelled || previewRequestID != requestID {
                     isGeneratingPreview = false
                     return
@@ -1880,7 +1895,11 @@ struct ContentView: View {
     }
 
     private var reconstructionPreviewSummary: String {
-        "reconstrucción generativa conservadora para imágenes pequeñas o muy comprimidas"
+        if let selectedPreviewURL,
+           reconstructionIntent(for: selectedPreviewURL, preset: preset, sceneOverride: effectivePreviewScene) == .ecommerceCleanup {
+            return "reconstrucción IA para producto: limpia bordes complejos, preserva branding y recompone sobre blanco"
+        }
+        return "reconstrucción generativa conservadora para imágenes pequeñas o muy comprimidas"
     }
 
     private var currentComparisonImage: NSImage? {
@@ -1927,6 +1946,28 @@ struct ContentView: View {
         case .reconstructAI:
             return "IA-R"
         }
+    }
+
+    private func reconstructionIntent(
+        for inputURL: URL,
+        preset: EnhancementPreset,
+        sceneOverride: ImageEnhancer.SceneType?
+    ) -> ReconstructionIntent {
+        let effectiveScene: ImageEnhancer.SceneType?
+        if let sceneOverride {
+            effectiveScene = sceneOverride
+        } else if preset == .ecommerce {
+            effectiveScene = .ecommerce
+        } else if preset == .auto {
+            effectiveScene = enhancer.detectSceneType(inputURL: inputURL)
+        } else {
+            effectiveScene = nil
+        }
+
+        return OpenAIImageReconstructionService.recommendedIntent(
+            preset: preset,
+            scene: effectiveScene
+        )
     }
 
     private var aiPreviewSummary: String? {

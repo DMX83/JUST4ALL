@@ -1,12 +1,15 @@
 import Foundation
 import AppKit
 import ImageIO
-import UniformTypeIdentifiers
+
+enum ReconstructionIntent: Equatable {
+    case general
+    case ecommerceCleanup
+}
 
 enum OpenAIImageReconstructionError: LocalizedError {
     case unavailable
     case invalidDownloadedImage
-    case failedToWriteOutput
 
     var errorDescription: String? {
         switch self {
@@ -14,27 +17,47 @@ enum OpenAIImageReconstructionError: LocalizedError {
             return "Reconstrucción IA no disponible: falta configurar OPENAI_API_KEY"
         case .invalidDownloadedImage:
             return "La respuesta de reconstrucción IA no devolvió una imagen válida"
-        case .failedToWriteOutput:
-            return "No se pudo escribir la salida reconstruida"
         }
     }
 }
 
 final class OpenAIImageReconstructionService {
     private let client: OpenAIImageEditClient?
+    private let exportWriter: ImageExportWriter
 
-    init(client: OpenAIImageEditClient? = OpenAIImageEditClient(model: "gpt-image-1")) {
+    init(
+        client: OpenAIImageEditClient? = OpenAIImageEditClient(model: "gpt-image-1"),
+        exportWriter: ImageExportWriter = ImageExportWriter()
+    ) {
         self.client = client
+        self.exportWriter = exportWriter
     }
 
     var isAvailable: Bool {
         client != nil
     }
 
-    static func defaultPrompt() -> String {
-        """
-        Restore and reconstruct this low-resolution or compressed image conservatively. Preserve identity, framing, lighting, colors and scene layout as much as possible. Remove heavy compression artifacts and rebuild plausible detail without changing the composition, adding objects, stylizing the image or over-smoothing faces.
-        """
+    static func defaultPrompt(for intent: ReconstructionIntent = .general) -> String {
+        switch intent {
+        case .general:
+            return """
+            Restore and reconstruct this low-resolution or compressed image conservatively. Preserve identity, framing, lighting, colors and scene layout as much as possible. Remove heavy compression artifacts and rebuild plausible detail without changing the composition, adding objects, stylizing the image or over-smoothing faces.
+            """
+        case .ecommerceCleanup:
+            return """
+            Restore this product image conservatively for ecommerce. Preserve the product identity, branding, label text, shape and colors. Clean up compression artifacts, improve edge definition, isolate the main product cleanly, and place it centered on a plain white background without adding props, shadows, reflections or changing the product geometry.
+            """
+        }
+    }
+
+    static func recommendedIntent(
+        preset: EnhancementPreset,
+        scene: ImageEnhancer.SceneType?
+    ) -> ReconstructionIntent {
+        if preset == .ecommerce || scene == .ecommerce {
+            return .ecommerceCleanup
+        }
+        return .general
     }
 
     static func recommendedCanvasSize(for pixelSize: CGSize) -> String {
@@ -52,24 +75,41 @@ final class OpenAIImageReconstructionService {
         inputURL: URL,
         outputURL: URL,
         format: OutputFormat,
-        quality: Double
+        quality: Double,
+        exportProfile: ExportProfile,
+        preset: EnhancementPreset,
+        intent: ReconstructionIntent
     ) async throws {
-        let downloadedImage = try await reconstructNSImage(inputURL: inputURL)
-        try write(image: downloadedImage, to: outputURL, format: format, quality: quality)
+        let downloadedImage = try await reconstructNSImage(inputURL: inputURL, intent: intent)
+        try exportWriter.write(
+            image: downloadedImage,
+            sourceURL: inputURL,
+            to: outputURL,
+            format: format,
+            quality: quality,
+            exportProfile: exportProfile,
+            preset: preset
+        )
     }
 
-    func reconstructPreviewImage(inputURL: URL) async throws -> NSImage {
-        try await reconstructNSImage(inputURL: inputURL)
+    func reconstructPreviewImage(
+        inputURL: URL,
+        intent: ReconstructionIntent
+    ) async throws -> NSImage {
+        try await reconstructNSImage(inputURL: inputURL, intent: intent)
     }
 
-    private func reconstructNSImage(inputURL: URL) async throws -> NSImage {
+    private func reconstructNSImage(
+        inputURL: URL,
+        intent: ReconstructionIntent
+    ) async throws -> NSImage {
         guard let client else { throw OpenAIImageReconstructionError.unavailable }
 
         let pixelSize = pixelSize(for: inputURL)
         let size = Self.recommendedCanvasSize(for: pixelSize)
         let urls = try await client.editImage(
             imageURL: inputURL,
-            prompt: Self.defaultPrompt(),
+            prompt: Self.defaultPrompt(for: intent),
             n: 1,
             size: size,
             responseFormat: "url"
@@ -85,31 +125,6 @@ final class OpenAIImageReconstructionService {
         }
 
         return image
-    }
-
-    private func write(image: NSImage, to outputURL: URL, format: OutputFormat, quality: Double) throws {
-        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            throw OpenAIImageReconstructionError.failedToWriteOutput
-        }
-
-        guard let destination = CGImageDestinationCreateWithURL(
-            outputURL as CFURL,
-            format.utTypeIdentifier,
-            1,
-            nil
-        ) else {
-            throw OpenAIImageReconstructionError.failedToWriteOutput
-        }
-
-        var options: [CFString: Any] = [:]
-        if format.supportsLossyQuality {
-            options[kCGImageDestinationLossyCompressionQuality] = min(max(quality, 0.1), 1.0)
-        }
-
-        CGImageDestinationAddImage(destination, cgImage, options as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else {
-            throw OpenAIImageReconstructionError.failedToWriteOutput
-        }
     }
 
     private func pixelSize(for inputURL: URL) -> CGSize {

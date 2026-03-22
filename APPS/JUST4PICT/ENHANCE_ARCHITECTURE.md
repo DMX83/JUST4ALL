@@ -28,6 +28,7 @@ Situacion del producto ahora:
   - `EnhancementPlanner` resuelve decisiones derivadas de receta/fallback,
   - `LocalPhotoPipeline` ejecuta el pipeline local
 - `ImageEnhancer` ya centraliza un `CIContext` compartido e inyecta esa dependencia a analisis, pipeline local, upscale y aislamiento de producto
+- la politica de exportacion ya queda centralizada en `ImageExportWriter`, usada tanto por `PRO` como por `Reconstruir IA`
 - `ContentView` sigue siendo el punto principal de orquestacion UI, pero ya no duplica tanto manejo de logs/resultados de batch y arranque de estado como en fases anteriores
 - existe una primera pasada de afinado visual en evaluacion sobre `LocalPhotoPipeline`:
   - balance de blancos adaptativo
@@ -74,12 +75,14 @@ Para evitar suposiciones falsas antes del siguiente cambio:
 - Sigue sin ser un modelo dedicado de restauracion facial; la implementacion actual es deliberadamente conservadora.
 - `LocalPhotoPipeline` ya tiene cobertura unitaria directa para balance de blancos y sharpen selectivo, sin depender solo de QA visual.
 - Ya existe perfil de export por destino (`Original`, `Social`, `Web`, `Ecommerce`) con resize aplicado solo al archivo final.
+- `Reconstruir IA` ya no mantiene una ruta de escritura separada: comparte el export writer comun y debe respetar los mismos perfiles de exportacion (`Web`, `Web <300KB`, `Ecommerce`, etc.).
 - La decision efectiva de `AUTO` ya se refleja mejor en la UI de preview para que el usuario vea que pipeline se esta aplicando.
 - El perfil de export se considera parte del snapshot del lote; no debe variar a mitad de una ejecucion ya iniciada.
 - La clasificacion `ecommerce` debe seguir funcionando con branding ligero; `document` debe quedar reservado para imagenes realmente dominadas por texto.
 - La clasificacion `ecommerce` ya no debe depender solo de fondo blanco puro; tambien debe cubrir fotos reales de catalogo movil con sujeto centrado y poco texto.
 - En `Ecommerce`, el producto principal ya puede aislarse con Vision foreground masking y recomponerse centrado sobre fondo blanco.
 - Esa etapa debe mantenerse encapsulada fuera del pipeline fotografico general y caer a no-op seguro cuando la mascara no sea fiable o la API no este disponible.
+- Como variante manual, `Reconstruir IA` ya puede usar un prompt especifico de producto cuando el preset o la escena efectiva son `Ecommerce`, para limpiar bordes complejos y recomponer sobre blanco sin autoactivarse.
 - `Documento` ya incorpora un remate especifico para recuperar fondo blanco y evitar exportaciones demasiado grises sobre hojas claras.
 
 ## Regla para la siguiente fase

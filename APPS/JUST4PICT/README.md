@@ -137,7 +137,7 @@ Validacion baseline 2026-03-22:
 - Persistir en historial la decision efectiva de `AUTO`.
 - Perfil de export rapido para miniaturas web.
 - Integracion de deteccion de documento con Vision para recorte/enfoque automatizado.
-- Evaluar `Ecommerce + IA` solo para recortes complejos que Vision no resuelva bien.
+- Ajustar controles manuales de recorte de producto solo si aparecen casos de catalogo estricto que lo pidan.
 
 ## Cierre de MVP
 
@@ -178,6 +178,8 @@ Estado actual del cierre:
 - `Reconstruir IA` queda disponible como modo opcional de preview y batch cuando la key existe.
 - Ese modo usa `gpt-image-1` sobre `/v1/images/edits` para intentar reconstruccion conservadora de imagenes muy pequenas o comprimidas.
 - La salida de `Reconstruir IA` siempre se escribe en un archivo aparte (`-reconstruct_ia`) y no sustituye silenciosamente a `PRO` ni a `Real-ESRGAN`.
+- `Reconstruir IA` ya comparte el mismo export writer que `PRO`, asi que respeta resize por destino y perfiles como `Web <300KB>` sin duplicar logica de compresion/export.
+- Cuando el preset o la escena efectiva son `Ecommerce`, `Reconstruir IA` usa un prompt especifico para producto: limpia bordes complejos, preserva branding y recompone sobre blanco.
 - Regla actual de producto:
   - `Real-ESRGAN`: recomendado para imagenes pequenas no faciales donde hace falta recuperar detalle aparente sin abrir una reconstruccion generativa.
   - `Reconstruir IA`: recomendado para miniaturas extremas, compresion severa o retratos muy degradados donde hace falta reconstruccion, no solo upscale.
