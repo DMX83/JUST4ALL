@@ -858,6 +858,38 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         XCTAssertEqual(writtenSize.height, 800)
     }
 
+    func testExportProfileWebLiteKeepsLossyOutputUnder300KB() throws {
+        let inputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("jpg")
+
+        try makeSolidImage(width: 2600, height: 1800).pngWrite(to: inputURL)
+        defer {
+            try? FileManager.default.removeItem(at: inputURL)
+            try? FileManager.default.removeItem(at: outputURL)
+        }
+
+        let enhancer = ImageEnhancer()
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            preset: .auto,
+            quality: 0.92,
+            format: .jpg,
+            exportProfile: .webLite
+        )
+
+        let writtenSize = try pixelSize(for: outputURL)
+        let fileSize = try XCTUnwrap(outputURL.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+
+        XCTAssertEqual(writtenSize.width, 1280)
+        XCTAssertEqual(writtenSize.height, 887)
+        XCTAssertLessThanOrEqual(fileSize, 300_000)
+    }
+
     private func primarySampleImageURL() throws -> URL {
         let samples = try sampleImageURLs()
         if let portrait = samples.first(where: { $0.lastPathComponent == "PHOTO-2026-03-18-22-18-19 5.jpg" }) {

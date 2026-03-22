@@ -46,6 +46,7 @@ enum ExportProfile: String, CaseIterable, Identifiable {
     case original = "Original"
     case social = "Social"
     case web = "Web"
+    case webLite = "Web <300KB"
     case ecommerce = "Ecommerce"
 
     var id: String { rawValue }
@@ -58,8 +59,28 @@ enum ExportProfile: String, CaseIterable, Identifiable {
             return 2048
         case .web:
             return 1600
+        case .webLite:
+            return 1280
         case .ecommerce:
             return preset == .ecommerce ? 2200 : 2000
+        }
+    }
+
+    var targetByteBudget: Int? {
+        switch self {
+        case .webLite:
+            return 300_000
+        case .original, .social, .web, .ecommerce:
+            return nil
+        }
+    }
+
+    var minimumLossyQuality: Double? {
+        switch self {
+        case .webLite:
+            return 0.58
+        case .original, .social, .web, .ecommerce:
+            return nil
         }
     }
 }
@@ -119,6 +140,7 @@ enum ImageEnhancerError: LocalizedError {
     case cannotRenderImage(URL)
     case cannotCreateDestination(URL)
     case cannotFinalizeWrite(URL)
+    case cannotFitByteBudget(URL, Int)
 
     var errorDescription: String? {
         switch self {
@@ -130,6 +152,8 @@ enum ImageEnhancerError: LocalizedError {
             return "No se pudo crear el archivo de salida: \(url.lastPathComponent)"
         case .cannotFinalizeWrite(let url):
             return "No se pudo finalizar la escritura: \(url.lastPathComponent)"
+        case .cannotFitByteBudget(let url, let budget):
+            return "No se pudo ajustar \(url.lastPathComponent) al objetivo de \(budget / 1000)KB"
         }
     }
 }
@@ -215,19 +239,13 @@ final class ImageEnhancer {
                 throw ImageEnhancerError.cannotRenderImage(inputURL)
             }
 
-            guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, format.utTypeIdentifier, 1, nil) else {
-                throw ImageEnhancerError.cannotCreateDestination(outputURL)
-            }
-
-            var destinationOptions: [CFString: Any] = [:]
-            if format.supportsLossyQuality {
-                destinationOptions[kCGImageDestinationLossyCompressionQuality] = min(max(quality, 0.1), 1.0)
-            }
-
-            CGImageDestinationAddImage(destination, cgImage, destinationOptions as CFDictionary)
-            guard CGImageDestinationFinalize(destination) else {
-                throw ImageEnhancerError.cannotFinalizeWrite(outputURL)
-            }
+            try writeImage(
+                cgImage,
+                to: outputURL,
+                format: format,
+                quality: quality,
+                exportProfile: exportProfile
+            )
         }
     }
 
@@ -295,6 +313,79 @@ final class ImageEnhancer {
         filter.scale = Float(scale)
         filter.aspectRatio = 1.0
         return (filter.outputImage ?? image).cropped(to: (filter.outputImage ?? image).extent.integral)
+    }
+
+    private func writeImage(
+        _ cgImage: CGImage,
+        to outputURL: URL,
+        format: OutputFormat,
+        quality: Double,
+        exportProfile: ExportProfile
+    ) throws {
+        if let byteBudget = exportProfile.targetByteBudget,
+           format.supportsLossyQuality {
+            let minimumQuality = exportProfile.minimumLossyQuality ?? 0.58
+            let requestedQuality = min(max(quality, 0.1), 1.0)
+            let qualityCandidates = lossyQualityCandidates(
+                startingAt: requestedQuality,
+                minimum: minimumQuality
+            )
+
+            for candidateQuality in qualityCandidates {
+                try writeCGImage(
+                    cgImage,
+                    to: outputURL,
+                    format: format,
+                    quality: candidateQuality
+                )
+
+                let fileSize = (try? outputURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? .max
+                if fileSize <= byteBudget {
+                    return
+                }
+            }
+
+            let finalSize = (try? outputURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? .max
+            if finalSize <= byteBudget {
+                return
+            }
+            throw ImageEnhancerError.cannotFitByteBudget(outputURL, byteBudget)
+        }
+
+        try writeCGImage(cgImage, to: outputURL, format: format, quality: quality)
+    }
+
+    private func writeCGImage(
+        _ cgImage: CGImage,
+        to outputURL: URL,
+        format: OutputFormat,
+        quality: Double
+    ) throws {
+        guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, format.utTypeIdentifier, 1, nil) else {
+            throw ImageEnhancerError.cannotCreateDestination(outputURL)
+        }
+
+        var destinationOptions: [CFString: Any] = [:]
+        if format.supportsLossyQuality {
+            destinationOptions[kCGImageDestinationLossyCompressionQuality] = min(max(quality, 0.1), 1.0)
+        }
+
+        CGImageDestinationAddImage(destination, cgImage, destinationOptions as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else {
+            throw ImageEnhancerError.cannotFinalizeWrite(outputURL)
+        }
+    }
+
+    private func lossyQualityCandidates(startingAt start: Double, minimum: Double) -> [Double] {
+        let baseSteps: [Double] = [start, 0.90, 0.84, 0.78, 0.72, 0.66, 0.62, minimum]
+        var values: [Double] = []
+        for step in baseSteps {
+            let clamped = min(max(step, minimum), 1.0)
+            if !values.contains(where: { abs($0 - clamped) < 0.0001 }) {
+                values.append(clamped)
+            }
+        }
+        return values
     }
 
     private func makeEnhancedImage(

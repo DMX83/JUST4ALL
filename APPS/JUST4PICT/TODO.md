@@ -149,7 +149,8 @@ Verificacion:
 - [x] Resize inteligente por preset/destino (`social`, `web`, `ecommerce`).
 - [ ] Correccion de horizonte y recorte de documento (Vision).
 - [ ] Perfil "Recuperar fotos oscuras".
-- [ ] Perfil "Optimizar para web < 300KB".
+- [x] Perfil "Optimizar para web < 300KB".
+  Ya existe como `Web <300KB`, con resize mas agresivo y compresion iterativa best-effort para `JPG/HEIC/WEBP`.
 - [x] Introducir `UpscaleEngine` dedicado para fotos pequenas.
 - [ ] Evaluar `Core ML` como motor serio de enhancement/upscale.
 - [~] Evaluar `Real-ESRGAN` como benchmark de calidad para upscale.
@@ -372,7 +373,6 @@ Fuera del MVP:
 - upscale dedicado
 - Core ML / Real-ESRGAN
 - afinado visual fino por escena
-- optimizacion web `< 300KB`
 - correccion avanzada de documento con recorte/horizonte
 
 ## 8) Afinado Post-MVP
@@ -398,5 +398,4 @@ Prioridad media:
 
 Prioridad baja:
 
-- [ ] perfil web `< 300KB`
 - [ ] evaluar motores dedicados de upscale/restauracion
