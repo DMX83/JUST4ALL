@@ -26,6 +26,12 @@ swift run
 ./scripts/build_dmg.sh
 ```
 
+Validacion baseline 2026-03-22:
+
+- DMG generado y montado correctamente.
+- App presente en el volumen: `JUST4PICT.app`.
+- Build stamp validado: `20260322101203-72d60f7`.
+
 ## Alcance MVP actual
 
 - Seleccion de imagenes por archivo o carpeta (escaneo recursivo).
@@ -110,6 +116,32 @@ swift run
 - Resize inteligente para redes/ecommerce.
 - Perfil de export rapido para miniaturas web.
 - Integracion de deteccion de documento con Vision para recorte/enfoque automatizado.
+
+## Cierre de MVP
+
+`JUST4PICT` puede darse por cerrado como MVP cuando se cumplan estos puntos:
+
+- `Retrato/PRO` queda congelado como baseline visual estable.
+- `AUTO` funciona con fiabilidad razonable en retrato, documento, foto oscura y ecommerce.
+- `Documento` y `Ecommerce` quedan validados con las muestras reales del repo.
+- preview y export se mantienen coherentes.
+- `PNG` sigue siendo el default de maxima calidad.
+- perfiles de export e historial siguen estables.
+- la suite `swift test` del modulo permanece verde.
+- existe QA visible actualizada en `images/test`.
+- se hace una pasada de lote real y una medicion basica de tiempos/memoria.
+- existe un DMG funcional validado para esta baseline.
+
+Todo lo demas debe tratarse ya como afinado post-MVP, no como requisito de cierre.
+
+Estado actual del cierre:
+
+- ya estan cerrados `AUTO`, `Documento`, `Ecommerce`, export por defecto, preview/export y QA visible
+- `Retrato/PRO` queda congelado para la baseline actual del MVP con test de referencia sobre la muestra fija del repo
+- ya existe una pasada local validada de lote real de 100 imagenes (`QA_BATCH_LOCAL.md`)
+- ya existe una medicion explicita de tiempo y memoria para ese lote local de 100 imagenes
+- ya existe un DMG funcional validado para esta baseline (`dist/JUST4PICT-0.1.0+20260322101203-72d60f7.dmg`)
+- con esto, `JUST4PICT` puede darse por cerrado como MVP funcional y el trabajo nuevo debe tratarse como afinado post-MVP
 
 ## Configuracion IA local
 

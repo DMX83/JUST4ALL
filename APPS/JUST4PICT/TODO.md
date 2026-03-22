@@ -56,7 +56,7 @@ Objetivo de producto:
 - [x] `AUTO` hereda explicitamente `Retrato`, `Documento` y `Paisaje` segun escena detectada.
 - [x] Deteccion adicional de paisaje vertical por contenido para evitar depender solo del ratio.
 - [x] Ajuste fino inicial de `PRO` para retrato, paisaje y nocturna sobre muestras reales del repo.
-- [ ] Ajuste fino final de `Retrato/PRO` para ganar detalle local sin perder naturalidad.
+- [x] Ajuste fino final de `Retrato/PRO` para la baseline actual del MVP.
 - [x] Afinar `AUTO` en nocturna y generico oscuro con una receta base mas inteligente.
 - [x] Mejorar deteccion `AUTO` para documento mas alla de cara/texto/ratio.
 - [x] Mejorar deteccion `AUTO` para producto/ecommerce mas alla de cara/texto/ratio.
@@ -246,10 +246,13 @@ Verificacion:
 ## 5) Release
 
 - [x] Congelar baseline visual de `PRO` antes de reabrir trabajo fuerte en `IA`.
-- [ ] QA local en lotes de 100/1000 imagenes.
+- [~] QA local en lotes de 100/1000 imagenes.
+  Ya existe una pasada validada de 100 imagenes; queda pendiente ampliar a 1000 si se quiere endurecer post-MVP.
 - [ ] Medir tiempos por preset y tamaño promedio.
 - [ ] Firma/notarizacion.
 - [ ] Publicacion v0.1.0.
+- [x] Generar y validar DMG funcional de la baseline MVP actual.
+  Validado el 2026-03-22 montando `dist/JUST4PICT-0.1.0+20260322101203-72d60f7.dmg` y comprobando `JUST4PICT.app` + build stamp.
 
 ## 6) Camino a algo muy bueno
 
@@ -270,3 +273,81 @@ Hitos:
 - [ ] upscale dedicado evaluado
 - [ ] QA de volumen completada
 - [ ] release candidata lista para firma
+
+## 7) Cierre de MVP
+
+Objetivo:
+
+- definir un punto claro de "MVP terminado" para dejar de abrir frentes y pasar a afinado
+
+Condicion de salida:
+
+- cuando estos puntos esten completos, `JUST4PICT` puede darse por cerrado como MVP funcional
+
+Checklist de cierre:
+
+- [x] `Retrato/PRO` queda congelado como baseline visual estable
+  Queda congelado para la baseline actual del MVP, con test de referencia sobre la muestra fija del repo.
+- [x] `AUTO` funciona de forma fiable en:
+  - retrato
+  - documento
+  - foto oscura
+  - ecommerce
+- [x] `Documento` mantiene fondo claro y legibilidad en la muestra real del repo
+- [x] `Ecommerce` deja el producto centrado sobre blanco de forma suficientemente limpia en la muestra real del repo
+- [x] preview manual `Original / PRO / IA` se mantiene estable y coherente con export
+- [x] export por defecto queda fijado en `PNG` + calidad `1.0`
+- [x] perfiles de export `Original / Social / Web / Ecommerce` funcionan sin regressions
+- [x] historial local, naming versionado y manejo de colisiones siguen estables
+- [x] `swift test` del modulo queda verde de forma consistente
+- [x] existe QA visible actualizada en `APPS/JUST4PICT/images/test`
+- [x] se hace una pasada de QA local de lote real al menos con 100 imagenes
+- [x] se miden tiempos basicos de lote y no hay señal funcional de crecimiento anomalo de memoria en la pasada local de 100 imagenes
+- [x] DMG funcional generado y validado para esta baseline
+
+Estado actual:
+
+- [x] `JUST4PICT` queda cerrado como MVP funcional
+
+Pendiente ya fuera del cierre del MVP:
+
+- [ ] ampliar QA de lote a 1000 imagenes si se quiere endurecer la baseline
+- [ ] medir tiempos por preset y por tamaño promedio
+- [ ] firma/notarizacion
+- [ ] publicacion formal v0.1.0
+
+Fuera del MVP:
+
+- notarizacion/firma
+- `Ecommerce + IA`
+- upscale dedicado
+- Core ML / Real-ESRGAN
+- afinado visual fino por escena
+- optimizacion web `< 300KB`
+- correccion avanzada de documento con recorte/horizonte
+
+## 8) Afinado Post-MVP
+
+Meta:
+
+- mejorar calidad, velocidad y casos limite sin volver a discutir el alcance del MVP
+
+Prioridad alta:
+
+- [ ] cerrar ajuste fino final de `Retrato/PRO`
+- [ ] QA de volumen con 100/1000 imagenes
+- [ ] medir tiempos/memoria y aplicar correcciones de batch
+- [ ] evaluar `Ecommerce + IA` como opcion puntual para recortes complejos
+
+Prioridad media:
+
+- [ ] persistir en historial la decision efectiva de `AUTO`
+- [ ] evitar dobles compresiones y reescalados innecesarios
+- [ ] añadir controles o margen configurable al aislamiento de producto
+- [ ] convertir `EnhancementRecipe` en contrato central efectivo
+
+Prioridad baja:
+
+- [ ] before/after con slider
+- [ ] perfil web `< 300KB`
+- [ ] evaluar motores dedicados de upscale/restauracion

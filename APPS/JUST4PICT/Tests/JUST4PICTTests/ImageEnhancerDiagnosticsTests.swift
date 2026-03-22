@@ -44,6 +44,45 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         XCTAssertGreaterThan(delta, 0.02, "The generated output should differ measurably from the input")
     }
 
+    func testPortraitProBaselineStaysWithinCurrentReferenceWindow() throws {
+        let inputURL = try primarySampleImageURL()
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Sample image not available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png
+        )
+
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+
+        let outputStats = try averageRGBA(for: outputURL)
+        let faceStats = try averageRGBA(for: outputURL, normalizedCrop: CGRect(x: 0.28, y: 0.32, width: 0.44, height: 0.44))
+
+        XCTAssertGreaterThan(outputStats.r, 0.57)
+        XCTAssertLessThan(outputStats.r, 0.64)
+        XCTAssertGreaterThan(outputStats.g, 0.54)
+        XCTAssertLessThan(outputStats.g, 0.60)
+        XCTAssertGreaterThan(outputStats.b, 0.51)
+        XCTAssertLessThan(outputStats.b, 0.57)
+
+        XCTAssertGreaterThan(faceStats.r, 0.56)
+        XCTAssertLessThan(faceStats.r, 0.70)
+        XCTAssertGreaterThan(faceStats.g, 0.46)
+        XCTAssertLessThan(faceStats.g, 0.62)
+        XCTAssertGreaterThan(faceStats.b, 0.38)
+        XCTAssertLessThan(faceStats.b, 0.56)
+    }
+
     func testWritesRepoSampleOutputsForQuickQA() throws {
         let inputURLs = try sampleImageURLs()
         guard !inputURLs.isEmpty else {
@@ -70,6 +109,43 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
             XCTAssertTrue(FileManager.default.fileExists(atPath: outputURL.path))
             print("QA_OUTPUT \(outputURL.path)")
         }
+    }
+
+    func testProcessesHundredImageLocalBatchUsingRealRepoSamples() throws {
+        let sourceSamples = try sampleImageURLs()
+        guard !sourceSamples.isEmpty else {
+            throw XCTSkip("No sample images available in this environment")
+        }
+
+        let repeatedInputs = (0..<100).map { sourceSamples[$0 % sourceSamples.count] }
+        let enhancer = ImageEnhancer()
+        let outputDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("just4pict-batch-100-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let startedAt = Date()
+        var outputs: [URL] = []
+
+        defer {
+            try? FileManager.default.removeItem(at: outputDirectory)
+        }
+
+        for (index, inputURL) in repeatedInputs.enumerated() {
+            let outputURL = outputDirectory.appendingPathComponent(String(format: "%03d-%@.png", index, inputURL.deletingPathExtension().lastPathComponent))
+            try enhancer.enhance(
+                inputURL: inputURL,
+                outputURL: outputURL,
+                preset: .auto,
+                quality: 1.0,
+                format: .png
+            )
+            outputs.append(outputURL)
+        }
+
+        let elapsed = Date().timeIntervalSince(startedAt)
+        XCTAssertEqual(outputs.count, 100)
+        XCTAssertTrue(outputs.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
+        print(String(format: "QA_BATCH_100 duration=%.2fs outputs=%d", elapsed, outputs.count))
     }
 
     func testWritesPortraitFaceRestoreSampleForQuickQA() throws {
