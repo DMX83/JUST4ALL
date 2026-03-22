@@ -27,7 +27,7 @@ final class OpenAIImageReconstructionService {
 
     init(
         client: OpenAIImageEditClient? = OpenAIImageEditClient(model: "gpt-image-1"),
-        exportWriter: ImageExportWriter = ImageExportWriter()
+        exportWriter: ImageExportWriter = ImageExportWriter(context: ImageEnhancer.sharedContext)
     ) {
         self.client = client
         self.exportWriter = exportWriter

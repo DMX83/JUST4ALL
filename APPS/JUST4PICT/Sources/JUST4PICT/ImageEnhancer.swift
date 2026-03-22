@@ -175,7 +175,7 @@ struct CoreTuning {
 }
 
 final class ImageEnhancer {
-    private static let sharedContext = ImageEnhancer.makeContext()
+    static let sharedContext = ImageEnhancer.makeContext()
     private let context = ImageEnhancer.sharedContext
     private lazy var upscaleEngine = UpscaleEngine(context: context)
     private lazy var analyzer = ImageAnalyzer(context: context)
