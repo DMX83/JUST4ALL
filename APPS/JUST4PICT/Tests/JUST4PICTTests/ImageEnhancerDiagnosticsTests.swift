@@ -5,6 +5,7 @@ import AppKit
 
 final class ImageEnhancerDiagnosticsTests: XCTestCase {
     private let longBenchmarkEnvironmentKey = "JUST4PICT_RUN_LONG_BENCHMARKS"
+    private let aiDiagnosticEnvironmentKey = "JUST4PICT_RUN_AI_DIAGNOSTICS"
 
     func testDetectsPortraitAndProducesMeasurableChangeForUserSample() throws {
         let inputURL = try primarySampleImageURL()
@@ -255,6 +256,97 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
             let averageDuration = totalDuration / Double(durations.count)
             print(String(format: "BENCH_SIZE bucket=%@ samples=%d total=%.2fs avg=%.3fs", bucket.key, durations.count, totalDuration, averageDuration))
         }
+    }
+
+    func testAIDiagnosticComparesProAgainstAIOnPrimaryPortraitSample() async throws {
+        let value = ProcessInfo.processInfo.environment[aiDiagnosticEnvironmentKey]
+        guard value == "1" else {
+            throw XCTSkip("Set \(aiDiagnosticEnvironmentKey)=1 to run AI network diagnostics")
+        }
+
+        let inputURL = try primarySampleImageURL()
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Sample image not available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        guard let pixelSize = enhancer.pixelSize(for: inputURL) else {
+            throw XCTSkip("Could not resolve pixel size for \(inputURL.lastPathComponent)")
+        }
+
+        let advisor = OpenAIImageAdvisor()
+        let recommendation = try await advisor.recommendHD(
+            inputURL: inputURL,
+            fileName: inputURL.lastPathComponent,
+            width: Int(pixelSize.width),
+            height: Int(pixelSize.height),
+            currentPreset: .portrait,
+            currentFormat: .png
+        )
+
+        let resolution = EnhancementPlanner.resolve(
+            recommendation: recommendation,
+            basePreset: .portrait,
+            baseFormat: .png,
+            baseQuality: 1.0
+        )
+
+        let proURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+        let aiURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+
+        defer {
+            try? FileManager.default.removeItem(at: proURL)
+            try? FileManager.default.removeItem(at: aiURL)
+        }
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: proURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png
+        )
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: aiURL,
+            preset: resolution.preset,
+            quality: resolution.quality,
+            format: .png,
+            upscaleTargetLongSide: resolution.upscaleTargetLongSide,
+            faceRestoreStrength: resolution.faceRestoreStrength,
+            tuning: resolution.aiTuning,
+            sceneOverride: resolution.recipe?.mappedScene
+        )
+
+        let proStats = try averageRGBA(for: proURL)
+        let aiStats = try averageRGBA(for: aiURL)
+        let faceRegion = CGRect(x: 0.28, y: 0.32, width: 0.44, height: 0.44)
+        let proFaceStats = try averageRGBA(for: proURL, normalizedCrop: faceRegion)
+        let aiFaceStats = try averageRGBA(for: aiURL, normalizedCrop: faceRegion)
+        let eyeBand = CGRect(x: 0.35, y: 0.55, width: 0.30, height: 0.15)
+        let proEyeEnergy = try averageEdgeEnergy(for: proURL, normalizedCrop: eyeBand)
+        let aiEyeEnergy = try averageEdgeEnergy(for: aiURL, normalizedCrop: eyeBand)
+
+        let globalDelta = abs(proStats.r - aiStats.r)
+            + abs(proStats.g - aiStats.g)
+            + abs(proStats.b - aiStats.b)
+        let faceDelta = abs(proFaceStats.r - aiFaceStats.r)
+            + abs(proFaceStats.g - aiFaceStats.g)
+            + abs(proFaceStats.b - aiFaceStats.b)
+
+        print("AI_DIAG preset=\(resolution.preset.rawValue) scene=\(resolution.recipe?.mappedScene.map(String.init(describing:)) ?? "nil")")
+        print("AI_DIAG reason=\(resolution.aiReason ?? "-")")
+        print("AI_DIAG recipe=\(resolution.recipe.map { "\($0.preset) \($0.exportFormat) q=\($0.exportQuality)" } ?? "nil")")
+        print(String(format: "AI_DIAG global_delta=%.5f face_delta=%.5f pro_eye=%.5f ai_eye=%.5f", globalDelta, faceDelta, proEyeEnergy, aiEyeEnergy))
+
+        XCTAssertFalse(recommendation.reason.isEmpty)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: proURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: aiURL.path))
     }
 
     func testDetectsDocumentSceneFromRealRepoSample() throws {

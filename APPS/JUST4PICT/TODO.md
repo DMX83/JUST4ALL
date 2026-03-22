@@ -210,6 +210,7 @@ Verificacion:
 - [x] añadir tests unitarios para activacion/no-disparo del balance de blancos
 - [x] añadir test unitario para diferencia medible del sharpen selectivo frente al sharpen legacy
 - [x] añadir guardia automatica para que `PRO` no lave la zona de ojos/cejas en la muestra principal de retrato
+- [x] añadir diagnostico opt-in `PRO` vs `IA` sobre la muestra principal sin meter red en la suite normal
 - [x] añadir muestra degradada controlada para validar `upscale` local (`image_upscale_lowres.jpeg`)
 
 ## 3C) Calidad de exportacion
@@ -255,6 +256,13 @@ Verificacion:
 - [ ] comparar `PRO` vs `IA` en retrato
 - [ ] comparar `PRO` vs `IA` en paisaje
 - [ ] confirmar que `IA` aporta algo real o reducir su alcance
+
+Nota de estado:
+
+- comparativa opt-in `PRO` vs `IA` ejecutada sobre la muestra principal de retrato
+- resultado actual: `IA` cae en el mismo preset `Retrato`, salida `PNG`, calidad `1.0` y queda muy cerca de `PRO`
+- en esa muestra concreta no aparece una ventaja fuerte de `IA`; incluso la energia de bordes en ojos/cejas queda algo mas baja que en `PRO`
+- conclusion provisional: antes de ampliar `IA`, el siguiente salto de calidad mas prometedor sigue estando en upscale serio (`Real-ESRGAN`) o en casos donde `IA` cambie de verdad la decision por escena
 
 ## 4) Integracion con JUST4ALL
 
