@@ -167,6 +167,9 @@ Estado actual del cierre:
   1) variable de entorno `OPENAI_API_KEY`
   2) archivo `.env.secrets` en la raiz del repo (y padres cercanos)
 - Nota: para apps distribuidas, no se recomienda embutir la key en cliente.
+- `Reconstruir IA` queda disponible como modo opcional de preview y batch cuando la key existe.
+- Ese modo usa `gpt-image-1` sobre `/v1/images/edits` para intentar reconstruccion conservadora de imagenes muy pequenas o comprimidas.
+- La salida de `Reconstruir IA` siempre se escribe en un archivo aparte (`-reconstruct_ia`) y no sustituye silenciosamente a `PRO` ni a `Real-ESRGAN`.
 
 ## Configuracion opcional de Real-ESRGAN
 

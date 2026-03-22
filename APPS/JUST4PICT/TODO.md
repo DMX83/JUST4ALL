@@ -139,6 +139,10 @@ Verificacion:
 - [x] Formalizar `EnhancementRecipe` como modelo central del pipeline.
 - [x] Separar `ImageAnalyzer`, `EnhancementPlanner` y `LocalPhotoPipeline`.
 - [x] Mostrar en UI la receta IA completa aplicada.
+- [~] Añadir modo `Reconstruir IA` para imagenes muy pequenas o comprimidas.
+  Ya existe como modo opcional de preview y batch usando `gpt-image-1`.
+  Se escribe siempre como salida aparte (`-reconstruct_ia`) y no sustituye el flujo `PRO`.
+  Falta validar visualmente si se queda como modo manual o si merece heuristica automatica por degradacion extrema.
 - [x] Resize inteligente por preset/destino (`social`, `web`, `ecommerce`).
 - [ ] Correccion de horizonte y recorte de documento (Vision).
 - [ ] Perfil "Recuperar fotos oscuras".

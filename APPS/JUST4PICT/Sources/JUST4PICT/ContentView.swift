@@ -19,12 +19,14 @@ private struct BatchItemResult {
 private enum EnhancementMode: String {
     case local = "Procesado Pro"
     case ai = "IA"
+    case reconstructAI = "Reconstruir IA"
 }
 
 private enum ActivityLogFilter: String, CaseIterable, Identifiable {
     case all = "Todos"
     case pro = "PRO"
     case ai = "IA"
+    case reconstruct = "IA-R"
     case errors = "Errores"
 
     var id: String { rawValue }
@@ -129,6 +131,7 @@ struct ContentView: View {
     private let enhancer = ImageEnhancer()
     private let historyStore = PictHistoryStore()
     private let openAIAdvisor = OpenAIImageAdvisor()
+    private let openAIReconstruction = OpenAIImageReconstructionService()
     private let supportedExtensions: Set<String> = ["jpg", "jpeg", "png", "heic", "heif", "webp", "tif", "tiff", "bmp", "gif"]
 
     init(
@@ -566,6 +569,20 @@ struct ContentView: View {
                 .disabled((selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || isProcessing)
             }
 
+            if selectedMode == .reconstructAI {
+                Button("✓ Reconstruir IA") {
+                    selectReconstructionMode()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled((selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || isProcessing)
+            } else {
+                Button("Reconstruir IA") {
+                    selectReconstructionMode()
+                }
+                .buttonStyle(.bordered)
+                .disabled((selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || isProcessing)
+            }
+
             Text(modeStatusText)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
@@ -584,6 +601,10 @@ struct ContentView: View {
             return "Modo activo: Procesado Pro (motor local)"
         case .ai:
             return isAnalyzingWithAI ? "IA analizando imagen..." : "Modo activo: IA · asesor inteligente + motor local · \(aiStatusMessage)"
+        case .reconstructAI:
+            return openAIReconstruction.isAvailable
+                ? "Modo activo: Reconstruir IA · reconstrucción generativa conservadora"
+                : "Modo activo: Reconstruir IA · falta OPENAI_API_KEY"
         }
     }
 
@@ -601,6 +622,8 @@ struct ContentView: View {
                 return log.contains("[PRO]")
             case .ai:
                 return log.contains("[IA]")
+            case .reconstruct:
+                return log.contains("[IA-R]")
             case .errors:
                 return log.contains("❌") || log.contains("⚠️")
             }
@@ -653,7 +676,15 @@ struct ContentView: View {
                         HStack(alignment: .top, spacing: 12) {
                             previewCard(title: "Original", badge: nil, image: originalPreviewImage, summary: nil, placeholder: "Sin original")
                             previewCard(title: "Procesado Pro", badge: "PRO", image: proPreviewImage, summary: proPreviewSummary, placeholder: "Pulsa Enhance para generar preview PRO")
-                            previewCard(title: "IA", badge: "IA", image: aiPreviewImage, summary: aiRecipeForRun.map(aiRecipeSummary), placeholder: aiTuningForRun == nil ? "Activa IA y pulsa Enhance para comparar" : "Pulsa Enhance para generar preview IA")
+                            previewCard(
+                                title: selectedMode == .reconstructAI ? "Reconstrucción IA" : "IA",
+                                badge: selectedMode == .reconstructAI ? "IA-R" : "IA",
+                                image: aiPreviewImage,
+                                summary: selectedMode == .reconstructAI ? reconstructionPreviewSummary : aiRecipeForRun.map(aiRecipeSummary),
+                                placeholder: selectedMode == .reconstructAI
+                                    ? "Activa Reconstruir IA y pulsa Enhance para comparar"
+                                    : (aiTuningForRun == nil ? "Activa IA y pulsa Enhance para comparar" : "Pulsa Enhance para generar preview IA")
+                            )
                         }
                     }
                 } else {
@@ -682,8 +713,8 @@ struct ContentView: View {
                         .font(.system(size: 9, weight: .semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(badge == "IA" ? Color.purple.opacity(0.14) : Color.blue.opacity(0.12))
-                        .foregroundColor(badge == "IA" ? .purple : .blue)
+                        .background(previewBadgeColor(for: badge).opacity(0.14))
+                        .foregroundColor(previewBadgeColor(for: badge))
                         .clipShape(Capsule())
                 }
 
@@ -738,6 +769,17 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
+    private func previewBadgeColor(for badge: String) -> Color {
+        switch badge {
+        case "IA":
+            return .purple
+        case "IA-R":
+            return .orange
+        default:
+            return .blue
+        }
+    }
+
     private func openPreviewLightbox(for title: String) {
         guard !availablePreviewLightboxItems.isEmpty else { return }
 
@@ -747,6 +789,8 @@ struct ContentView: View {
         case PreviewKind.pro.rawValue:
             lightboxSelection = .pro
         case PreviewKind.ai.rawValue:
+            lightboxSelection = .ai
+        case "Reconstrucción IA":
             lightboxSelection = .ai
         default:
             lightboxSelection = availablePreviewLightboxItems.first?.kind ?? .original
@@ -1128,6 +1172,16 @@ struct ContentView: View {
             _ = resolvedAIPrompt(for: inputURL, preferredPrompt: aiPrompt)
         }
 
+        if mode == .reconstructAI {
+            try await openAIReconstruction.reconstructImage(
+                inputURL: inputURL,
+                outputURL: outputURL,
+                format: format,
+                quality: quality
+            )
+            return
+        }
+
         try await Task.detached(priority: .userInitiated) {
             let worker = ImageEnhancer()
             try worker.enhance(
@@ -1222,17 +1276,46 @@ struct ContentView: View {
     }
 
     private func modeBadge(_ mode: EnhancementMode) -> some View {
-        Text(mode == .ai ? "IA" : "PRO")
+        Text(modeBadgeLabel(mode))
             .font(.system(size: 9, weight: .semibold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(mode == .ai ? Color.purple.opacity(0.14) : Color.blue.opacity(0.12))
-            .foregroundColor(mode == .ai ? .purple : .blue)
+            .background(modeBadgeColor(mode).opacity(0.14))
+            .foregroundColor(modeBadgeColor(mode))
             .clipShape(Capsule())
     }
 
     private func modeLogPrefix(_ mode: EnhancementMode) -> String {
-        mode == .ai ? "[IA]" : "[PRO]"
+        switch mode {
+        case .local:
+            return "[PRO]"
+        case .ai:
+            return "[IA]"
+        case .reconstructAI:
+            return "[IA-R]"
+        }
+    }
+
+    private func modeBadgeLabel(_ mode: EnhancementMode) -> String {
+        switch mode {
+        case .local:
+            return "PRO"
+        case .ai:
+            return "IA"
+        case .reconstructAI:
+            return "IA-R"
+        }
+    }
+
+    private func modeBadgeColor(_ mode: EnhancementMode) -> Color {
+        switch mode {
+        case .local:
+            return .blue
+        case .ai:
+            return .purple
+        case .reconstructAI:
+            return .orange
+        }
     }
 
     private func statusMeta(for status: BatchItemStatus) -> (title: String, color: Color) {
@@ -1280,6 +1363,13 @@ struct ContentView: View {
         selectedMode = .local
         resetAIRunState()
         appendLog("[PRO] 🛠️ Modo Procesado Pro seleccionado")
+        invalidateProcessedPreview()
+    }
+
+    private func selectReconstructionMode() {
+        selectedMode = .reconstructAI
+        resetAIRunState(status: openAIReconstruction.isAvailable ? "Reconstrucción IA lista" : "Falta OPENAI_API_KEY")
+        appendLog("[IA-R] 🧩 Modo Reconstruir IA seleccionado")
         invalidateProcessedPreview()
     }
 
@@ -1495,7 +1585,14 @@ struct ContentView: View {
             }
             proPreviewImage = proPreview
 
-            if let aiTuningForRun {
+            if selectedMode == .reconstructAI {
+                let reconstructedPreview = try await openAIReconstruction.reconstructPreviewImage(inputURL: selectedPreviewURL)
+                if Task.isCancelled || previewRequestID != requestID {
+                    isGeneratingPreview = false
+                    return
+                }
+                aiPreviewImage = reconstructedPreview
+            } else if let aiTuningForRun {
                 _ = resolvedAIPrompt(for: selectedPreviewURL, preferredPrompt: aiPromptHD)
                 let aiPreview = try enhancer.enhancedPreviewImage(
                     inputURL: selectedPreviewURL,
@@ -1653,7 +1750,15 @@ struct ContentView: View {
         mode: EnhancementMode
     ) -> URL {
         let baseName = inputURL.deletingPathExtension().lastPathComponent
-        let suffix = mode == .ai ? "-enhanced_ia" : "-enhanced"
+        let suffix: String
+        switch mode {
+        case .local:
+            suffix = "-enhanced"
+        case .ai:
+            suffix = "-enhanced_ia"
+        case .reconstructAI:
+            suffix = "-reconstruct_ia"
+        }
         let buildSuffix = BuildInfo.buildStamp.replacingOccurrences(of: " ", with: "_")
         var candidate = directory.appendingPathComponent("\(baseName)\(suffix)-\(buildSuffix).\(format.fileExtension)")
         var index = 1
@@ -1688,6 +1793,10 @@ struct ContentView: View {
         case .auto:
             return "auto local, correccion general y mejora conservadora · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))"
         }
+    }
+
+    private var reconstructionPreviewSummary: String {
+        "reconstrucción generativa conservadora para imágenes pequeñas o muy comprimidas"
     }
 
     private func autoDecisionLabel(for scene: ImageEnhancer.SceneType?) -> String {

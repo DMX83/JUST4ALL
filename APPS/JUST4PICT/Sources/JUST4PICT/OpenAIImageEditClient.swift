@@ -28,7 +28,7 @@ final class OpenAIImageEditClient {
     private let endpoint = "https://api.openai.com/v1/images/edits"
     private let model: String
 
-    init?(model: String = "dall-e-2") {
+    init?(model: String = "gpt-image-1") {
         guard let key = OpenAIImageAdvisor.resolveAPIKey(), !key.isEmpty else { return nil }
         self.apiKey = key
         self.model = model

@@ -321,6 +321,8 @@ Estado actual del repo:
 - ese setup usa el asset oficial macOS `realesrgan-ncnn-vulkan-20220424-macos.zip`, que incluye `realesrgan-x4plus.param/.bin`
 - `UpscaleEngine` puede autodetectar ese setup local desde `.cache/realesrgan/` o `APPS/JUST4PICT/.cache/realesrgan/`, sin exigir variables de entorno manuales
 - la estrategia actual evita `Real-ESRGAN` por defecto en retrato, y cuando lo usa lo hace como paso interno `x4` con resize final posterior
+- `OpenAIImageReconstructionService`: nuevo modulo opcional para reconstruccion generativa conservadora con `gpt-image-1`
+- `OpenAIImageReconstructionService`: se usa solo como modo explicito (`Reconstruir IA`), no como sustituto silencioso de `PRO`
 - `FaceRestoreEngine`: pendiente
 - `ProductIsolationEngine`: implementado para `Ecommerce` con foreground masking y recomposicion centrada sobre blanco
 - `ExportPipeline`: pendiente como modulo dedicado; hoy sigue integrado en `ImageEnhancer`
