@@ -27,6 +27,7 @@ Situacion del producto ahora:
   - `ImageAnalyzer` concentra analisis local de imagen,
   - `EnhancementPlanner` resuelve decisiones derivadas de receta/fallback,
   - `LocalPhotoPipeline` ejecuta el pipeline local
+- `ContentView` sigue siendo el punto principal de orquestacion UI, pero ya no duplica tanto manejo de logs/resultados de batch y arranque de estado como en fases anteriores
 
 ## Invariantes actuales antes de tocar IA
 

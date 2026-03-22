@@ -165,25 +165,23 @@ struct ContentView: View {
                 invalidateProcessedPreview()
             }
             .onAppear {
-                applyInitialOutputDefaults()
-                historyEntries = historyStore.load()
-                if aiPromptHD.isEmpty {
-                    aiPromptHD = OpenAIImageAdvisor.defaultHDPrompt(
-                        fileName: selectedPreviewURL?.lastPathComponent ?? "imagen",
-                        width: 0,
-                        height: 0,
-                        currentPreset: preset,
-                        currentFormat: activeFormat
-                    )
-                }
-                preparePreviewForSelection()
-                DispatchQueue.main.async {
-                    applyInitialOutputDefaults()
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    applyInitialOutputDefaults()
-                }
+                initializeViewState()
             }
+    }
+
+    private func initializeViewState() {
+        applyInitialOutputDefaults()
+        historyEntries = historyStore.load()
+        if aiPromptHD.isEmpty {
+            aiPromptHD = OpenAIImageAdvisor.defaultHDPrompt(
+                fileName: selectedPreviewURL?.lastPathComponent ?? "imagen",
+                width: 0,
+                height: 0,
+                currentPreset: preset,
+                currentFormat: activeFormat
+            )
+        }
+        preparePreviewForSelection()
     }
 
     private func applyInitialOutputDefaults() {
@@ -591,20 +589,7 @@ struct ContentView: View {
 
     private var autoDecisionLabel: String? {
         guard preset == .auto else { return nil }
-        switch effectivePreviewScene {
-        case .portrait:
-            return "Retrato"
-        case .document:
-            return "Documento"
-        case .landscape:
-            return "Paisaje"
-        case .ecommerce:
-            return "Ecommerce"
-        case .darkPhoto:
-            return "Foto oscura"
-        case .generic, .none:
-            return "General"
-        }
+        return autoDecisionLabel(for: effectivePreviewScene)
     }
 
     private var filteredLogs: [String] {
@@ -886,6 +871,60 @@ struct ContentView: View {
         statusMessage = "Selecciona imágenes para iniciar"
     }
 
+    private func appendLog(_ message: String) {
+        logs.insert(message, at: 0)
+    }
+
+    private func resetAIRunState(status: String = "IA lista") {
+        aiStatusMessage = status
+        aiSuggestedPresetForRun = nil
+        aiSuggestedQualityForRun = nil
+        aiReasonForRun = nil
+        aiTuningForRun = nil
+        aiRecipeForRun = nil
+    }
+
+    private func recordSuccessfulRun(
+        inputURL: URL,
+        outputURL: URL,
+        mode: EnhancementMode,
+        resolution: AIRunResolution,
+        totalCount: Int,
+        retry: Bool = false
+    ) {
+        batchResults[inputURL] = BatchItemResult(status: .success, outputURL: outputURL, errorMessage: nil, mode: mode)
+        historyEntries = historyStore.prepend(
+            current: historyEntries,
+            inputFileName: inputURL.lastPathComponent,
+            outputURL: outputURL,
+            preset: resolution.preset,
+            format: resolution.format,
+            aiSuggestedPreset: resolution.aiSuggestedPreset,
+            aiSuggestedQuality: resolution.aiSuggestedQuality,
+            aiReason: resolution.aiReason,
+            aiTuningSummary: aiTuningSummary(resolution.aiTuning),
+            aiPrompt: resolution.aiPrompt,
+            storeFullPrompt: storeFullAIPromptInHistory
+        )
+        let fallbackSuffix = resolution.usedFallback ? " (fallback local)" : ""
+        let retryPrefix = retry ? "Reintento " : ""
+        appendLog("\(modeLogPrefix(mode)) ✅ \(retryPrefix)\(inputURL.lastPathComponent) → \(outputURL.lastPathComponent)\(fallbackSuffix)")
+        recomputeCounters(total: totalCount)
+    }
+
+    private func recordFailedRun(
+        inputURL: URL,
+        mode: EnhancementMode,
+        error: Error,
+        totalCount: Int,
+        retry: Bool = false
+    ) {
+        batchResults[inputURL] = BatchItemResult(status: .failed, outputURL: nil, errorMessage: error.localizedDescription, mode: mode)
+        let retryPrefix = retry ? "Reintento " : ""
+        appendLog("\(modeLogPrefix(mode)) ❌ \(retryPrefix)\(inputURL.lastPathComponent): \(error.localizedDescription)")
+        recomputeCounters(total: totalCount)
+    }
+
     private func processBatch() {
         guard !inputFiles.isEmpty else { return }
 
@@ -959,29 +998,22 @@ struct ContentView: View {
                         aiTuning: runResolution.aiTuning
                     )
                     await MainActor.run {
-                        batchResults[input] = BatchItemResult(status: .success, outputURL: outputURL, errorMessage: nil, mode: modeSnapshot)
-                        historyEntries = historyStore.prepend(
-                            current: historyEntries,
-                            inputFileName: input.lastPathComponent,
+                        recordSuccessfulRun(
+                            inputURL: input,
                             outputURL: outputURL,
-                            preset: runResolution.preset,
-                            format: runResolution.format,
-                            aiSuggestedPreset: runResolution.aiSuggestedPreset,
-                            aiSuggestedQuality: runResolution.aiSuggestedQuality,
-                            aiReason: runResolution.aiReason,
-                            aiTuningSummary: aiTuningSummary(runResolution.aiTuning),
-                            aiPrompt: runResolution.aiPrompt,
-                            storeFullPrompt: storeFullAIPromptInHistory
+                            mode: modeSnapshot,
+                            resolution: runResolution,
+                            totalCount: files.count
                         )
-                        let fallbackSuffix = runResolution.usedFallback ? " (fallback local)" : ""
-                        logs.insert("\(modeLogPrefix(modeSnapshot)) ✅ \(input.lastPathComponent) → \(outputURL.lastPathComponent)\(fallbackSuffix)", at: 0)
-                        recomputeCounters(total: files.count)
                     }
                 } catch {
                     await MainActor.run {
-                        batchResults[input] = BatchItemResult(status: .failed, outputURL: nil, errorMessage: error.localizedDescription, mode: modeSnapshot)
-                        logs.insert("\(modeLogPrefix(modeSnapshot)) ❌ \(input.lastPathComponent): \(error.localizedDescription)", at: 0)
-                        recomputeCounters(total: files.count)
+                        recordFailedRun(
+                            inputURL: input,
+                            mode: modeSnapshot,
+                            error: error,
+                            totalCount: files.count
+                        )
                     }
                 }
             }
@@ -1051,30 +1083,25 @@ struct ContentView: View {
                     aiTuning: runResolution.aiTuning
                 )
                 await MainActor.run {
-                    batchResults[file] = BatchItemResult(status: .success, outputURL: outputURL, errorMessage: nil, mode: modeSnapshot)
-                    historyEntries = historyStore.prepend(
-                        current: historyEntries,
-                        inputFileName: file.lastPathComponent,
+                    recordSuccessfulRun(
+                        inputURL: file,
                         outputURL: outputURL,
-                        preset: runResolution.preset,
-                        format: runResolution.format,
-                        aiSuggestedPreset: runResolution.aiSuggestedPreset,
-                        aiSuggestedQuality: runResolution.aiSuggestedQuality,
-                        aiReason: runResolution.aiReason,
-                        aiTuningSummary: aiTuningSummary(runResolution.aiTuning),
-                        aiPrompt: runResolution.aiPrompt,
-                        storeFullPrompt: storeFullAIPromptInHistory
+                        mode: modeSnapshot,
+                        resolution: runResolution,
+                        totalCount: inputFiles.count,
+                        retry: true
                     )
-                    let fallbackSuffix = runResolution.usedFallback ? " (fallback local)" : ""
-                    logs.insert("\(modeLogPrefix(modeSnapshot)) ✅ Reintento \(file.lastPathComponent) → \(outputURL.lastPathComponent)\(fallbackSuffix)", at: 0)
-                    recomputeCounters(total: inputFiles.count)
                     statusMessage = "Reintento completado"
                 }
             } catch {
                 await MainActor.run {
-                    batchResults[file] = BatchItemResult(status: .failed, outputURL: nil, errorMessage: error.localizedDescription, mode: modeSnapshot)
-                    logs.insert("\(modeLogPrefix(modeSnapshot)) ❌ Reintento \(file.lastPathComponent): \(error.localizedDescription)", at: 0)
-                    recomputeCounters(total: inputFiles.count)
+                    recordFailedRun(
+                        inputURL: file,
+                        mode: modeSnapshot,
+                        error: error,
+                        totalCount: inputFiles.count,
+                        retry: true
+                    )
                     statusMessage = "Reintento fallido"
                 }
             }
@@ -1247,13 +1274,8 @@ struct ContentView: View {
 
     private func selectLocalMode() {
         selectedMode = .local
-        aiStatusMessage = "IA lista"
-        aiSuggestedPresetForRun = nil
-        aiSuggestedQualityForRun = nil
-        aiReasonForRun = nil
-        aiTuningForRun = nil
-        aiRecipeForRun = nil
-        logs.insert("[PRO] 🛠️ Modo Procesado Pro seleccionado", at: 0)
+        resetAIRunState()
+        appendLog("[PRO] 🛠️ Modo Procesado Pro seleccionado")
         invalidateProcessedPreview()
     }
 
@@ -1271,7 +1293,7 @@ struct ContentView: View {
         if FileManager.default.fileExists(atPath: url.path) {
             NSWorkspace.shared.open(url)
         } else {
-            logs.insert("⚠️ Archivo no encontrado: \(url.lastPathComponent)", at: 0)
+            appendLog("⚠️ Archivo no encontrado: \(url.lastPathComponent)")
         }
     }
 
@@ -1280,7 +1302,7 @@ struct ContentView: View {
         if FileManager.default.fileExists(atPath: url.path) {
             NSWorkspace.shared.activateFileViewerSelecting([url])
         } else {
-            logs.insert("⚠️ Archivo no encontrado: \(url.lastPathComponent)", at: 0)
+            appendLog("⚠️ Archivo no encontrado: \(url.lastPathComponent)")
         }
     }
 
@@ -1338,11 +1360,11 @@ struct ContentView: View {
         aiRecipeForRun = resolution.recipe
 
         if resolution.usedFallback {
-            logs.insert("[IA] ⚠️ IA no disponible para \(fileURL.lastPathComponent). Se usa fallback local.", at: 0)
+            appendLog("[IA] ⚠️ IA no disponible para \(fileURL.lastPathComponent). Se usa fallback local.")
         } else {
             let decisionSummary = aiDecisionLogSummary(for: resolution)
             let cacheSuffix = fromCache ? " · cache" : ""
-            logs.insert("[IA] 🤖 IA aplicada a \(fileURL.lastPathComponent): \(decisionSummary)\(cacheSuffix)", at: 0)
+            appendLog("[IA] 🤖 IA aplicada a \(fileURL.lastPathComponent): \(decisionSummary)\(cacheSuffix)")
         }
 
         invalidateProcessedPreview()
@@ -1425,14 +1447,9 @@ struct ContentView: View {
 
             if shouldUpdateUIState {
                 await MainActor.run {
-                    aiStatusMessage = "IA no disponible, usando flujo local"
-                    aiSuggestedPresetForRun = nil
-                    aiSuggestedQualityForRun = nil
-                    aiReasonForRun = nil
-                    aiTuningForRun = nil
-                    aiRecipeForRun = nil
+                    resetAIRunState(status: "IA no disponible, usando flujo local")
                     aiPromptHD = fallback.aiPrompt ?? aiPromptHD
-                    logs.insert("[IA] ⚠️ IA no disponible: \(error.localizedDescription)", at: 0)
+                    appendLog("[IA] ⚠️ IA no disponible: \(error.localizedDescription)")
                     invalidateProcessedPreview()
                 }
             }
@@ -1496,7 +1513,7 @@ struct ContentView: View {
             originalPreviewImage = nil
             proPreviewImage = nil
             aiPreviewImage = nil
-            logs.insert("❌ Preview \(selectedPreviewURL.lastPathComponent): \(error.localizedDescription)", at: 0)
+            appendLog("❌ Preview \(selectedPreviewURL.lastPathComponent): \(error.localizedDescription)")
         }
 
         isGeneratingPreview = false
@@ -1531,7 +1548,7 @@ struct ContentView: View {
                 selectedPreviewURL = inputFiles.first
             }
         } catch {
-            logs.insert("❌ No se pudo leer carpeta: \(error.localizedDescription)", at: 0)
+            appendLog("❌ No se pudo leer carpeta: \(error.localizedDescription)")
         }
     }
 
@@ -1570,7 +1587,7 @@ struct ContentView: View {
         guard preset == .auto, let previewURL = selectedPreviewURL ?? inputFiles.first else { return }
         let scene = enhancer.detectSceneType(inputURL: previewURL)
         let queueSuffix = inputFiles.count > 1 ? " · preview de lote (\(inputFiles.count) imágenes)" : ""
-        logs.insert("[PRO] AUTO preview analizará \(previewURL.lastPathComponent) como \(autoDecisionLabel(for: scene))\(queueSuffix)", at: 0)
+        appendLog("[PRO] AUTO preview analizará \(previewURL.lastPathComponent) como \(autoDecisionLabel(for: scene))\(queueSuffix)")
     }
 
     @MainActor
