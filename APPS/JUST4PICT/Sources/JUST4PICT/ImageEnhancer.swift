@@ -550,12 +550,12 @@ final class ImageEnhancer {
         return (blur.outputImage ?? mask).cropped(to: mask.extent)
     }
 
-    private func makeDarkPhotoRecoveryImage(image: CIImage, analysis: ImageAnalysis, upscaleToLongSide: CGFloat?) -> CIImage {
+    private func makeDarkPhotoRecoveryImage(image: CIImage, analysis: PhotoAnalysis, upscaleToLongSide: CGFloat?) -> CIImage {
         var currentImage = image
         logger.notice("Applying dark photo recovery pipeline.")
 
         // 1. Lift shadows and boost exposure
-        let shadowsHighlights = CIFilter.highlightsAndShadows()
+        let shadowsHighlights = CIFilter.highlightShadowAdjust()
         shadowsHighlights.inputImage = currentImage
         shadowsHighlights.shadowAmount = 0.85
         shadowsHighlights.highlightAmount = 0.95
@@ -588,7 +588,12 @@ final class ImageEnhancer {
 
         // 4. Upscale if needed
         if let upscaleToLongSide {
-            currentImage = upscaleEngine.apply(to: currentImage, targetLongSide: upscaleToLongSide)
+            let upscaleResult = upscaleEngine.upscaleIfNeeded(
+                image: currentImage,
+                targetLongSide: upscaleToLongSide,
+                allowExternalBackend: true
+            )
+            currentImage = upscaleResult.image
         }
 
         // 5. Final sharpening pass

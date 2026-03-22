@@ -859,11 +859,13 @@ final class LocalPhotoPipeline {
             return adjustedImage
         }
 
-        let gradient = CIFilter.linearGradient()
-        gradient.point0 = CGPoint(x: extent.midX, y: extent.maxY)
-        gradient.point1 = CGPoint(x: extent.midX, y: extent.minY + (extent.height * 0.46))
-        gradient.color0 = CIColor(red: 0, green: 0, blue: 0, alpha: 1)
-        gradient.color1 = CIColor(red: 1, green: 1, blue: 1, alpha: 1)
+        guard let gradient = CIFilter(name: "CILinearGradient") else {
+            return adjustedImage
+        }
+        gradient.setValue(CIVector(cgPoint: CGPoint(x: extent.midX, y: extent.maxY)), forKey: "inputPoint0")
+        gradient.setValue(CIVector(cgPoint: CGPoint(x: extent.midX, y: extent.minY + (extent.height * 0.46))), forKey: "inputPoint1")
+        gradient.setValue(CIColor(red: 0, green: 0, blue: 0, alpha: 1), forKey: "inputColor0")
+        gradient.setValue(CIColor(red: 1, green: 1, blue: 1, alpha: 1), forKey: "inputColor1")
 
         guard let maskImage = gradient.outputImage?.cropped(to: extent) else {
             return adjustedImage
