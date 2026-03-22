@@ -465,6 +465,38 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         XCTAssertLessThan(delta, 0.05, "Face restore should remain conservative against the current PRO baseline")
     }
 
+    func testPortraitProKeepsEyeRegionDetailOnPrimarySample() throws {
+        let inputURL = try primarySampleImageURL()
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw XCTSkip("Sample image not available in this environment")
+        }
+
+        let enhancer = ImageEnhancer()
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+
+        try enhancer.enhance(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            preset: .portrait,
+            quality: 1.0,
+            format: .png
+        )
+
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+
+        let eyeBand = CGRect(x: 0.35, y: 0.55, width: 0.30, height: 0.15)
+        let originalEdgeEnergy = try averageEdgeEnergy(for: inputURL, normalizedCrop: eyeBand)
+        let enhancedEdgeEnergy = try averageEdgeEnergy(for: outputURL, normalizedCrop: eyeBand)
+
+        XCTAssertGreaterThan(
+            enhancedEdgeEnergy,
+            originalEdgeEnergy * 0.92,
+            "PRO should not wash out eye and eyebrow detail in the main portrait sample"
+        )
+    }
+
     func testExportProfileWebResizesLargeImageOnWrite() throws {
         let inputURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -645,6 +677,52 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
             Double(bitmap[2]) / 255.0,
             Double(bitmap[3]) / 255.0
         )
+    }
+
+    private func averageEdgeEnergy(
+        for url: URL,
+        normalizedCrop: CGRect
+    ) throws -> Double {
+        guard let image = CIImage(contentsOf: url, options: [.applyOrientationProperty: true]) else {
+            throw XCTSkip("Could not load image at \(url.path)")
+        }
+
+        let extent = image.extent.integral
+        let crop = CGRect(
+            x: extent.minX + (extent.width * normalizedCrop.minX),
+            y: extent.minY + (extent.height * normalizedCrop.minY),
+            width: extent.width * normalizedCrop.width,
+            height: extent.height * normalizedCrop.height
+        ).integral.intersection(extent)
+
+        let grayscale = image
+            .cropped(to: crop)
+            .applyingFilter(
+                "CIColorControls",
+                parameters: [
+                    kCIInputSaturationKey: 0.0,
+                    kCIInputContrastKey: 1.0,
+                    kCIInputBrightnessKey: 0.0
+                ]
+            )
+        let edges = grayscale.applyingFilter("CIEdges", parameters: ["inputIntensity": 1.0])
+
+        let context = CIContext(options: [.cacheIntermediates: false])
+        let filter = CIFilter.areaAverage()
+        filter.inputImage = edges
+        filter.extent = edges.extent.integral
+
+        var bitmap = [UInt8](repeating: 0, count: 4)
+        context.render(
+            filter.outputImage ?? edges,
+            toBitmap: &bitmap,
+            rowBytes: 4,
+            bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
+            format: .RGBA8,
+            colorSpace: CGColorSpaceCreateDeviceRGB()
+        )
+
+        return (Double(bitmap[0]) + Double(bitmap[1]) + Double(bitmap[2])) / (255.0 * 3.0)
     }
 
     private func pixelSize(for url: URL) throws -> (width: Int, height: Int) {

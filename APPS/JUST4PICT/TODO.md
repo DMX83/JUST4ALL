@@ -209,6 +209,7 @@ Verificacion:
 - [ ] confirmar que no aparecen halos ni plastificado
 - [x] añadir tests unitarios para activacion/no-disparo del balance de blancos
 - [x] añadir test unitario para diferencia medible del sharpen selectivo frente al sharpen legacy
+- [x] añadir guardia automatica para que `PRO` no lave la zona de ojos/cejas en la muestra principal de retrato
 - [x] añadir muestra degradada controlada para validar `upscale` local (`image_upscale_lowres.jpeg`)
 
 ## 3C) Calidad de exportacion
