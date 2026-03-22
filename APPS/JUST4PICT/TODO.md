@@ -187,7 +187,7 @@ Trabajo:
 ### Media prioridad
 
 - [ ] Dobles compresiones y reescalados innecesarios — `ImageExportWriter` aplica resize en dos etapas cuando recibe una `CIImage` ya procesada. Revisar si el resize de `applyExportResizeIfNeeded` interno y el `resizedCGImageIfNeeded` están duplicando trabajo.
-- [ ] `ImageExportWriter` instanciado sin contexto compartido desde `OpenAIImageReconstructionService` — usa `CIContext(options: [.cacheIntermediates: false])` en el init por defecto. Si el servicio de reconstrucción maneja imágenes grandes, puede ser costoso. Considerar pasar el contexto compartido.
+- [x] `ImageExportWriter` ahora usa el contexto compartido desde `OpenAIImageReconstructionService` — el init por defecto ya pasa `ImageEnhancer.sharedContext`. El render de imágenes IA ahora es coherente y eficiente con el resto del pipeline.
 - [x] `makeDarkPhotoRecoveryImage` usa `analysis` de forma adaptativa — ahora ajusta exposición, sombras y reducción de ruido según `averageLuminance` e `isLowKey`. El logger registra ambos valores en cada ejecución del path darkPhoto.
 
 ### Baja prioridad
