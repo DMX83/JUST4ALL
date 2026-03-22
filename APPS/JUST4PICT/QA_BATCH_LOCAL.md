@@ -51,10 +51,10 @@ Lectura practica:
 
 Validacion de empaquetado de la baseline:
 
-- el 2026-03-22 se genero y valido `dist/JUST4PICT-0.1.0+20260322101203-72d60f7.dmg`
+- el 2026-03-22 se genero y valido `dist/JUST4PICT-0.1.0+20260322114546-6fe34bc.dmg`
 - el volumen monto correctamente como `/Volumes/JUST4PICT`
 - se verifico `JUST4PICT.app` dentro del DMG
-- `Info.plist` del bundle montado reporto `J4ABuildStamp = 20260322101203-72d60f7`
+- `Info.plist` del bundle montado reporto `J4ABuildStamp = 20260322114546-6fe34bc`
 
 ## Bench post-MVP
 

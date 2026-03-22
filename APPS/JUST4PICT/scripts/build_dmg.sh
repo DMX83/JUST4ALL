@@ -74,6 +74,7 @@ DMG_PATH="$DIST_DIR/$APP_LABEL.dmg"
 
 hdiutil create -volname "$APP_NAME" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
 
+ln -sf "$(basename "$DMG_PATH")" "$DIST_DIR/$APP_NAME.dmg"
 ln -sf "$(basename "$DMG_PATH")" "$DIST_DIR/$APP_NAME-latest.dmg"
 
 echo "DMG creado en $DMG_PATH"

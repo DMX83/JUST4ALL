@@ -30,7 +30,8 @@ Validacion baseline 2026-03-22:
 
 - DMG generado y montado correctamente.
 - App presente en el volumen: `JUST4PICT.app`.
-- Build stamp validado: `20260322101203-72d60f7`.
+- Build stamp validado: `20260322114546-6fe34bc`.
+- pipeline de build del modulo deja tambien `dist/JUST4PICT.dmg` como alias canonico para release assets.
 
 ## Alcance MVP actual
 
@@ -140,9 +141,11 @@ Estado actual del cierre:
 - `Retrato/PRO` queda congelado para la baseline actual del MVP con test de referencia sobre la muestra fija del repo
 - ya existe una pasada local validada de lote real de 100 imagenes (`QA_BATCH_LOCAL.md`)
 - ya existe una medicion explicita de tiempo y memoria para ese lote local de 100 imagenes
-- ya existe un DMG funcional validado para esta baseline (`dist/JUST4PICT-0.1.0+20260322101203-72d60f7.dmg`)
+- ya existe un DMG funcional validado para esta baseline (`dist/JUST4PICT-0.1.0+20260322114546-6fe34bc.dmg`)
 - con esto, `JUST4PICT` puede darse por cerrado como MVP funcional y el trabajo nuevo debe tratarse como afinado post-MVP
 - como referencia post-MVP, ya hay tambien QA local validada de 100 y 1000 imagenes y una medicion simple por preset/tamaño en `QA_BATCH_LOCAL.md`
+- la distribucion actual queda preparada como release unsigned; ver `RELEASE_NOTES_v0.1.0.md`
+- release publicada del repo: `v0.1.3`
 
 ## Configuracion IA local
 

@@ -251,9 +251,10 @@ Verificacion:
 - [x] Medir tiempos por preset y tamaño promedio.
   Referencia local documentada en `QA_BATCH_LOCAL.md`.
 - [ ] Firma/notarizacion.
-- [ ] Publicacion v0.1.0.
+- [x] Publicacion v0.1.0.
+  Publicada como baseline unsigned dentro de la release del repo `v0.1.3`; queda pendiente solo una release firmada/notarizada cuando exista cuenta Apple Developer.
 - [x] Generar y validar DMG funcional de la baseline MVP actual.
-  Validado el 2026-03-22 montando `dist/JUST4PICT-0.1.0+20260322101203-72d60f7.dmg` y comprobando `JUST4PICT.app` + build stamp.
+  Validado el 2026-03-22 montando `dist/JUST4PICT-0.1.0+20260322114546-6fe34bc.dmg` y comprobando `JUST4PICT.app` + build stamp.
 
 ## 6) Camino a algo muy bueno
 
@@ -315,7 +316,7 @@ Pendiente ya fuera del cierre del MVP:
 - [x] ampliar QA de lote a 1000 imagenes si se quiere endurecer la baseline
 - [x] medir tiempos por preset y por tamaño promedio
 - [ ] firma/notarizacion
-- [ ] publicacion formal v0.1.0
+- [x] publicacion formal v0.1.0
 
 Fuera del MVP:
 
