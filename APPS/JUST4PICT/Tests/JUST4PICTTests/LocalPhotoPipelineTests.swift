@@ -68,6 +68,32 @@ final class LocalPhotoPipelineTests: XCTestCase {
         XCTAssertEqual(adjustment?.usesHighlights, false)
     }
 
+    func testLandscapeWhiteBalanceUsesCloudyHighlightsAtLowerCoverageAndStaysGentler() {
+        let pipeline = makePipeline()
+        let analysis = PhotoAnalysis(
+            averageRed: 0.60,
+            averageGreen: 0.54,
+            averageBlue: 0.50,
+            highlightRed: 0.84,
+            highlightGreen: 0.85,
+            highlightBlue: 0.89,
+            highlightCoverage: 0.06,
+            averageLuminance: 0.58,
+            averageSaturation: 0.14,
+            isLowKey: false,
+            isHighKey: false
+        )
+
+        let landscapeAdjustment = pipeline.diagnosticWhiteBalanceAdjustment(for: analysis, scene: .landscape)
+        let genericAdjustment = pipeline.diagnosticWhiteBalanceAdjustment(for: analysis, scene: .generic)
+
+        XCTAssertNotNil(landscapeAdjustment)
+        XCTAssertEqual(landscapeAdjustment?.usesHighlights, true)
+        XCTAssertNotNil(genericAdjustment)
+        XCTAssertEqual(genericAdjustment?.usesHighlights, false)
+        XCTAssertLessThan(abs(landscapeAdjustment?.temperatureOffset ?? 0.0), abs(genericAdjustment?.temperatureOffset ?? 0.0))
+    }
+
     func testSelectiveSharpenProducesMeasurableDeltaAgainstLegacySharpen() throws {
         let pipeline = makePipeline()
         let image = try makeRepoPortraitSampleImage()

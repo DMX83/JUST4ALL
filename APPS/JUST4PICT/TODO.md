@@ -196,7 +196,7 @@ Trabajo:
 Nota:
 
 - existe una primera pasada aplicada desde `mejoras.md` con curva tonal, sharpen selectivo y balance de blancos adaptativo
-- esta pasada ya incorpora referencia de altas luces para blancos y sharpen por luminancia; sigue pendiente validacion visual fina antes de consolidarla como baseline nueva
+- esta pasada ya incorpora referencia de altas luces para blancos y sharpen por luminancia; en paisaje ahora usa umbral mas bajo para nubes grises claras, ajuste termico mas suave y mezcla gradual para no calentar cielo/bruma
 
 Verificacion:
 

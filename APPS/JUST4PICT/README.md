@@ -98,6 +98,7 @@ Validacion baseline 2026-03-22:
 - La receta IA ya puede influir en `scene`, `preset`, `format`, `quality` y `upscale`.
 - Cuando la receta IA trae una `scene` valida, esa escena ya puede sobreescribir la deteccion local para mantener coherencia entre la decision IA y el pipeline ejecutado.
 - El balance de blancos adaptativo de `PRO` ya usa referencia de altas luces cuando existe suficiente blanco fiable en la escena, con fallback al promedio global cuando no la hay.
+- En `Paisaje`, esa correccion ahora es mas conservadora: acepta nubes gris-claro como referencia util, pero mezcla la correccion de forma gradual para no calentar cielo ni bruma.
 - El sharpen selectivo ya calcula aristas desde luminancia desaturada, no desde color completo, para reducir falsos bordes cromaticos.
 - `faceRestore` ya existe como etapa local selectiva y conservadora sobre rostros detectados.
 - Sigue sin ser un modelo dedicado de restauracion facial; hoy actua como refuerzo suave de detalle/tono en mascara facial.

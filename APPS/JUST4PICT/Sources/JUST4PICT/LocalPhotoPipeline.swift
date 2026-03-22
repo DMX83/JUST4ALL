@@ -375,7 +375,7 @@ final class LocalPhotoPipeline {
             output = vibrance.outputImage ?? output
         }
 
-        output = applyAdaptiveWhiteBalance(image: output, analysis: analysis)
+        output = applyAdaptiveWhiteBalance(image: output, analysis: analysis, scene: scene)
 
         if tuning.sharpen > 0.0 {
             let sharpened = applySelectiveSharpen(
@@ -492,7 +492,7 @@ final class LocalPhotoPipeline {
         vibrance.amount = Float(resolvedTuning.vibrance)
         output = vibrance.outputImage ?? output
 
-        output = applyAdaptiveWhiteBalance(image: output, analysis: analysis)
+        output = applyAdaptiveWhiteBalance(image: output, analysis: analysis, scene: scene)
 
         output = applySelectiveSharpen(
             image: output,
@@ -504,8 +504,12 @@ final class LocalPhotoPipeline {
         return output
     }
 
-    private func applyAdaptiveWhiteBalance(image: CIImage, analysis: PhotoAnalysis) -> CIImage {
-        guard let adjustment = whiteBalanceAdjustment(for: analysis) else {
+    private func applyAdaptiveWhiteBalance(
+        image: CIImage,
+        analysis: PhotoAnalysis,
+        scene: ImageEnhancer.SceneType?
+    ) -> CIImage {
+        guard let adjustment = whiteBalanceAdjustment(for: analysis, scene: scene) else {
             return image
         }
 
@@ -516,7 +520,16 @@ final class LocalPhotoPipeline {
             x: CGFloat(6500.0 + adjustment.temperatureOffset),
             y: CGFloat(adjustment.tintOffset)
         )
-        return filter.outputImage ?? image
+        let adjustedImage = filter.outputImage ?? image
+
+        guard scene == .landscape else {
+            return adjustedImage
+        }
+
+        return blendLandscapeWhiteBalance(
+            adjustedImage: adjustedImage,
+            originalImage: image
+        )
     }
 
     private func applyAdaptiveToneCurve(
@@ -531,7 +544,7 @@ final class LocalPhotoPipeline {
         case .portrait:
             basePoints = [(0.00, 0.00), (0.25, 0.245), (0.50, 0.515), (0.75, 0.775), (1.00, 1.00)]
         case .landscape:
-            basePoints = [(0.00, 0.00), (0.25, 0.225), (0.50, 0.515), (0.75, 0.775), (1.00, 1.00)]
+            basePoints = [(0.00, 0.00), (0.25, 0.235), (0.50, 0.512), (0.75, 0.772), (1.00, 1.00)]
         default:
             basePoints = [(0.00, 0.00), (0.25, 0.22), (0.50, 0.53), (0.75, 0.80), (1.00, 1.00)]
         }
@@ -597,8 +610,11 @@ final class LocalPhotoPipeline {
         return blend.outputImage ?? sharpened
     }
 
-    func diagnosticWhiteBalanceAdjustment(for analysis: PhotoAnalysis) -> WhiteBalanceAdjustment? {
-        whiteBalanceAdjustment(for: analysis)
+    func diagnosticWhiteBalanceAdjustment(
+        for analysis: PhotoAnalysis,
+        scene: ImageEnhancer.SceneType? = nil
+    ) -> WhiteBalanceAdjustment? {
+        whiteBalanceAdjustment(for: analysis, scene: scene)
     }
 
     func diagnosticSelectiveSharpen(
@@ -828,8 +844,35 @@ final class LocalPhotoPipeline {
         return filter.outputImage ?? image
     }
 
-    private func whiteBalanceAdjustment(for analysis: PhotoAnalysis) -> WhiteBalanceAdjustment? {
-        let useHighlights = analysis.highlightCoverage >= 0.08
+    private func blendLandscapeWhiteBalance(adjustedImage: CIImage, originalImage: CIImage) -> CIImage {
+        let extent = originalImage.extent.integral
+        guard extent.width > 0, extent.height > 0 else {
+            return adjustedImage
+        }
+
+        let gradient = CIFilter.linearGradient()
+        gradient.point0 = CGPoint(x: extent.midX, y: extent.maxY)
+        gradient.point1 = CGPoint(x: extent.midX, y: extent.minY + (extent.height * 0.46))
+        gradient.color0 = CIColor(red: 0, green: 0, blue: 0, alpha: 1)
+        gradient.color1 = CIColor(red: 1, green: 1, blue: 1, alpha: 1)
+
+        guard let maskImage = gradient.outputImage?.cropped(to: extent) else {
+            return adjustedImage
+        }
+
+        let blend = CIFilter.blendWithMask()
+        blend.inputImage = adjustedImage
+        blend.backgroundImage = originalImage
+        blend.maskImage = maskImage
+        return blend.outputImage ?? adjustedImage
+    }
+
+    private func whiteBalanceAdjustment(
+        for analysis: PhotoAnalysis,
+        scene: ImageEnhancer.SceneType?
+    ) -> WhiteBalanceAdjustment? {
+        let highlightCoverageThreshold = scene == .landscape ? 0.05 : 0.08
+        let useHighlights = analysis.highlightCoverage >= highlightCoverageThreshold
         let red = useHighlights ? analysis.highlightRed : analysis.averageRed
         let green = useHighlights ? analysis.highlightGreen : analysis.averageGreen
         let blue = useHighlights ? analysis.highlightBlue : analysis.averageBlue
@@ -843,9 +886,14 @@ final class LocalPhotoPipeline {
             return nil
         }
 
+        let temperatureMultiplier = scene == .landscape ? 620.0 : 900.0
+        let temperatureClamp = scene == .landscape ? 115.0 : 180.0
+        let tintMultiplier = scene == .landscape ? 24.0 : 36.0
+        let tintClamp = scene == .landscape ? 1.6 : 2.5
+
         return WhiteBalanceAdjustment(
-            temperatureOffset: max(min(redBlueDelta * 900.0, 180.0), -180.0),
-            tintOffset: max(min(-greenBias * 36.0, 2.5), -2.5),
+            temperatureOffset: max(min(redBlueDelta * temperatureMultiplier, temperatureClamp), -temperatureClamp),
+            tintOffset: max(min(-greenBias * tintMultiplier, tintClamp), -tintClamp),
             usesHighlights: useHighlights
         )
     }

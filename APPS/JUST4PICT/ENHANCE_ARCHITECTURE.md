@@ -33,6 +33,7 @@ Situacion del producto ahora:
   - curva tonal por escena
   - sharpen selectivo por mascara de bordes
 - esa pasada ya no usa solo promedio global para blancos: puede tomar referencia de altas luces cuando la escena ofrece blancos fiables
+- en `Paisaje`, el balance de blancos ya no se aplica con la misma fuerza a toda la imagen: usa un umbral de altas luces mas flexible para nubes y una mezcla vertical conservadora para proteger cielo/bruma
 - el sharpen selectivo ya genera su mascara desde luminancia desaturada para no sobrerreaccionar a bordes de color
 - esa pasada ya mantiene la suite verde, pero todavia debe validarse visualmente antes de congelarse como nueva baseline
 

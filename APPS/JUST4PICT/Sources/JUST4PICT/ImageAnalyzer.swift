@@ -375,7 +375,7 @@ final class ImageAnalyzer {
         var redTotal = 0.0
         var greenTotal = 0.0
         var blueTotal = 0.0
-        let threshold = 0.72
+        let threshold = 0.68
 
         for index in stride(from: 0, to: bitmap.count, by: 4) {
             let r = Double(bitmap[index]) / 255.0
