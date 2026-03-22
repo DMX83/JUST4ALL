@@ -12,22 +12,22 @@ Prioridades: `alta` · `media` · `baja`
   Crear test equivalente a `testPortraitProBaselineStaysWithinCurrentReferenceWindow` con ventanas RGB para la muestra de paisaje del repo. Sin esto, cualquier cambio futuro puede degradar Paisaje sin que nadie lo detecte.
 
 - [ ] **Calentamiento del cielo en Paisaje** `alta`
-  Verificar que el umbral de luminancia `0.72` en `highlightReferenceRGB` captura bien nubes gris-claro. Si `highlightCoverage` no alcanza `0.08` en escenas nubladas, el balance de blancos cae al promedio global y calienta el cielo. Ajustar el umbral o la cobertura mínima.
+  Verificar que la lógica actual de altas luces para cielo nublado sigue siendo suficientemente neutra en escenas con nubes gris-claro. El umbral ya fue bajado y el blend suavizado, pero falta fijar una validación numérica que detecte recalentamiento del cielo antes de futuras regresiones.
 
 - [ ] **Curva tonal de Paisaje en bruma** `alta`
-  El punto `(0.25, 0.225)` aplasta sombras medias donde vive la bruma de las montañas. Validar con al menos una foto de cielo brillante del repo y ajustar si hay pérdida de detalle en nubes o transiciones de niebla.
+  La curva de paisaje ya fue suavizada, pero falta una validación estable con al menos una foto de cielo brillante del repo para detectar pérdida de detalle en nubes o transiciones de niebla.
 
 - [ ] **Doble protección facial — validar ojos y cejas** `media`
-  El blur de la máscara de bordes (`edgeBlurRadius 5.5`) más el blend con `faceMask` en `applyCoreTuning` pueden estar suavizando en exceso ojos y cejas. Verificar al 100% en el retrato de referencia del repo que los ojos tienen definición suficiente.
+  Ya existe una guardia automática para ojos/cejas, pero falta validación visual manual al 100% en más de un retrato antes de darlo por completamente cerrado.
 
-- [ ] **Desaturar input de `CIEdges` en `applySelectiveSharpen`** `media`
-  `CIEdges` opera actualmente sobre la imagen en color. Sujetos con colores saturados (pelo pelirrojo, ropa viva) producen bordes cromáticos falsos en la máscara. Desaturar la imagen antes de pasarla a `CIEdges` para que el detector responda solo a bordes de luminancia.
+- [x] **Desaturar input de `CIEdges` en `applySelectiveSharpen`** `media`
+  Ya aplicado: la máscara de sharpen selectivo se genera desde luminancia desaturada y no desde color completo.
 
-- [ ] **Eliminar `applyPortraitAISafetyFinish` del path fotográfico** `baja`
-  Código muerto en `applyAppleLikePhotoEnhancement`: el branch `if scene == .portrait` nunca se ejecuta porque `resolveRecoveryProfile` siempre devuelve `.conservativePortrait` para retratos, que va por `makePortraitImage`. Eliminar sin consecuencias funcionales.
+- [x] **Eliminar `applyPortraitAISafetyFinish` del path fotográfico** `baja`
+  Ya limpiado del path fotográfico general.
 
 - [ ] **Unificar radios de blur de máscara entre pipelines** `baja`
-  `applyCoreTuning` usa `5.5` / `3.2`; `applyAppleLikePhotoEnhancement` usa `5.0` / `3.0`. Un retrato sin cara detectada toma rutas distintas con resultados diferentes. Unificar los valores o documentar la razón de la diferencia.
+  Revisar si la diferencia residual entre radios de blur sigue teniendo sentido visual o si conviene documentarla/mejor unificarla.
 
 ---
 
@@ -49,15 +49,15 @@ Prioridades: `alta` · `media` · `baja`
 - [ ] **`autoreleasepool` en el bucle del batch** `media`
   Sin pool explícito en el bucle de `processBatch`, los objetos `CIImage` y `CGImage` se acumulan hasta que el pool del hilo los libera. El RSS de `1 GB` en el batch de 1000 imágenes lo confirma. Wrappear cada iteración en `autoreleasepool {}`.
 
-- [ ] **`UpscaleEngine` como módulo dedicado** `baja`
-  El upscale vive actualmente dentro de `LocalPhotoPipeline`. Cuando llegue Real-ESRGAN no habrá dónde encajarlo limpiamente sin un refactor mayor. Extraer a módulo propio antes de que crezca la dependencia.
+- [x] **`UpscaleEngine` como módulo dedicado** `baja`
+  Ya extraído como módulo propio y además ampliado con backend local + `Real-ESRGAN`.
 
 ---
 
 ## UX y producto
 
 - [ ] **Comparar PRO vs IA en Paisaje tras corregir balance de blancos** `alta`
-  Decisión de producto bloqueante: si después de la corrección del balance de blancos IA sigue siendo claramente mejor con el mismo motor local, el gap es de criterio por imagen y el siguiente paso es Real-ESRGAN o Core ML, no más afinado de filtros.
+  Decisión de producto todavía útil: si después de la corrección del balance de blancos IA sigue siendo claramente mejor con el mismo motor local, el gap es de criterio por imagen y el siguiente paso es planificación/criterio, no más afinado ciego de filtros.
 
 - [ ] **Before/after con slider** `media`
   En roadmap desde v0.2. Las tres cards de preview son funcionales pero para detectar halos o pérdida de detalle puntual el slider es mucho más efectivo. Especialmente útil para validar mejoras de sharpen y curva tonal.
@@ -67,6 +67,12 @@ Prioridades: `alta` · `media` · `baja`
 
 - [ ] **Persistir decisión efectiva de AUTO en historial** `baja`
   El historial guarda el preset seleccionado por el usuario (`Auto`) pero no la escena realmente detectada y aplicada (`Paisaje`, `Documento`, etc.). Útil para debugar decisiones incorrectas de `AUTO` en lotes reales.
+
+- [ ] **Definir posición final de `Reconstruir IA`** `media`
+  Ya existe como modo opcional de preview y batch con salida separada. Falta decidir si se queda como herramienta manual para rescate extremo o si merece heurística automática para imágenes muy degradadas.
+
+- [ ] **Comparar `Reconstruir IA` vs `Real-ESRGAN` en miniaturas extremas** `media`
+  Ahora ambos caminos existen. Falta decidir con muestras reales cuándo conviene cada uno y si alguno debe quedar preferido por escena o por nivel de degradación.
 
 ---
 
@@ -81,7 +87,8 @@ Prioridades: `alta` · `media` · `baja`
 6. Doble protección facial                           → validación visual, posible ajuste
 7. Before/after con slider                           → UX
 8. Fallback IA visible                               → UX
-9. Limpieza de código muerto                         → deuda técnica
+9. Definir posición final de `Reconstruir IA`        → producto
+10. Limpieza de puntos ya resueltos                  → deuda técnica
 ```
 
 ---
