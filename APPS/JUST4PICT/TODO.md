@@ -149,6 +149,7 @@ Verificacion:
   Backend opcional ya cableado por binario externo con fallback local; falta validacion visual real con el binario instalado.
   Ya existe tambien un diagnostico opt-in para comparar `local` vs `Real-ESRGAN` sobre `image_upscale_lowres.jpeg`.
   Para considerarlo disponible hacen falta binario y modelos (`realesrgan-x4plus.param/.bin`).
+  Existe tambien `scripts/setup_realesrgan_local.sh` para dejar la instalacion local preparada.
 - [~] Añadir modulo opcional de restauracion facial, apagado por defecto.
   Ya existe una primera version local, selectiva y conservadora; falta evaluar si se queda asi o pasa a motor dedicado.
 

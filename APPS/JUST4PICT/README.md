@@ -183,6 +183,18 @@ Estado actual del cierre:
   - y el upscale pedido es suficientemente grande
 - En cualquier otro caso, `JUST4PICT` mantiene el fallback local actual sin romper preview ni export
 
+Setup local recomendado:
+
+```bash
+./scripts/setup_realesrgan_local.sh
+```
+
+Ese script:
+- descarga la release oficial macOS del binario
+- la deja en `APPS/JUST4PICT/.cache/realesrgan/`
+- prepara `APPS/JUST4PICT/.cache/realesrgan/models/`
+- y muestra los `export` necesarios para activar el backend externo
+
 ## Privacidad de historial IA
 
 - El historial guarda por defecto **resumen** del prompt IA (no el prompt completo).
