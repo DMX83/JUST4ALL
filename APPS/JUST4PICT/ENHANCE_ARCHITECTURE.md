@@ -32,6 +32,8 @@ Situacion del producto ahora:
   - balance de blancos adaptativo
   - curva tonal por escena
   - sharpen selectivo por mascara de bordes
+- esa pasada ya no usa solo promedio global para blancos: puede tomar referencia de altas luces cuando la escena ofrece blancos fiables
+- el sharpen selectivo ya genera su mascara desde luminancia desaturada para no sobrerreaccionar a bordes de color
 - esa pasada ya mantiene la suite verde, pero todavia debe validarse visualmente antes de congelarse como nueva baseline
 
 ## Invariantes actuales antes de tocar IA
@@ -67,6 +69,7 @@ Para evitar suposiciones falsas antes del siguiente cambio:
 - `faceRestore` ya esta cableado como contrato de planner/UI/pipeline y viaja por preview y export.
 - `faceRestore` ya aplica una mejora local selectiva sobre mascara facial.
 - Sigue sin ser un modelo dedicado de restauracion facial; la implementacion actual es deliberadamente conservadora.
+- `LocalPhotoPipeline` ya tiene cobertura unitaria directa para balance de blancos y sharpen selectivo, sin depender solo de QA visual.
 - Ya existe perfil de export por destino (`Original`, `Social`, `Web`, `Ecommerce`) con resize aplicado solo al archivo final.
 - La decision efectiva de `AUTO` ya se refleja mejor en la UI de preview para que el usuario vea que pipeline se esta aplicando.
 - El perfil de export se considera parte del snapshot del lote; no debe variar a mitad de una ejecucion ya iniciada.
@@ -86,6 +89,11 @@ El siguiente trabajo de `IA` no debe introducir comportamiento nuevo sin respeta
 4. hacer que `EnhancementRecipe` gobierne realmente la ejecucion
    Ya no es solo estructural: la escena recomendada por IA ya puede cablearse hasta el motor y modificar el pipeline efectivo.
 5. solo despues ampliar motores, upscale dedicado o restauracion facial
+
+## Nota sobre baseline visual
+
+- El test numerico de baseline de retrato sigue atado a la muestra historica `PHOTO-2026-03-18-22-18-19 2.jpg`.
+- Si esa muestra no esta en el repo local, el test debe hacer `skip` en vez de aplicar esas ventanas a otra foto distinta.
 
 ## Objetivo
 

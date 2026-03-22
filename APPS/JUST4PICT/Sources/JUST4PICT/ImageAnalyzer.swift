@@ -8,6 +8,10 @@ struct PhotoAnalysis {
     let averageRed: Double
     let averageGreen: Double
     let averageBlue: Double
+    let highlightRed: Double
+    let highlightGreen: Double
+    let highlightBlue: Double
+    let highlightCoverage: Double
     let averageLuminance: Double
     let averageSaturation: Double
     let isLowKey: Bool
@@ -17,6 +21,10 @@ struct PhotoAnalysis {
         averageRed: Double = 0.5,
         averageGreen: Double = 0.5,
         averageBlue: Double = 0.5,
+        highlightRed: Double = 0.5,
+        highlightGreen: Double = 0.5,
+        highlightBlue: Double = 0.5,
+        highlightCoverage: Double = 0.0,
         averageLuminance: Double,
         averageSaturation: Double,
         isLowKey: Bool,
@@ -25,6 +33,10 @@ struct PhotoAnalysis {
         self.averageRed = averageRed
         self.averageGreen = averageGreen
         self.averageBlue = averageBlue
+        self.highlightRed = highlightRed
+        self.highlightGreen = highlightGreen
+        self.highlightBlue = highlightBlue
+        self.highlightCoverage = highlightCoverage
         self.averageLuminance = averageLuminance
         self.averageSaturation = averageSaturation
         self.isLowKey = isLowKey
@@ -168,11 +180,16 @@ final class ImageAnalyzer {
         let g = Double(bitmap[1]) / 255.0
         let b = Double(bitmap[2]) / 255.0
         let luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
+        let highlightReference = highlightReferenceRGB(in: image)
 
         return PhotoAnalysis(
             averageRed: r,
             averageGreen: g,
             averageBlue: b,
+            highlightRed: highlightReference.r,
+            highlightGreen: highlightReference.g,
+            highlightBlue: highlightReference.b,
+            highlightCoverage: highlightReference.coverage,
             averageLuminance: luminance,
             averageSaturation: max(r, g, b) - min(r, g, b),
             isLowKey: luminance < 0.42,
@@ -314,5 +331,77 @@ final class ImageAnalyzer {
         let b = Double(bitmap[2]) / 255.0
         let luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
         return (r, g, b, luminance)
+    }
+
+    private func highlightReferenceRGB(in image: CIImage) -> (r: Double, g: Double, b: Double, coverage: Double) {
+        let extent = image.extent.integral
+        guard extent.width > 0, extent.height > 0 else {
+            return (0.5, 0.5, 0.5, 0.0)
+        }
+
+        let maxSampleSide = 160.0
+        let longSide = max(extent.width, extent.height)
+        let scale = min(1.0, maxSampleSide / longSide)
+        let sampledImage: CIImage
+        if scale < 1.0 {
+            let resize = CIFilter.lanczosScaleTransform()
+            resize.inputImage = image
+            resize.scale = Float(scale)
+            resize.aspectRatio = 1.0
+            sampledImage = (resize.outputImage ?? image).cropped(to: (resize.outputImage ?? image).extent.integral)
+        } else {
+            sampledImage = image
+        }
+
+        let sampledExtent = sampledImage.extent.integral
+        let width = Int(sampledExtent.width)
+        let height = Int(sampledExtent.height)
+        guard width > 0, height > 0 else {
+            return (0.5, 0.5, 0.5, 0.0)
+        }
+
+        let rowBytes = width * 4
+        var bitmap = [UInt8](repeating: 0, count: rowBytes * height)
+        context.render(
+            sampledImage,
+            toBitmap: &bitmap,
+            rowBytes: rowBytes,
+            bounds: sampledExtent,
+            format: .RGBA8,
+            colorSpace: CGColorSpaceCreateDeviceRGB()
+        )
+
+        var highlightPixelCount = 0
+        var redTotal = 0.0
+        var greenTotal = 0.0
+        var blueTotal = 0.0
+        let threshold = 0.72
+
+        for index in stride(from: 0, to: bitmap.count, by: 4) {
+            let r = Double(bitmap[index]) / 255.0
+            let g = Double(bitmap[index + 1]) / 255.0
+            let b = Double(bitmap[index + 2]) / 255.0
+            let luminance = (0.2126 * r) + (0.7152 * g) + (0.0722 * b)
+
+            if luminance > threshold {
+                highlightPixelCount += 1
+                redTotal += r
+                greenTotal += g
+                blueTotal += b
+            }
+        }
+
+        let totalPixels = width * height
+        guard highlightPixelCount > 0, totalPixels > 0 else {
+            return (0.5, 0.5, 0.5, 0.0)
+        }
+
+        let coverage = Double(highlightPixelCount) / Double(totalPixels)
+        return (
+            redTotal / Double(highlightPixelCount),
+            greenTotal / Double(highlightPixelCount),
+            blueTotal / Double(highlightPixelCount),
+            coverage
+        )
     }
 }

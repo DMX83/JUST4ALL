@@ -47,9 +47,9 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
     }
 
     func testPortraitProBaselineStaysWithinCurrentReferenceWindow() throws {
-        let inputURL = try primarySampleImageURL()
+        let inputURL = try referencePortraitBaselineSampleImageURL()
         guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            throw XCTSkip("Sample image not available in this environment")
+            throw XCTSkip("Reference portrait baseline sample not available in this environment")
         }
 
         let enhancer = ImageEnhancer()
@@ -554,6 +554,11 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
                 .appendingPathComponent("PHOTO-2026-03-18-22-18-19 2.jpg")
         }
         return first
+    }
+
+    private func referencePortraitBaselineSampleImageURL() throws -> URL {
+        let imagesDirectory = try imagesDirectoryURL()
+        return imagesDirectory.appendingPathComponent("PHOTO-2026-03-18-22-18-19 2.jpg")
     }
 
     private func sampleImageURL(named fileName: String) throws -> URL {

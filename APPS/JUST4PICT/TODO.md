@@ -184,6 +184,10 @@ Trabajo:
 - [~] sustituir contraste global por `CIToneCurve` donde aporte valor real
 - [~] introducir sharpen selectivo por mascara de bordes
 - [~] introducir correccion adaptativa de balance de blancos en `PRO` y fotografia general
+- [x] mover el criterio de balance de blancos hacia altas luces fiables con fallback al promedio global
+- [x] desaturar la entrada de `CIEdges` para que el sharpen selectivo responda a luminancia y no a bordes cromaticos
+- [x] unificar radios de blur de la mascara de sharpen entre rutas de retrato/fotografia general
+- [x] eliminar rama muerta de `applyPortraitAISafetyFinish` en el path fotografico general
 - [ ] refinar la mascara facial para proteger piel y mantener ojos/cabello
 - [ ] evaluar microcontraste moderado por escena
 - [ ] añadir validacion perceptual simple para detectar sobreprocesado
@@ -192,13 +196,15 @@ Trabajo:
 Nota:
 
 - existe una primera pasada aplicada desde `mejoras.md` con curva tonal, sharpen selectivo y balance de blancos adaptativo
-- esta pasada sigue en evaluacion visual antes de consolidarla como baseline nueva
+- esta pasada ya incorpora referencia de altas luces para blancos y sharpen por luminancia; sigue pendiente validacion visual fina antes de consolidarla como baseline nueva
 
 Verificacion:
 
 - [ ] comparar antes/despues en set de retratos
 - [ ] comparar antes/despues en set de paisajes
 - [ ] confirmar que no aparecen halos ni plastificado
+- [x] añadir tests unitarios para activacion/no-disparo del balance de blancos
+- [x] añadir test unitario para diferencia medible del sharpen selectivo frente al sharpen legacy
 
 ## 3C) Calidad de exportacion
 

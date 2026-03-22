@@ -4,6 +4,11 @@ import CoreImage.CIFilterBuiltins
 
 final class LocalPhotoPipeline {
     private let context: CIContext
+    struct WhiteBalanceAdjustment {
+        let temperatureOffset: Double
+        let tintOffset: Double
+        let usesHighlights: Bool
+    }
 
     init(context: CIContext) {
         self.context = context
@@ -377,7 +382,7 @@ final class LocalPhotoPipeline {
                 image: output,
                 amount: tuning.sharpen,
                 radius: tuning.sharpenRadius,
-                edgeBlurRadius: faceMask == nil ? 3.2 : 5.5
+                edgeBlurRadius: scene == .portrait ? 5.5 : 3.2
             )
 
             if let faceMask {
@@ -485,35 +490,28 @@ final class LocalPhotoPipeline {
 
         output = applyAdaptiveWhiteBalance(image: output, analysis: analysis)
 
-        if scene == .portrait {
-            output = applyPortraitAISafetyFinish(image: output)
-        }
-
         output = applySelectiveSharpen(
             image: output,
             amount: resolvedTuning.sharpen,
             radius: resolvedTuning.sharpenRadius,
-            edgeBlurRadius: scene == .portrait ? 5.0 : 3.0
+            edgeBlurRadius: scene == .portrait ? 5.5 : 3.2
         )
 
         return output
     }
 
     private func applyAdaptiveWhiteBalance(image: CIImage, analysis: PhotoAnalysis) -> CIImage {
-        let redBlueDelta = analysis.averageRed - analysis.averageBlue
-        let greenBias = analysis.averageGreen - ((analysis.averageRed + analysis.averageBlue) / 2.0)
-
-        guard abs(redBlueDelta) > 0.025 || abs(greenBias) > 0.015 else {
+        guard let adjustment = whiteBalanceAdjustment(for: analysis) else {
             return image
         }
-
-        let temperatureOffset = max(min(redBlueDelta * 2400.0, 400.0), -400.0)
-        let tintOffset = max(min(-greenBias * 80.0, 4.0), -4.0)
 
         let filter = CIFilter.temperatureAndTint()
         filter.inputImage = image
         filter.neutral = CIVector(x: 6500, y: 0)
-        filter.targetNeutral = CIVector(x: CGFloat(6500.0 - temperatureOffset), y: CGFloat(tintOffset))
+        filter.targetNeutral = CIVector(
+            x: CGFloat(6500.0 + adjustment.temperatureOffset),
+            y: CGFloat(adjustment.tintOffset)
+        )
         return filter.outputImage ?? image
     }
 
@@ -562,8 +560,16 @@ final class LocalPhotoPipeline {
         sharpen.radius = Float(radius)
         let sharpened = sharpen.outputImage ?? image
 
+        let grayscaleInput = image.applyingFilter(
+            "CIColorControls",
+            parameters: [
+                kCIInputSaturationKey: 0.0,
+                kCIInputContrastKey: 1.0,
+                kCIInputBrightnessKey: 0.0
+            ]
+        )
         let edges = CIFilter.edges()
-        edges.inputImage = image
+        edges.inputImage = grayscaleInput
         edges.intensity = Float(max(amount * 9.0, 1.0))
         guard let edgeMap = edges.outputImage else {
             return sharpened
@@ -585,6 +591,28 @@ final class LocalPhotoPipeline {
         blend.backgroundImage = image
         blend.maskImage = resolvedMask
         return blend.outputImage ?? sharpened
+    }
+
+    func diagnosticWhiteBalanceAdjustment(for analysis: PhotoAnalysis) -> WhiteBalanceAdjustment? {
+        whiteBalanceAdjustment(for: analysis)
+    }
+
+    func diagnosticSelectiveSharpen(
+        image: CIImage,
+        amount: Double,
+        radius: Double,
+        edgeBlurRadius: Double
+    ) -> CIImage {
+        applySelectiveSharpen(
+            image: image,
+            amount: amount,
+            radius: radius,
+            edgeBlurRadius: edgeBlurRadius
+        )
+    }
+
+    func diagnosticLegacySharpen(image: CIImage, amount: Double) -> CIImage {
+        applySharpen(image: image, amount: amount)
     }
 
     private func defaultAITuning(for scene: ImageEnhancer.SceneType?, analysis: PhotoAnalysis) -> AIEnhancementTuning {
@@ -734,15 +762,6 @@ final class LocalPhotoPipeline {
         }
     }
 
-    private func applyPortraitAISafetyFinish(image: CIImage) -> CIImage {
-        let colorControls = CIFilter.colorControls()
-        colorControls.inputImage = image
-        colorControls.brightness = 0.0
-        colorControls.contrast = 0.998
-        colorControls.saturation = 0.995
-        return colorControls.outputImage ?? image
-    }
-
     private func applyPortraitUpscaleFinish(image: CIImage, scale: CGFloat) -> CIImage {
         var output = image
         let adaptiveSharpen = min(max(0.002 + (scale - 1.0) * 0.004, 0.002), 0.008)
@@ -803,5 +822,27 @@ final class LocalPhotoPipeline {
         filter.sharpness = Float(amount)
         filter.radius = 0.25
         return filter.outputImage ?? image
+    }
+
+    private func whiteBalanceAdjustment(for analysis: PhotoAnalysis) -> WhiteBalanceAdjustment? {
+        let useHighlights = analysis.highlightCoverage >= 0.08
+        let red = useHighlights ? analysis.highlightRed : analysis.averageRed
+        let green = useHighlights ? analysis.highlightGreen : analysis.averageGreen
+        let blue = useHighlights ? analysis.highlightBlue : analysis.averageBlue
+
+        let redBlueDelta = red - blue
+        let greenBias = green - ((red + blue) / 2.0)
+        let redBlueThreshold = useHighlights ? 0.018 : 0.025
+        let greenBiasThreshold = useHighlights ? 0.012 : 0.015
+
+        guard abs(redBlueDelta) > redBlueThreshold || abs(greenBias) > greenBiasThreshold else {
+            return nil
+        }
+
+        return WhiteBalanceAdjustment(
+            temperatureOffset: max(min(redBlueDelta * 900.0, 180.0), -180.0),
+            tintOffset: max(min(-greenBias * 36.0, 2.5), -2.5),
+            usesHighlights: useHighlights
+        )
     }
 }
