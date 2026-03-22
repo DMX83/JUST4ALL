@@ -195,8 +195,12 @@ Trabajo:
 
 Nota:
 
-- existe una primera pasada aplicada desde `mejoras.md` con curva tonal, sharpen selectivo y balance de blancos adaptativo
-- esta pasada ya incorpora referencia de altas luces para blancos y sharpen por luminancia; en paisaje ahora usa umbral mas bajo para nubes grises claras, ajuste termico mas suave y mezcla gradual para no calentar cielo/bruma
+- la pasada actual ya incorpora curva tonal, sharpen selectivo y balance de blancos adaptativo con referencia de altas luces
+- en paisaje ahora usa umbral mas bajo para nubes grises claras, ajuste termico mas suave y mezcla gradual para no calentar cielo/bruma
+- antes de dar por cerrada esta fase conviene:
+  - revisar ojos/cejas al 100% en retrato
+  - comparar otra vez `PRO` vs `IA` en la muestra de cerezo
+  - decidir si el siguiente salto real de calidad es `Real-ESRGAN`
 
 Verificacion:
 
