@@ -389,12 +389,14 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         defer {
             unsetenv("JUST4PICT_REAL_ESRGAN_BIN")
             unsetenv("JUST4PICT_REAL_ESRGAN_MODELS")
+            unsetenv("JUST4PICT_FORCE_REAL_ESRGAN")
             try? FileManager.default.removeItem(at: localURL)
             try? FileManager.default.removeItem(at: realURL)
         }
 
         unsetenv("JUST4PICT_REAL_ESRGAN_BIN")
         unsetenv("JUST4PICT_REAL_ESRGAN_MODELS")
+        unsetenv("JUST4PICT_FORCE_REAL_ESRGAN")
         try ImageEnhancer().enhance(
             inputURL: inputURL,
             outputURL: localURL,
@@ -406,6 +408,7 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
 
         setenv("JUST4PICT_REAL_ESRGAN_MODELS", modelsURL.path, 1)
         setenv("JUST4PICT_REAL_ESRGAN_BIN", binaryURL.path, 1)
+        setenv("JUST4PICT_FORCE_REAL_ESRGAN", "1", 1)
         try ImageEnhancer().enhance(
             inputURL: inputURL,
             outputURL: realURL,

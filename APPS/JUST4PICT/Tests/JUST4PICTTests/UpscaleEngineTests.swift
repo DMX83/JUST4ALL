@@ -35,6 +35,25 @@ final class UpscaleEngineTests: XCTestCase {
         XCTAssertEqual(resolution, UpscaleBackendResolution(backend: .realESRGAN, scaleFactor: 4))
     }
 
+    func testResolveBackendKeepsLocalWhenExternalBackendIsDisabled() throws {
+        let fakeBinary = try makeFakeExecutable()
+        let fakeModels = try makeFakeModels()
+        defer { try? FileManager.default.removeItem(at: fakeBinary) }
+        defer { try? FileManager.default.removeItem(at: fakeModels) }
+
+        let resolution = UpscaleEngine.resolveBackend(
+            environment: [
+                "JUST4PICT_REAL_ESRGAN_BIN": fakeBinary.path,
+                "JUST4PICT_REAL_ESRGAN_MODELS": fakeModels.path
+            ],
+            preferExternalBackend: false,
+            currentLongSide: 900,
+            targetLongSide: 2200
+        )
+
+        XCTAssertEqual(resolution, UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil))
+    }
+
     func testResolveBackendKeepsLocalForLargeInputsEvenIfBinaryExists() throws {
         let fakeBinary = try makeFakeExecutable()
         let fakeModels = try makeFakeModels()
@@ -51,6 +70,24 @@ final class UpscaleEngineTests: XCTestCase {
         )
 
         XCTAssertEqual(resolution, UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil))
+    }
+
+    func testResolveBackendUsesX4ForModerateUpscaleWhenExternalBackendIsEnabled() throws {
+        let fakeBinary = try makeFakeExecutable()
+        let fakeModels = try makeFakeModels()
+        defer { try? FileManager.default.removeItem(at: fakeBinary) }
+        defer { try? FileManager.default.removeItem(at: fakeModels) }
+
+        let resolution = UpscaleEngine.resolveBackend(
+            environment: [
+                "JUST4PICT_REAL_ESRGAN_BIN": fakeBinary.path,
+                "JUST4PICT_REAL_ESRGAN_MODELS": fakeModels.path
+            ],
+            currentLongSide: 900,
+            targetLongSide: 1500
+        )
+
+        XCTAssertEqual(resolution, UpscaleBackendResolution(backend: .realESRGAN, scaleFactor: 4))
     }
 
     func testResolveBackendFindsBundledProjectCacheWithoutEnvironmentExports() throws {

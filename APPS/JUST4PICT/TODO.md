@@ -149,6 +149,7 @@ Verificacion:
   Backend opcional ya cableado por binario externo con fallback local.
   `scripts/setup_realesrgan_local.sh` ya deja instalada localmente una release oficial macOS valida, incluyendo `realesrgan-x4plus.param/.bin`.
   El motor ya puede autodetectar ese setup local sin necesidad de `export` manual si arrancas desde el repo o desde `APPS/JUST4PICT`.
+  La integracion actual lo evita por defecto en retratos y usa `x4` interno antes de remapear al tamano objetivo.
   Ya existe tambien un diagnostico opt-in para comparar `local` vs `Real-ESRGAN` sobre `image_upscale_lowres.jpeg`.
   Queda pendiente la validacion visual real para decidir si supera de forma consistente al upscale local.
 - [~] Añadir modulo opcional de restauracion facial, apagado por defecto.

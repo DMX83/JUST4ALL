@@ -184,6 +184,8 @@ Estado actual del cierre:
   - existen binario y modelos,
   - la imagen es realmente pequena,
   - y el upscale pedido es suficientemente grande
+- En la estrategia actual, `Real-ESRGAN` se evita por defecto en retrato y se reserva para escenas no faciales o diagnostico forzado.
+- Cuando entra, se usa como paso interno `x4` y luego `JUST4PICT` remapea al tamano objetivo final.
 - En cualquier otro caso, `JUST4PICT` mantiene el fallback local actual sin romper preview ni export
 
 Setup local recomendado:

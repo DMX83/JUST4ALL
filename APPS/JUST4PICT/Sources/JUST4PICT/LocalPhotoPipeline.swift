@@ -31,7 +31,7 @@ final class LocalPhotoPipeline {
         )
 
         if let targetLongSide = upscaleToLongSide {
-            let upscaleResult = applyUpscaleIfNeeded(image: output, targetLongSide: targetLongSide)
+            let upscaleResult = applyUpscaleIfNeeded(image: output, targetLongSide: targetLongSide, allowExternalBackend: false)
             output = upscaleResult.image
 
             if upscaleResult.upscaled {
@@ -57,7 +57,11 @@ final class LocalPhotoPipeline {
         )
 
         if let targetLongSide = upscaleToLongSide {
-            let upscaleResult = applyUpscaleIfNeeded(image: output, targetLongSide: targetLongSide)
+            let upscaleResult = applyUpscaleIfNeeded(
+                image: output,
+                targetLongSide: targetLongSide,
+                allowExternalBackend: scene != .portrait
+            )
             output = upscaleResult.image
 
             if upscaleResult.upscaled {
@@ -141,7 +145,11 @@ final class LocalPhotoPipeline {
         }
 
         if let targetLongSide = upscaleToLongSide {
-            let upscaleResult = applyUpscaleIfNeeded(image: output, targetLongSide: targetLongSide)
+            let upscaleResult = applyUpscaleIfNeeded(
+                image: output,
+                targetLongSide: targetLongSide,
+                allowExternalBackend: effectivePreset != .portrait
+            )
             output = upscaleResult.image
 
             if upscaleResult.upscaled {
@@ -152,8 +160,17 @@ final class LocalPhotoPipeline {
         return output
     }
 
-    private func applyUpscaleIfNeeded(image: CIImage, targetLongSide: CGFloat) -> (image: CIImage, upscaled: Bool, scale: CGFloat) {
-        let result = upscaleEngine.upscaleIfNeeded(image: image, targetLongSide: targetLongSide)
+    private func applyUpscaleIfNeeded(
+        image: CIImage,
+        targetLongSide: CGFloat,
+        allowExternalBackend: Bool
+    ) -> (image: CIImage, upscaled: Bool, scale: CGFloat) {
+        let forcedExternalBackend = ProcessInfo.processInfo.environment["JUST4PICT_FORCE_REAL_ESRGAN"] == "1"
+        let result = upscaleEngine.upscaleIfNeeded(
+            image: image,
+            targetLongSide: targetLongSide,
+            allowExternalBackend: allowExternalBackend || forcedExternalBackend
+        )
         return (result.image, result.upscaled, result.scale)
     }
 

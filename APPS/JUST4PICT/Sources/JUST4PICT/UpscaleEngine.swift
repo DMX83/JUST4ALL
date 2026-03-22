@@ -36,6 +36,10 @@ final class UpscaleEngine {
     }
 
     func upscaleIfNeeded(image: CIImage, targetLongSide: CGFloat) -> UpscaleResult {
+        upscaleIfNeeded(image: image, targetLongSide: targetLongSide, allowExternalBackend: true)
+    }
+
+    func upscaleIfNeeded(image: CIImage, targetLongSide: CGFloat, allowExternalBackend: Bool) -> UpscaleResult {
         let extent = image.extent.integral
         let currentLongSide = max(extent.width, extent.height)
         guard currentLongSide > 0, currentLongSide < targetLongSide else {
@@ -44,6 +48,7 @@ final class UpscaleEngine {
 
         let resolution = Self.resolveBackend(
             environment: ProcessInfo.processInfo.environment,
+            preferExternalBackend: allowExternalBackend,
             currentLongSide: currentLongSide,
             targetLongSide: targetLongSide
         )
@@ -76,10 +81,15 @@ final class UpscaleEngine {
         environment: [String: String],
         currentDirectoryPath: String = FileManager.default.currentDirectoryPath,
         allowLocalCacheAutodiscovery: Bool = NSClassFromString("XCTestCase") == nil,
+        preferExternalBackend: Bool = true,
         currentLongSide: CGFloat,
         targetLongSide: CGFloat
     ) -> UpscaleBackendResolution {
         guard currentLongSide > 0, targetLongSide > currentLongSide else {
+            return UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil)
+        }
+
+        guard preferExternalBackend else {
             return UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil)
         }
 
@@ -96,8 +106,7 @@ final class UpscaleEngine {
             return UpscaleBackendResolution(backend: .localLanczos, scaleFactor: nil)
         }
 
-        let scaleFactor = requestedScale > 2.25 ? 4 : 2
-        return UpscaleBackendResolution(backend: .realESRGAN, scaleFactor: scaleFactor)
+        return UpscaleBackendResolution(backend: .realESRGAN, scaleFactor: 4)
     }
 
     static func findRealESRGANBinary(environment: [String: String]) -> URL? {

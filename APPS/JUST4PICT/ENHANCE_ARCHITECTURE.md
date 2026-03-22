@@ -320,6 +320,7 @@ Estado actual del repo:
 - el bootstrap local recomendado queda formalizado en `scripts/setup_realesrgan_local.sh`
 - ese setup usa el asset oficial macOS `realesrgan-ncnn-vulkan-20220424-macos.zip`, que incluye `realesrgan-x4plus.param/.bin`
 - `UpscaleEngine` puede autodetectar ese setup local desde `.cache/realesrgan/` o `APPS/JUST4PICT/.cache/realesrgan/`, sin exigir variables de entorno manuales
+- la estrategia actual evita `Real-ESRGAN` por defecto en retrato, y cuando lo usa lo hace como paso interno `x4` con resize final posterior
 - `FaceRestoreEngine`: pendiente
 - `ProductIsolationEngine`: implementado para `Ecommerce` con foreground masking y recomposicion centrada sobre blanco
 - `ExportPipeline`: pendiente como modulo dedicado; hoy sigue integrado en `ImageEnhancer`
