@@ -115,6 +115,69 @@ final class LocalPhotoPipelineTests: XCTestCase {
         XCTAssertGreaterThan(delta, 0.0005)
     }
 
+    func testSelectiveSharpenLandscapeHazeIncreasesEdgeEnergy() throws {
+        let pipeline = makePipeline()
+        let image = makeSyntheticHazyLandscapeImage()
+        let selective = pipeline.diagnosticSelectiveSharpen(
+            image: image,
+            amount: 0.14,
+            radius: 0.48,
+            edgeBlurRadius: 3.2
+        )
+        let legacy = pipeline.diagnosticLegacySharpen(image: image, amount: 0.14)
+
+        let before = try edgeEnergy(for: image, crop: image.extent)
+        let after = try edgeEnergy(for: selective, crop: image.extent)
+        let selectiveDelta = try differenceMagnitude(selective, image, crop: image.extent)
+        let legacyDelta = try differenceMagnitude(legacy, image, crop: image.extent)
+
+        XCTAssertGreaterThanOrEqual(after, before * 0.95)
+        XCTAssertLessThanOrEqual(selectiveDelta, legacyDelta * 1.05)
+    }
+
+    func testSelectiveSharpenLandscapeVegetationDetailIncreasesHighFrequencyContent() throws {
+        let pipeline = makePipeline()
+        let image = makeSyntheticVegetationLandscapeImage()
+        let selective = pipeline.diagnosticSelectiveSharpen(
+            image: image,
+            amount: 0.18,
+            radius: 0.50,
+            edgeBlurRadius: 3.2
+        )
+        let legacy = pipeline.diagnosticLegacySharpen(image: image, amount: 0.18)
+
+        let before = try edgeEnergy(for: image, crop: image.extent)
+        let after = try edgeEnergy(for: selective, crop: image.extent)
+        let selectiveDelta = try differenceMagnitude(selective, image, crop: image.extent)
+        let legacyDelta = try differenceMagnitude(legacy, image, crop: image.extent)
+
+        XCTAssertGreaterThanOrEqual(after, before * 0.95)
+        XCTAssertGreaterThan(selectiveDelta, 0.002)
+        XCTAssertGreaterThan(selectiveDelta, legacyDelta * 0.60)
+    }
+
+    func testSelectiveSharpenDenseTextProtectsFlatAreasBetterThanLegacy() throws {
+        let pipeline = makePipeline()
+        let image = makeSyntheticDenseTextLandscapeImage()
+        let selective = pipeline.diagnosticSelectiveSharpen(
+            image: image,
+            amount: 0.22,
+            radius: 0.50,
+            edgeBlurRadius: 3.2
+        )
+        let legacy = pipeline.diagnosticLegacySharpen(image: image, amount: 0.22)
+
+        let flatCrop = CGRect(x: 0, y: 210, width: image.extent.width, height: 46)
+        let textCrop = CGRect(x: 0, y: 0, width: image.extent.width, height: 150)
+
+        let selectiveFlatDelta = try differenceMagnitude(selective, image, crop: flatCrop)
+        let legacyFlatDelta = try differenceMagnitude(legacy, image, crop: flatCrop)
+        let selectiveTextDelta = try differenceMagnitude(selective, image, crop: textCrop)
+
+        XCTAssertLessThanOrEqual(selectiveFlatDelta, legacyFlatDelta)
+        XCTAssertGreaterThan(selectiveTextDelta, selectiveFlatDelta * 2.0)
+    }
+
     private func makePipeline() -> LocalPhotoPipeline {
         let context = CIContext()
         return LocalPhotoPipeline(context: context, upscaleEngine: UpscaleEngine(context: context))
@@ -166,5 +229,145 @@ final class LocalPhotoPipelineTests: XCTestCase {
             Double(bitmap[2]) / 255.0,
             Double(bitmap[3]) / 255.0
         )
+    }
+
+    private func edgeEnergy(for image: CIImage, crop: CGRect) throws -> Double {
+        let edges = image
+            .cropped(to: crop.integral)
+            .applyingFilter("CIEdges", parameters: [kCIInputIntensityKey: 1.2])
+        let stats = try averageRGBA(for: edges, crop: crop)
+        return stats.r + stats.g + stats.b
+    }
+
+    private func differenceMagnitude(_ lhs: CIImage, _ rhs: CIImage, crop: CGRect) throws -> Double {
+        let diff = lhs.applyingFilter(
+            "CIDifferenceBlendMode",
+            parameters: [kCIInputBackgroundImageKey: rhs]
+        )
+        let stats = try averageRGBA(for: diff, crop: crop)
+        return stats.r + stats.g + stats.b
+    }
+
+    private func makeSyntheticHazyLandscapeImage() -> CIImage {
+        let extent = CGRect(x: 0, y: 0, width: 512, height: 320)
+
+        let softBase = CIImage(color: CIColor(red: 0.62, green: 0.71, blue: 0.76, alpha: 1.0))
+            .cropped(to: extent)
+
+        let bands = CIImage(
+            color: .init(red: 0.58, green: 0.66, blue: 0.70, alpha: 1.0)
+        )
+        let horizontalBand = bands
+            .cropped(to: CGRect(x: 0, y: 130, width: 512, height: 26))
+            .clampedToExtent()
+            .applyingGaussianBlur(sigma: 10.0)
+            .cropped(to: extent)
+
+        let hazeNoise = CIFilter(name: "CIRandomGenerator")!.outputImage!
+            .cropped(to: extent)
+            .applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: 0.0,
+                kCIInputContrastKey: 0.20,
+                kCIInputBrightnessKey: 0.50
+            ])
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0.08)
+            ])
+
+        return horizontalBand
+            .composited(over: softBase)
+            .composited(over: hazeNoise)
+            .cropped(to: extent)
+    }
+
+    private func makeSyntheticVegetationLandscapeImage() -> CIImage {
+        let extent = CGRect(x: 0, y: 0, width: 512, height: 320)
+
+        let sky = CIImage(color: CIColor(red: 0.72, green: 0.82, blue: 0.92, alpha: 1.0))
+            .cropped(to: CGRect(x: 0, y: 180, width: 512, height: 140))
+        let ground = CIImage(color: CIColor(red: 0.26, green: 0.43, blue: 0.21, alpha: 1.0))
+            .cropped(to: CGRect(x: 0, y: 0, width: 512, height: 180))
+
+        let base = sky.composited(over: ground).cropped(to: extent)
+
+        let leafNoise = CIFilter(name: "CIRandomGenerator")!.outputImage!
+            .cropped(to: CGRect(x: 0, y: 0, width: 512, height: 170))
+            .applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: 0.0,
+                kCIInputContrastKey: 1.15
+            ])
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: 0.08, y: 0.02, z: 0.01, w: 0.0),
+                "inputGVector": CIVector(x: 0.18, y: 0.34, z: 0.10, w: 0.0),
+                "inputBVector": CIVector(x: 0.04, y: 0.10, z: 0.03, w: 0.0),
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0.45)
+            ])
+
+        let trunkLines = CIFilter(
+            name: "CICheckerboardGenerator",
+            parameters: [
+                "inputCenter": CIVector(x: 0, y: 0),
+                "inputColor0": CIColor(red: 0.16, green: 0.11, blue: 0.08, alpha: 1.0),
+                "inputColor1": CIColor(red: 0.25, green: 0.17, blue: 0.13, alpha: 1.0),
+                "inputWidth": 5.0,
+                "inputSharpness": 1.0
+            ]
+        )!.outputImage!
+            .cropped(to: CGRect(x: 0, y: 0, width: 512, height: 170))
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: 0.22, y: 0.0, z: 0.0, w: 0.0),
+                "inputGVector": CIVector(x: 0.14, y: 0.0, z: 0.0, w: 0.0),
+                "inputBVector": CIVector(x: 0.10, y: 0.0, z: 0.0, w: 0.0),
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0.30)
+            ])
+
+        return leafNoise
+            .composited(over: trunkLines)
+            .composited(over: base)
+            .cropped(to: extent)
+    }
+
+    private func makeSyntheticDenseTextLandscapeImage() -> CIImage {
+        let extent = CGRect(x: 0, y: 0, width: 512, height: 320)
+        let whiteBase = CIImage(color: CIColor(red: 0.97, green: 0.97, blue: 0.96, alpha: 1.0))
+            .cropped(to: extent)
+
+        let subtleNoise = CIFilter(name: "CIRandomGenerator")!.outputImage!
+            .cropped(to: extent)
+            .applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: 0.0,
+                kCIInputContrastKey: 0.20,
+                kCIInputBrightnessKey: 0.50
+            ])
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: 0.02, y: 0.0, z: 0.0, w: 0.0),
+                "inputGVector": CIVector(x: 0.02, y: 0.0, z: 0.0, w: 0.0),
+                "inputBVector": CIVector(x: 0.02, y: 0.0, z: 0.0, w: 0.0),
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0.18)
+            ])
+
+        let textBlock = CIFilter(
+            name: "CICheckerboardGenerator",
+            parameters: [
+                "inputCenter": CIVector(x: 0, y: 0),
+                "inputColor0": CIColor(red: 0.02, green: 0.02, blue: 0.02, alpha: 1.0),
+                "inputColor1": CIColor(red: 0.95, green: 0.95, blue: 0.95, alpha: 1.0),
+                "inputWidth": 3.0,
+                "inputSharpness": 1.0
+            ]
+        )!.outputImage!
+            .cropped(to: CGRect(x: 0, y: 0, width: 512, height: 150))
+            .applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: 0.0,
+                kCIInputContrastKey: 1.0,
+                kCIInputBrightnessKey: -0.48
+            ])
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0.65)
+            ])
+
+        return textBlock
+            .composited(over: subtleNoise.composited(over: whiteBase))
+            .cropped(to: extent)
     }
 }

@@ -1,27 +1,6 @@
 import SwiftUI
 import AppKit
 
-private enum BatchItemStatus {
-    case pending
-    case processing
-    case success
-    case failed
-    case cancelled
-}
-
-private struct BatchItemResult {
-    var status: BatchItemStatus
-    var outputURL: URL?
-    var errorMessage: String?
-    var mode: EnhancementMode?
-}
-
-private enum EnhancementMode: String {
-    case local = "Procesado Pro"
-    case ai = "IA"
-    case reconstructAI = "Reconstruir IA"
-}
-
 private enum ActivityLogFilter: String, CaseIterable, Identifiable {
     case all = "Todos"
     case pro = "PRO"
@@ -73,60 +52,20 @@ private final class OutputSettings: ObservableObject {
     }
 }
 
-private struct AIResolutionCacheKey: Hashable {
-    let fileURL: URL
-    let basePreset: EnhancementPreset
-    let baseFormat: OutputFormat
-}
-
-private struct BatchRunSnapshot {
-    let mode: EnhancementMode
-    let outputDirectory: URL?
-    let preset: EnhancementPreset
-    let format: OutputFormat
-    let quality: Double
-    let exportProfile: ExportProfile
-}
-
 struct ContentView: View {
     @State private var inputFiles: [URL] = []
     @State private var outputDirectory: URL?
     @State private var preset: EnhancementPreset = .auto
     @StateObject private var outputSettings: OutputSettings
+    @StateObject private var batchState = BatchStateViewModel()
+    @StateObject private var aiState = AIResolutionViewModel()
+    @StateObject private var previewState = PreviewStateViewModel()
     @State private var statusMessage = "Selecciona imágenes para iniciar"
-    @State private var isProcessing = false
-    @State private var processedCount = 0
-    @State private var failedCount = 0
-    @State private var progress: Double = 0
-    @State private var logs: [String] = []
-    @State private var selectedPreviewURL: URL?
-    @State private var originalPreviewImage: NSImage?
-    @State private var proPreviewImage: NSImage?
-    @State private var aiPreviewImage: NSImage?
-    @State private var isGeneratingPreview = false
-    @State private var batchResults: [URL: BatchItemResult] = [:]
-    @State private var batchTask: Task<Void, Never>?
-    @State private var cancelRequested = false
     @State private var historyEntries: [PictHistoryEntry] = []
     @State private var isAnalyzingWithAI = false
-    @State private var aiStatusMessage = "IA lista"
-    @State private var aiPromptHD = ""
-    @State private var aiSuggestedPresetForRun: String?
-    @State private var aiSuggestedQualityForRun: Double?
-    @State private var aiReasonForRun: String?
-    @State private var aiTuningForRun: AIEnhancementTuning?
-    @State private var aiRecipeForRun: EnhancementRecipe?
-    @State private var aiUsedFallbackForRun = false
-    @State private var aiResolutionCache: [AIResolutionCacheKey: AIRunResolution] = [:]
     @State private var storeFullAIPromptInHistory = false
     @State private var selectedMode: EnhancementMode = .local
     @State private var activityFilter: ActivityLogFilter = .all
-    @State private var previewTask: Task<Void, Never>?
-    @State private var previewRequestID = UUID()
-    @State private var previewNeedsRefresh = false
-    @State private var effectivePreviewPreset: EnhancementPreset = .auto
-    @State private var effectivePreviewScene: ImageEnhancer.SceneType?
-    @State private var beforeAfterPosition: CGFloat = 0.5
     @State private var isShowingPreviewLightbox = false
     @State private var lightboxSelection: PreviewKind = .original
 
@@ -163,7 +102,7 @@ struct ContentView: View {
             .onChange(of: preset) { _ in
                 invalidateProcessedPreview()
             }
-            .onChange(of: selectedPreviewURL) { _ in
+            .onChange(of: previewState.selectedPreviewURL) { _ in
                 preparePreviewForSelection()
             }
             .onChange(of: selectedMode) { _ in
@@ -177,9 +116,9 @@ struct ContentView: View {
     private func initializeViewState() {
         applyInitialOutputDefaults()
         historyEntries = historyStore.load()
-        if aiPromptHD.isEmpty {
-            aiPromptHD = OpenAIImageAdvisor.defaultHDPrompt(
-                fileName: selectedPreviewURL?.lastPathComponent ?? "imagen",
+        if aiState.promptHD.isEmpty {
+            aiState.promptHD = OpenAIImageAdvisor.defaultHDPrompt(
+                fileName: previewState.selectedPreviewURL?.lastPathComponent ?? "imagen",
                 width: 0,
                 height: 0,
                 currentPreset: preset,
@@ -230,7 +169,7 @@ struct ContentView: View {
             Divider()
             configurationSection
             modeSelectorSection
-            if aiRecipeForRun != nil {
+            if aiState.recipeForRun != nil {
                 aiRecipeSection
             }
             actionSection
@@ -251,7 +190,7 @@ struct ContentView: View {
     private var availablePreviewLightboxItems: [PreviewLightboxItem] {
         var items: [PreviewLightboxItem] = []
 
-        if let originalPreviewImage {
+        if let originalPreviewImage = previewState.originalPreviewImage {
             items.append(
                 PreviewLightboxItem(
                     kind: .original,
@@ -262,7 +201,7 @@ struct ContentView: View {
             )
         }
 
-        if let proPreviewImage {
+        if let proPreviewImage = previewState.proPreviewImage {
             items.append(
                 PreviewLightboxItem(
                     kind: .pro,
@@ -273,7 +212,7 @@ struct ContentView: View {
             )
         }
 
-        if let aiPreviewImage {
+        if let aiPreviewImage = previewState.aiPreviewImage {
             items.append(
                 PreviewLightboxItem(
                     kind: .ai,
@@ -354,20 +293,20 @@ struct ContentView: View {
             Button("Agregar carpeta") { pickFolder() }
             Button("Elegir salida") { pickOutputDirectory() }
             Button("Limpiar") { clearAll() }
-                .disabled(isProcessing)
+                .disabled(batchState.isProcessing)
 
-            if isProcessing {
+            if batchState.isProcessing {
                 Button("Cancelar lote") { cancelBatch() }
                     .buttonStyle(.bordered)
             }
 
             Spacer()
 
-            Button(isProcessing ? "Procesando..." : "Mejorar lote") {
+            Button(batchState.isProcessing ? "Procesando..." : "Mejorar lote") {
                 processBatch()
             }
             .buttonStyle(.borderedProminent)
-            .disabled(inputFiles.isEmpty || isProcessing)
+            .disabled(inputFiles.isEmpty || batchState.isProcessing)
         }
     }
 
@@ -387,10 +326,10 @@ struct ContentView: View {
 
     @ViewBuilder
     private var progressSection: some View {
-        if isProcessing || progress > 0 {
-            ProgressView(value: progress)
+        if batchState.isProcessing || batchState.progress > 0 {
+            ProgressView(value: batchState.progress)
                 .progressViewStyle(.linear)
-            Text("\(processedCount + failedCount)/\(max(inputFiles.count, 1)) procesadas")
+            Text("\(batchState.processedCount + batchState.failedCount)/\(max(inputFiles.count, 1)) procesadas")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
         }
@@ -414,12 +353,12 @@ struct ContentView: View {
                     LazyVStack(alignment: .leading, spacing: 4) {
                         ForEach(inputFiles, id: \.self) { file in
                             Button {
-                                selectedPreviewURL = file
+                                previewState.selectedPreviewURL = file
                             } label: {
                                 HStack(spacing: 8) {
-                                    Image(systemName: selectedPreviewURL == file ? "photo.fill.on.rectangle.fill" : "photo")
+                                    Image(systemName: previewState.selectedPreviewURL == file ? "photo.fill.on.rectangle.fill" : "photo")
                                         .font(.system(size: 10))
-                                        .foregroundColor(selectedPreviewURL == file ? .accentColor : .secondary)
+                                        .foregroundColor(previewState.selectedPreviewURL == file ? .accentColor : .secondary)
 
                                     Text(file.lastPathComponent)
                                         .font(.system(size: 11))
@@ -489,14 +428,14 @@ struct ContentView: View {
                 Text("Receta IA")
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
-                if let recipe = aiRecipeForRun {
+                if let recipe = aiState.recipeForRun {
                     Text(recipe.scene)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(.secondary)
                 }
             }
 
-            if let recipe = aiRecipeForRun {
+            if let recipe = aiState.recipeForRun {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(recipe.objective)
                         .font(.system(size: 11))
@@ -548,13 +487,13 @@ struct ContentView: View {
                     selectLocalMode()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isProcessing)
+                .disabled(batchState.isProcessing)
             } else {
                 Button("Procesado Pro") {
                     selectLocalMode()
                 }
                 .buttonStyle(.bordered)
-                .disabled(isProcessing)
+                .disabled(batchState.isProcessing)
             }
 
             if selectedMode == .ai {
@@ -562,13 +501,13 @@ struct ContentView: View {
                     Task { await selectAIMode() }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled((selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || isProcessing)
+                .disabled((previewState.selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || batchState.isProcessing)
             } else {
                 Button(isAnalyzingWithAI ? "IA analizando..." : "IA") {
                     Task { await selectAIMode() }
                 }
                 .buttonStyle(.bordered)
-                .disabled((selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || isProcessing)
+                .disabled((previewState.selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || batchState.isProcessing)
             }
 
             if selectedMode == .reconstructAI {
@@ -576,13 +515,13 @@ struct ContentView: View {
                     selectReconstructionMode()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled((selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || isProcessing)
+                .disabled((previewState.selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || batchState.isProcessing)
             } else {
                 Button("Reconstruir IA") {
                     selectReconstructionMode()
                 }
                 .buttonStyle(.bordered)
-                .disabled((selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || isProcessing)
+                .disabled((previewState.selectedPreviewURL ?? inputFiles.first) == nil || isAnalyzingWithAI || batchState.isProcessing)
             }
 
             Text(modeStatusText)
@@ -605,10 +544,10 @@ struct ContentView: View {
             if isAnalyzingWithAI {
                 return "IA analizando imagen..."
             }
-            let prefix = aiUsedFallbackForRun
+            let prefix = aiState.usedFallbackForRun
                 ? "Modo activo: IA · fallback local visible"
                 : "Modo activo: IA · asesor inteligente + motor local"
-            return "\(prefix) · \(aiStatusMessage)"
+            return "\(prefix) · \(aiState.statusMessage)"
         case .reconstructAI:
             return openAIReconstruction.isAvailable
                 ? "Modo activo: Reconstruir IA · reconstrucción generativa conservadora"
@@ -618,22 +557,22 @@ struct ContentView: View {
 
     private var autoDecisionLabel: String? {
         guard preset == .auto else { return nil }
-        return autoDecisionLabel(for: effectivePreviewScene)
+        return autoDecisionLabel(for: previewState.effectivePreviewScene)
     }
 
     private var rescueRecommendation: RescueRecommendation? {
-        guard let fileURL = selectedPreviewURL ?? inputFiles.first else { return nil }
+        guard let fileURL = previewState.selectedPreviewURL ?? inputFiles.first else { return nil }
 
         let fileSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init)
         return RescueRecommendationEngine.recommend(
             pixelSize: enhancer.pixelSize(for: fileURL),
-            scene: effectivePreviewScene,
+            scene: previewState.effectivePreviewScene,
             fileSizeBytes: fileSize
         )
     }
 
     private var filteredLogs: [String] {
-        logs.filter { log in
+        batchState.logs.filter { log in
             switch activityFilter {
             case .all:
                 return true
@@ -655,7 +594,7 @@ struct ContentView: View {
                 Text("Preview Mejora")
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
-                if let selectedPreviewURL {
+                if let selectedPreviewURL = previewState.selectedPreviewURL {
                     Text(selectedPreviewURL.lastPathComponent)
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
@@ -667,7 +606,7 @@ struct ContentView: View {
             }
 
             Group {
-                if isGeneratingPreview {
+                if previewState.isGeneratingPreview {
                     VStack(spacing: 8) {
                         ProgressView()
                         Text("Generando preview...")
@@ -676,7 +615,7 @@ struct ContentView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 30)
-                } else if let originalPreviewImage {
+                } else if let originalPreviewImage = previewState.originalPreviewImage {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 10) {
                             Button {
@@ -685,9 +624,9 @@ struct ContentView: View {
                                 Label("Enhance", systemImage: "wand.and.stars")
                             }
                             .buttonStyle(.borderedProminent)
-                            .disabled(selectedPreviewURL == nil || isGeneratingPreview || isAnalyzingWithAI)
+                            .disabled(previewState.selectedPreviewURL == nil || previewState.isGeneratingPreview || isAnalyzingWithAI)
 
-                            Text(previewNeedsRefresh ? "La preview está desactualizada. Pulsa Enhance para regenerarla." : "Pulsa Enhance para generar la mejora.")
+                            Text(previewState.previewNeedsRefresh ? "La preview está desactualizada. Pulsa Enhance para regenerarla." : "Pulsa Enhance para generar la mejora.")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                         }
@@ -719,22 +658,22 @@ struct ContentView: View {
                                 processedImage: comparisonImage,
                                 processedLabel: currentComparisonLabel,
                                 processedBadge: currentComparisonBadge,
-                                position: $beforeAfterPosition
+                                position: $previewState.beforeAfterPosition
                             )
                             .frame(maxWidth: .infinity, minHeight: 280, maxHeight: 320)
                         }
 
                         HStack(alignment: .top, spacing: 12) {
                             previewCard(title: "Original", badge: nil, image: originalPreviewImage, summary: nil, placeholder: "Sin original")
-                            previewCard(title: "Procesado Pro", badge: "PRO", image: proPreviewImage, summary: proPreviewSummary, placeholder: "Pulsa Enhance para generar preview PRO")
+                            previewCard(title: "Procesado Pro", badge: "PRO", image: previewState.proPreviewImage, summary: proPreviewSummary, placeholder: "Pulsa Enhance para generar preview PRO")
                             previewCard(
                                 title: selectedMode == .reconstructAI ? "Reconstrucción IA" : "IA",
                                 badge: selectedMode == .reconstructAI ? "IA-R" : aiPreviewBadge,
-                                image: aiPreviewImage,
+                                image: previewState.aiPreviewImage,
                                 summary: selectedMode == .reconstructAI ? reconstructionPreviewSummary : aiPreviewSummary,
                                 placeholder: selectedMode == .reconstructAI
                                     ? "Activa Reconstruir IA y pulsa Enhance para comparar"
-                                    : (aiTuningForRun == nil ? "Activa IA y pulsa Enhance para comparar" : "Pulsa Enhance para generar preview IA")
+                                    : (aiState.tuningForRun == nil ? "Activa IA y pulsa Enhance para comparar" : "Pulsa Enhance para generar preview IA")
                             )
                         }
                     }
@@ -956,38 +895,26 @@ struct ContentView: View {
     }
 
     private func clearAll() {
-        batchTask?.cancel()
+        batchState.clearAll()
         inputFiles.removeAll()
-        logs.removeAll()
-        processedCount = 0
-        failedCount = 0
-        progress = 0
-        batchResults.removeAll()
-        cancelRequested = false
         outputSettings.resetToQualityDefaults()
-        selectedPreviewURL = nil
-        originalPreviewImage = nil
-        proPreviewImage = nil
-        aiPreviewImage = nil
-        effectivePreviewScene = nil
-        effectivePreviewPreset = .auto
-        aiResolutionCache.removeAll()
-        previewTask?.cancel()
+        previewState.selectedPreviewURL = nil
+        previewState.originalPreviewImage = nil
+        previewState.proPreviewImage = nil
+        previewState.aiPreviewImage = nil
+        previewState.effectivePreviewScene = nil
+        previewState.effectivePreviewPreset = .auto
+        aiState.clearCache()
+        previewState.previewTask?.cancel()
         statusMessage = "Selecciona imágenes para iniciar"
     }
 
     private func appendLog(_ message: String) {
-        logs.insert(message, at: 0)
+        batchState.appendLog(message)
     }
 
     private func resetAIRunState(status: String = "IA lista") {
-        aiStatusMessage = status
-        aiSuggestedPresetForRun = nil
-        aiSuggestedQualityForRun = nil
-        aiReasonForRun = nil
-        aiTuningForRun = nil
-        aiRecipeForRun = nil
-        aiUsedFallbackForRun = false
+        aiState.reset(status: status)
     }
 
     private func recordSuccessfulRun(
@@ -999,7 +926,7 @@ struct ContentView: View {
         totalCount: Int,
         retry: Bool = false
     ) {
-        batchResults[inputURL] = BatchItemResult(status: .success, outputURL: outputURL, errorMessage: nil, mode: mode)
+        batchState.batchResults[inputURL] = BatchItemResult(status: .success, outputURL: outputURL, errorMessage: nil, mode: mode)
         historyEntries = historyStore.prepend(
             current: historyEntries,
             inputFileName: inputURL.lastPathComponent,
@@ -1017,7 +944,7 @@ struct ContentView: View {
         let fallbackSuffix = resolution.usedFallback ? " (fallback local)" : ""
         let retryPrefix = retry ? "Reintento " : ""
         appendLog("\(modeLogPrefix(mode)) ✅ \(retryPrefix)\(inputURL.lastPathComponent) → \(outputURL.lastPathComponent)\(fallbackSuffix)")
-        recomputeCounters(total: totalCount)
+        batchState.recomputeCounters(total: totalCount)
     }
 
     private func recordFailedRun(
@@ -1027,10 +954,10 @@ struct ContentView: View {
         totalCount: Int,
         retry: Bool = false
     ) {
-        batchResults[inputURL] = BatchItemResult(status: .failed, outputURL: nil, errorMessage: error.localizedDescription, mode: mode)
+        batchState.batchResults[inputURL] = BatchItemResult(status: .failed, outputURL: nil, errorMessage: error.localizedDescription, mode: mode)
         let retryPrefix = retry ? "Reintento " : ""
         appendLog("\(modeLogPrefix(mode)) ❌ \(retryPrefix)\(inputURL.lastPathComponent): \(error.localizedDescription)")
-        recomputeCounters(total: totalCount)
+        batchState.recomputeCounters(total: totalCount)
     }
 
     private func historyAutoDecision(
@@ -1051,38 +978,31 @@ struct ContentView: View {
     private func processBatch() {
         guard !inputFiles.isEmpty else { return }
 
-        batchTask?.cancel()
-        isProcessing = true
-        processedCount = 0
-        failedCount = 0
-        progress = 0
-        logs.removeAll()
-        cancelRequested = false
-        batchResults = Dictionary(uniqueKeysWithValues: inputFiles.map { ($0, BatchItemResult(status: .pending, outputURL: nil, errorMessage: nil, mode: nil)) })
+        batchState.resetForNewRun(inputFiles: inputFiles)
         statusMessage = "Procesando \(inputFiles.count) imágenes..."
 
         let files = inputFiles
         let modeSnapshot = selectedMode
 
-        batchTask = Task {
+        batchState.batchTask = Task {
             let snapshot = await MainActor.run {
                 makeBatchRunSnapshot(for: modeSnapshot)
             }
 
             for (index, input) in files.enumerated() {
-                if Task.isCancelled || cancelRequested {
+                if Task.isCancelled || batchState.cancelRequested {
                     await MainActor.run {
-                        markRemainingAsCancelled(files: files, startingAt: index)
-                        isProcessing = false
-                        batchTask = nil
+                        batchState.markRemainingAsCancelled(files: files, startingAt: index)
+                        batchState.isProcessing = false
+                        batchState.batchTask = nil
                         statusMessage = "Lote cancelado"
-                        recomputeCounters(total: files.count)
+                        batchState.recomputeCounters(total: files.count)
                     }
                     return
                 }
 
                 await MainActor.run {
-                    batchResults[input] = BatchItemResult(status: .processing, outputURL: nil, errorMessage: nil, mode: modeSnapshot)
+                    batchState.batchResults[input] = BatchItemResult(status: .processing, outputURL: nil, errorMessage: nil, mode: modeSnapshot)
                 }
 
                 let runResolution: AIRunResolution
@@ -1144,27 +1064,27 @@ struct ContentView: View {
             }
 
             await MainActor.run {
-                isProcessing = false
-                batchTask = nil
-                recomputeCounters(total: files.count)
-                statusMessage = "Finalizado: \(processedCount) OK, \(failedCount) con error"
+                batchState.isProcessing = false
+                batchState.batchTask = nil
+                batchState.recomputeCounters(total: files.count)
+                statusMessage = "Finalizado: \(batchState.processedCount) OK, \(batchState.failedCount) con error"
             }
         }
     }
 
     private func cancelBatch() {
-        cancelRequested = true
-        batchTask?.cancel()
+        batchState.cancelRequested = true
+        batchState.batchTask?.cancel()
         statusMessage = "Cancelando lote..."
     }
 
     private func retryItem(_ file: URL) {
-        guard !isProcessing else { return }
-        guard let current = batchResults[file], current.status == .failed else { return }
+        guard !batchState.isProcessing else { return }
+        guard let current = batchState.batchResults[file], current.status == .failed else { return }
 
         let modeSnapshot = selectedMode
 
-        batchResults[file] = BatchItemResult(status: .processing, outputURL: nil, errorMessage: nil, mode: modeSnapshot)
+        batchState.batchResults[file] = BatchItemResult(status: .processing, outputURL: nil, errorMessage: nil, mode: modeSnapshot)
         statusMessage = "Reintentando \(file.lastPathComponent)..."
 
         Task {
@@ -1318,36 +1238,14 @@ struct ContentView: View {
         )
     }
 
-    private func markRemainingAsCancelled(files: [URL], startingAt index: Int) {
-        guard index < files.count else { return }
-        for candidate in files[index...] {
-            guard let current = batchResults[candidate] else { continue }
-            if current.status == .pending || current.status == .processing {
-                batchResults[candidate] = BatchItemResult(status: .cancelled, outputURL: nil, errorMessage: "Cancelado por usuario", mode: current.mode)
-            }
-        }
-    }
-
-    private func recomputeCounters(total: Int) {
-        let values = Array(batchResults.values)
-        processedCount = values.filter { $0.status == .success }.count
-        failedCount = values.filter { $0.status == .failed }.count
-
-        let terminal = values.filter { result in
-            result.status == .success || result.status == .failed || result.status == .cancelled
-        }.count
-
-        progress = total > 0 ? Double(terminal) / Double(total) : 0
-    }
-
     private func shouldShowRetryButton(for file: URL) -> Bool {
-        guard let result = batchResults[file] else { return false }
-        return result.status == .failed && !isProcessing
+        guard let result = batchState.batchResults[file] else { return false }
+        return result.status == .failed && !batchState.isProcessing
     }
 
     @ViewBuilder
     private func itemStatusView(for file: URL) -> some View {
-        if let result = batchResults[file] {
+        if let result = batchState.batchResults[file] {
             let meta = statusMeta(for: result.status)
 
             HStack(spacing: 4) {
@@ -1426,8 +1324,8 @@ struct ContentView: View {
 
     @MainActor
     private func recommendWithAI() async {
-        guard let fileURL = selectedPreviewURL ?? inputFiles.first else {
-            aiStatusMessage = "Selecciona una imagen"
+        guard let fileURL = previewState.selectedPreviewURL ?? inputFiles.first else {
+            aiState.statusMessage = "Selecciona una imagen"
             return
         }
 
@@ -1466,8 +1364,8 @@ struct ContentView: View {
 
     @MainActor
     private func selectAIMode() async {
-        guard let fileURL = selectedPreviewURL ?? inputFiles.first else {
-            aiStatusMessage = "Selecciona una imagen"
+        guard let fileURL = previewState.selectedPreviewURL ?? inputFiles.first else {
+            aiState.statusMessage = "Selecciona una imagen"
             return
         }
         await recommendWithAI(for: fileURL)
@@ -1492,20 +1390,20 @@ struct ContentView: View {
     }
 
     private func schedulePreviewRefresh() {
-        previewTask?.cancel()
+        previewState.previewTask?.cancel()
         let requestID = UUID()
-        previewRequestID = requestID
-        previewTask = Task {
+        previewState.previewRequestID = requestID
+        previewState.previewTask = Task {
             await refreshPreview(requestID: requestID)
         }
     }
 
     @MainActor
     private func enhancePreview() async {
-        guard selectedPreviewURL != nil else { return }
-        if selectedMode == .ai, aiTuningForRun == nil {
+        guard previewState.selectedPreviewURL != nil else { return }
+        if selectedMode == .ai, aiState.tuningForRun == nil {
             await recommendWithAI()
-            if aiTuningForRun == nil {
+            if aiState.tuningForRun == nil {
                 return
             }
         }
@@ -1536,14 +1434,14 @@ struct ContentView: View {
             outputSettings.quality = resolution.quality
         }
 
-        aiPromptHD = resolution.aiPrompt ?? aiPromptHD
-        aiStatusMessage = resolution.aiReason ?? "IA lista"
-        aiSuggestedPresetForRun = resolution.aiSuggestedPreset
-        aiSuggestedQualityForRun = resolution.aiSuggestedQuality
-        aiReasonForRun = resolution.aiReason
-        aiTuningForRun = resolution.aiTuning
-        aiRecipeForRun = resolution.recipe
-        aiUsedFallbackForRun = resolution.usedFallback
+        aiState.promptHD = resolution.aiPrompt ?? aiState.promptHD
+        aiState.statusMessage = resolution.aiReason ?? "IA lista"
+        aiState.suggestedPresetForRun = resolution.aiSuggestedPreset
+        aiState.suggestedQualityForRun = resolution.aiSuggestedQuality
+        aiState.reasonForRun = resolution.aiReason
+        aiState.tuningForRun = resolution.aiTuning
+        aiState.recipeForRun = resolution.recipe
+        aiState.usedFallbackForRun = resolution.usedFallback
 
         if resolution.usedFallback {
             appendLog("[IA] ⚠️ IA no disponible para \(fileURL.lastPathComponent). Se usa fallback local.")
@@ -1581,7 +1479,7 @@ struct ContentView: View {
             baseFormat: baseFormat
         )
 
-        if let cached = await MainActor.run(body: { aiResolutionCache[cacheKey] }) {
+        if let cached = await MainActor.run(body: { aiState.resolutionCache[cacheKey] }) {
             if shouldUpdateUIState {
                 await MainActor.run {
                     applyAIResolutionToUI(cached, for: fileURL, fromCache: true)
@@ -1611,12 +1509,12 @@ struct ContentView: View {
 
             if shouldUpdateUIState {
                 await MainActor.run {
-                    aiResolutionCache[cacheKey] = resolution
+                    aiState.resolutionCache[cacheKey] = resolution
                     applyAIResolutionToUI(resolution, for: fileURL, fromCache: false)
                 }
             } else {
                 await MainActor.run {
-                    aiResolutionCache[cacheKey] = resolution
+                    aiState.resolutionCache[cacheKey] = resolution
                 }
             }
 
@@ -1634,7 +1532,7 @@ struct ContentView: View {
             if shouldUpdateUIState {
                 await MainActor.run {
                     resetAIRunState(status: "IA no disponible, usando flujo local")
-                    aiPromptHD = fallback.aiPrompt ?? aiPromptHD
+                    aiState.promptHD = fallback.aiPrompt ?? aiState.promptHD
                     appendLog("[IA] ⚠️ IA no disponible: \(error.localizedDescription)")
                     invalidateProcessedPreview()
                 }
@@ -1654,28 +1552,28 @@ struct ContentView: View {
 
     @MainActor
     private func refreshPreview(requestID: UUID) async {
-        guard let selectedPreviewURL else {
-            originalPreviewImage = nil
-            proPreviewImage = nil
-            aiPreviewImage = nil
-            previewNeedsRefresh = false
+        guard let selectedPreviewURL = previewState.selectedPreviewURL else {
+            previewState.originalPreviewImage = nil
+            previewState.proPreviewImage = nil
+            previewState.aiPreviewImage = nil
+            previewState.previewNeedsRefresh = false
             return
         }
 
-        isGeneratingPreview = true
+        previewState.isGeneratingPreview = true
 
         do {
             guard let original = NSImage(contentsOf: selectedPreviewURL) else {
                 throw ImageEnhancerError.cannotLoadImage(selectedPreviewURL)
             }
-            originalPreviewImage = original
+            previewState.originalPreviewImage = original
 
             let proPreview = try enhancer.enhancedPreviewImage(inputURL: selectedPreviewURL, preset: preset)
-            if Task.isCancelled || previewRequestID != requestID {
-                isGeneratingPreview = false
+            if Task.isCancelled || previewState.previewRequestID != requestID {
+                previewState.isGeneratingPreview = false
                 return
             }
-            proPreviewImage = proPreview
+            previewState.proPreviewImage = proPreview
 
             if selectedMode == .reconstructAI {
                 let reconstructedPreview = try await openAIReconstruction.reconstructPreviewImage(
@@ -1683,41 +1581,41 @@ struct ContentView: View {
                     intent: reconstructionIntent(
                         for: selectedPreviewURL,
                         preset: preset,
-                        sceneOverride: effectivePreviewScene
+                        sceneOverride: previewState.effectivePreviewScene
                     )
                 )
-                if Task.isCancelled || previewRequestID != requestID {
-                    isGeneratingPreview = false
+                if Task.isCancelled || previewState.previewRequestID != requestID {
+                    previewState.isGeneratingPreview = false
                     return
                 }
-                aiPreviewImage = reconstructedPreview
-            } else if let aiTuningForRun {
-                _ = resolvedAIPrompt(for: selectedPreviewURL, preferredPrompt: aiPromptHD)
+                previewState.aiPreviewImage = reconstructedPreview
+            } else if let aiTuningForRun = aiState.tuningForRun {
+                _ = resolvedAIPrompt(for: selectedPreviewURL, preferredPrompt: aiState.promptHD)
                 let aiPreview = try enhancer.enhancedPreviewImage(
                     inputURL: selectedPreviewURL,
                     preset: preset,
                     tuning: aiTuningForRun,
-                    faceRestoreStrength: aiRecipeForRun?.faceRestore.flatMap { $0.enabled ? ($0.strength ?? 0.5) : nil },
-                    upscaleTargetLongSide: aiRecipeForRun?.upscaleTargetLongSide,
-                    sceneOverride: aiRecipeForRun?.mappedScene
+                    faceRestoreStrength: aiState.recipeForRun?.faceRestore.flatMap { $0.enabled ? ($0.strength ?? 0.5) : nil },
+                    upscaleTargetLongSide: aiState.recipeForRun?.upscaleTargetLongSide,
+                    sceneOverride: aiState.recipeForRun?.mappedScene
                 )
-                if Task.isCancelled || previewRequestID != requestID {
-                    isGeneratingPreview = false
+                if Task.isCancelled || previewState.previewRequestID != requestID {
+                    previewState.isGeneratingPreview = false
                     return
                 }
-                aiPreviewImage = aiPreview
+                previewState.aiPreviewImage = aiPreview
             } else {
-                aiPreviewImage = nil
+                previewState.aiPreviewImage = nil
             }
-            previewNeedsRefresh = false
+            previewState.previewNeedsRefresh = false
         } catch {
-            originalPreviewImage = nil
-            proPreviewImage = nil
-            aiPreviewImage = nil
+            previewState.originalPreviewImage = nil
+            previewState.proPreviewImage = nil
+            previewState.aiPreviewImage = nil
             appendLog("❌ Preview \(selectedPreviewURL.lastPathComponent): \(error.localizedDescription)")
         }
 
-        isGeneratingPreview = false
+        previewState.isGeneratingPreview = false
     }
 
     private func pickImages() {
@@ -1729,8 +1627,8 @@ struct ContentView: View {
 
         guard panel.runModal() == .OK else { return }
         mergeInputFiles(panel.urls)
-        if selectedPreviewURL == nil {
-            selectedPreviewURL = inputFiles.first
+        if previewState.selectedPreviewURL == nil {
+            previewState.selectedPreviewURL = inputFiles.first
         }
     }
 
@@ -1745,8 +1643,8 @@ struct ContentView: View {
         do {
             let urls = try collectImages(in: folder)
             mergeInputFiles(urls)
-            if selectedPreviewURL == nil {
-                selectedPreviewURL = inputFiles.first
+            if previewState.selectedPreviewURL == nil {
+                previewState.selectedPreviewURL = inputFiles.first
             }
         } catch {
             appendLog("❌ No se pudo leer carpeta: \(error.localizedDescription)")
@@ -1776,8 +1674,8 @@ struct ContentView: View {
 
         if !normalized.isEmpty {
             statusMessage = "\(inputFiles.count) imágenes en cola"
-            if selectedPreviewURL == nil {
-                selectedPreviewURL = inputFiles.first
+            if previewState.selectedPreviewURL == nil {
+                previewState.selectedPreviewURL = inputFiles.first
             }
             preparePreviewForSelection()
             logAutoPreviewDecisionIfNeeded()
@@ -1785,7 +1683,7 @@ struct ContentView: View {
     }
 
     private func logAutoPreviewDecisionIfNeeded() {
-        guard preset == .auto, let previewURL = selectedPreviewURL ?? inputFiles.first else { return }
+        guard preset == .auto, let previewURL = previewState.selectedPreviewURL ?? inputFiles.first else { return }
         let scene = enhancer.detectSceneType(inputURL: previewURL)
         let queueSuffix = inputFiles.count > 1 ? " · preview de lote (\(inputFiles.count) imágenes)" : ""
         appendLog("[PRO] AUTO preview analizará \(previewURL.lastPathComponent) como \(autoDecisionLabel(for: scene))\(queueSuffix)")
@@ -1793,33 +1691,33 @@ struct ContentView: View {
 
     @MainActor
     private func preparePreviewForSelection() {
-        previewTask?.cancel()
-        previewNeedsRefresh = false
-        proPreviewImage = nil
-        aiPreviewImage = nil
+        previewState.previewTask?.cancel()
+        previewState.previewNeedsRefresh = false
+        previewState.proPreviewImage = nil
+        previewState.aiPreviewImage = nil
 
-        guard let previewURL = selectedPreviewURL ?? inputFiles.first else {
-            originalPreviewImage = nil
-            effectivePreviewScene = nil
-            effectivePreviewPreset = .auto
+        guard let previewURL = previewState.selectedPreviewURL ?? inputFiles.first else {
+            previewState.originalPreviewImage = nil
+            previewState.effectivePreviewScene = nil
+            previewState.effectivePreviewPreset = .auto
             return
         }
 
-        if selectedPreviewURL == nil {
-            selectedPreviewURL = previewURL
+        if previewState.selectedPreviewURL == nil {
+            previewState.selectedPreviewURL = previewURL
         }
-        originalPreviewImage = NSImage(contentsOf: previewURL)
-        effectivePreviewScene = enhancer.detectSceneType(inputURL: previewURL)
-        effectivePreviewPreset = enhancer.effectivePreset(for: preset, inputURL: previewURL)
-        previewNeedsRefresh = true
+        previewState.originalPreviewImage = NSImage(contentsOf: previewURL)
+        previewState.effectivePreviewScene = enhancer.detectSceneType(inputURL: previewURL)
+        previewState.effectivePreviewPreset = enhancer.effectivePreset(for: preset, inputURL: previewURL)
+        previewState.previewNeedsRefresh = true
     }
 
     @MainActor
     private func invalidateProcessedPreview() {
-        previewTask?.cancel()
-        proPreviewImage = nil
-        aiPreviewImage = nil
-        previewNeedsRefresh = selectedPreviewURL != nil || !inputFiles.isEmpty
+        previewState.previewTask?.cancel()
+        previewState.proPreviewImage = nil
+        previewState.aiPreviewImage = nil
+        previewState.previewNeedsRefresh = previewState.selectedPreviewURL != nil || !inputFiles.isEmpty
     }
 
     private func collectImages(in folder: URL) throws -> [URL] {
@@ -1876,27 +1774,27 @@ struct ContentView: View {
     }
 
     private var proPreviewSummary: String {
-        switch effectivePreviewPreset {
+        switch previewState.effectivePreviewPreset {
         case .portrait:
-            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))" : ""
+            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: previewState.effectivePreviewScene))" : ""
             return "retrato natural, contraste contenido, color moderado y detalle suave\(suffix)"
         case .landscape:
-            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))" : ""
+            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: previewState.effectivePreviewScene))" : ""
             return "paisaje equilibrado, color vivo moderado y nitidez local suave\(suffix)"
         case .document:
-            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))" : ""
+            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: previewState.effectivePreviewScene))" : ""
             return "documento claro, contraste funcional y nitidez para lectura\(suffix)"
         case .ecommerce:
-            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))" : ""
+            let suffix = preset == .auto ? " · AUTO -> \(autoDecisionLabel(for: previewState.effectivePreviewScene))" : ""
             return "producto limpio, color controlado y microdetalle moderado\(suffix)"
         case .auto:
-            return "auto local, correccion general y mejora conservadora · AUTO -> \(autoDecisionLabel(for: effectivePreviewScene))"
+            return "auto local, correccion general y mejora conservadora · AUTO -> \(autoDecisionLabel(for: previewState.effectivePreviewScene))"
         }
     }
 
     private var reconstructionPreviewSummary: String {
-        if let selectedPreviewURL,
-           reconstructionIntent(for: selectedPreviewURL, preset: preset, sceneOverride: effectivePreviewScene) == .ecommerceCleanup {
+        if let selectedPreviewURL = previewState.selectedPreviewURL,
+           reconstructionIntent(for: selectedPreviewURL, preset: preset, sceneOverride: previewState.effectivePreviewScene) == .ecommerceCleanup {
             return "reconstrucción IA para producto: limpia bordes complejos, preserva branding y recompone sobre blanco"
         }
         return "reconstrucción generativa conservadora para imágenes pequeñas o muy comprimidas"
@@ -1905,9 +1803,9 @@ struct ContentView: View {
     private var currentComparisonImage: NSImage? {
         switch selectedMode {
         case .local:
-            return proPreviewImage
+            return previewState.proPreviewImage
         case .ai, .reconstructAI:
-            return aiPreviewImage ?? proPreviewImage
+            return previewState.aiPreviewImage ?? previewState.proPreviewImage
         }
     }
 
@@ -1916,7 +1814,7 @@ struct ContentView: View {
         case .local:
             return "Procesado Pro"
         case .ai:
-            return aiUsedFallbackForRun ? "Fallback local" : "IA"
+            return aiState.usedFallbackForRun ? "Fallback local" : "IA"
         case .reconstructAI:
             return "Reconstrucción IA"
         }
@@ -1934,7 +1832,7 @@ struct ContentView: View {
     }
 
     private var aiPreviewBadge: String {
-        aiUsedFallbackForRun ? "IA→PRO" : "IA"
+        aiState.usedFallbackForRun ? "IA→PRO" : "IA"
     }
 
     private func rescueBadge(for recommendation: RescueRecommendation) -> String {
@@ -1971,10 +1869,10 @@ struct ContentView: View {
     }
 
     private var aiPreviewSummary: String? {
-        if aiUsedFallbackForRun {
+        if aiState.usedFallbackForRun {
             return "IA no disponible en esta ejecución; se muestra fallback local con el pipeline PRO actual."
         }
-        return aiRecipeForRun.map(aiRecipeSummary)
+        return aiState.recipeForRun.map(aiRecipeSummary)
     }
 
     private func autoDecisionLabel(for scene: ImageEnhancer.SceneType?) -> String {
