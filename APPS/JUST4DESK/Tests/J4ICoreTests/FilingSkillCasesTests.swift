@@ -33,7 +33,7 @@ final class FilingSkillCasesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(FilingSkill.version, 1)
         XCTAssertFalse(FilingSkill.assistantInstructions.isEmpty)
         XCTAssertEqual(FilingSkill.fewShotLines(limit: 3).count, 3)
-        // Los few-shot usan el formato esperado y la cuarentena se representa como 99_SinClasificar.
+        // Los few-shot usan el formato esperado y la carpeta «sin clasificar» se representa como 99_SinClasificar.
         let lines = FilingSkill.fewShotLines(limit: FilingSkill.curatedCases.count)
         XCTAssertTrue(lines.contains { $0.contains("→ 99_SinClasificar") })
     }

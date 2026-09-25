@@ -539,15 +539,16 @@ final class SearchViewModel: ObservableObject {
     }
 
     /// Cuenta los elementos de la sin clasificar (listado plano y barato) para la bandeja de «Inicio».
+    /// Usa el MISMO criterio que la ventana «Por revisar» (`QuarantineListing`): los ocultos no
+    /// cuentan (un `.DS_Store` creado por Finder llegó a mostrarse como «1 elemento por revisar»).
     func refreshQuarantineCount() async {
         guard let rootPath = filingRootPath else {
             quarantineCount = 0
             return
         }
-        let quarantine = URL(fileURLWithPath: rootPath, isDirectory: true)
-            .appendingPathComponent(DefaultTaxonomy.quarantineRelativePath, isDirectory: true)
+        let rootURL = URL(fileURLWithPath: rootPath, isDirectory: true)
         let count = await Task.detached(priority: .utility) { () -> Int in
-            (try? FileManager.default.contentsOfDirectory(atPath: quarantine.path))?.count ?? 0
+            QuarantineListing.itemURLs(rootURL: rootURL).count
         }.value
         quarantineCount = count
     }

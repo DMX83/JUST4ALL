@@ -10,7 +10,7 @@
 - Actualizar al cerrar cada tarea: (1) "Estado actual", (2) hito en "Historial de hitos",
   (3) decisiones nuevas en la tabla, (4) deuda/pendientes.
 - Complementa a: `TODO.md` (qué falta), `CHANGELOG.md` (qué cambió), `ARCHITECTURE.md` (cómo está hecho).
-- El skill `.github/skills/just4index/SKILL.md` obliga a este ciclo.
+- El skill `.github/skills/just4desk/SKILL.md` obliga a este ciclo.
 
 ## Estado actual
 
@@ -564,6 +564,17 @@
   del usuario sí). Retirada del almacén real la regla «txt → 09_Identidad/Documentos» (copia
   `knowledge.json.bak-20260925-125023`). Suite 141 (140 + 1 skip) — el fallo detectado en esta
   sesión lo destapó precisamente esa contaminación.
+- Limpieza JUST4INDEX (25-sep, noche, petición del usuario: «veo vinculos aun a just4index… no hay
+  ningun elemento por revisar y sale en el main»): (a) el «1 elemento por revisar» era un
+  `.DS_Store` invisible — el contador de Inicio listaba ocultos y «Por revisar» no → criterio
+  compartido `QuarantineListing` (J4ICore: omite ocultos, solo ficheros/carpetas) + 3 tests;
+  (b) carpeta de datos renombrada `~/JUST4INDEX` → `~/JUST4DESK` en sitio (mv instantáneo, sin
+  copiar 32 GB) con reemplazo de prefijo en preferencias (`just4desk.filing.rootPath`),
+  `roots`/`entries`/`entries_fts`, `ops_journal` y `analysis_cache` + caché de sugerencias;
+  (c) eliminado un **root fantasma** `~/JUST4DESK` del índice (57 entradas del esqueleto
+  accidental) — «Entradas indexadas» ya no lo suma; (d) `JUST4INDEX.entitlements` →
+  `JUST4DESK.entitlements` (el script de DMG ya esperaba el nombre nuevo); (e) hub JUST4ALL sin
+  «cuarentena» y sin «(antes JUST4INDEX)»; (f) log rotado (`just4desk.log.pre-rename-20260925`).
 
 ## Lecciones y trampas
 
@@ -609,11 +620,11 @@
 - Búsqueda: query troceada a sub-tokens alfanuméricos → `token* AND token*`; FTS5 unicode61
   (`remove_diacritics 2`); ranking `bm25` con peso del nombre 5× respecto a la ruta.
 - Organización: automática total (decisión del usuario) con undo/pausa/simulación; nunca borra.
-- Clasificación: IA → reglas por nombre → reglas por texto → extensión (último recurso) → cuarentena;
+- Clasificación: IA → reglas por nombre → reglas por texto → extensión (último recurso) → «sin clasificar»;
   umbral de confianza 0.5; nombre `YYYY-MM-DD_Emisor_Titulo.ext`.
 - Build/versionado: `scripts/app_env.sh` (raíz del repo) + `J4ABuildStamp` en Info.plist.
 - Registro: usar `J4Log.debug/info/warn/error(categoría, mensaje)` en código nuevo; visor en la app
-  (⌘L); archivo en `~/Library/Logs/JUST4INDEX/just4index.log`; los tests silencian el archivo
+  (⌘L); archivo en `~/Library/Logs/JUST4DESK/just4desk.log`; los tests silencian el archivo
   automáticamente (o `J4I_LOG_FILE=0` a mano).
 
 ## Deuda técnica / pendientes abiertos
@@ -624,7 +635,7 @@
   end-to-end con documentos reales (soltar PDFs en la carpeta de entrada → archivado → undo);
   revisar el registro en vivo (⌘L) para validar las decisiones de clasificación.
 - Post-MVP: cap diario de llamadas DeepSeek + métricas; renombrar y drag & drop en el explorador;
-  xlsx; imágenes reales para `Assets/JUST4INDEX/` del hub.
+  xlsx; imágenes reales para `Assets/JUST4DESK/` del hub.
 - Mapa de mejoras priorizado (propuestas candidatas, sin aprobar): `MEJORAS.md` — pendiente de la
   elección del usuario para convertirlas en fases.
 - Decidir en F5 si el primer arranque propone activar el modo simulación (recomendado) o arranca en automático directo.

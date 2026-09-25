@@ -2,7 +2,7 @@ import XCTest
 @testable import J4ICore
 
 /// F14.0 — Inventario de categorías en disco: la taxonomía de fábrica ∪ las carpetas que existan
-/// de verdad en la raíz (categorías creadas al momento, subcarpetas a mano…), sin la cuarentena.
+/// de verdad en la raíz (categorías creadas al momento, subcarpetas a mano…), sin la carpeta «sin clasificar».
 final class TaxonomyInventoryTests: XCTestCase {
     private func temporaryRoot() throws -> URL {
         let root = FileManager.default.temporaryDirectory
@@ -34,7 +34,7 @@ final class TaxonomyInventoryTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         _ = TaxonomyInstaller.install(at: root)
 
-        // Una carpeta-unidad en cuarentena (p. ej. «Documents») NO debe ofrecerse como destino.
+        // Una carpeta-unidad en «sin clasificar» (p. ej. «Documents») NO debe ofrecerse como destino.
         try FileManager.default.createDirectory(
             at: root.appendingPathComponent("99_SinClasificar/Documents", isDirectory: true),
             withIntermediateDirectories: true

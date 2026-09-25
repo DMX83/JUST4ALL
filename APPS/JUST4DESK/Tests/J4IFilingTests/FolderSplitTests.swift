@@ -37,10 +37,10 @@ final class FolderSplitTests: XCTestCase {
             FileManager.default.fileExists(atPath: rootURL.appendingPathComponent("01_Fiscal/Facturas/Factura-Luz-Marzo.txt").path),
             "el fichero con señal debe archivarse individualmente"
         )
-        // …y el que no tiene señal va a la cuarentena POR SEPARADO (no arrastra a la carpeta).
+        // …y el que no tiene señal va a la carpeta «sin clasificar» POR SEPARADO (no arrastra a la carpeta).
         XCTAssertTrue(
             FileManager.default.fileExists(atPath: rootURL.appendingPathComponent("99_SinClasificar/datos.bin").path),
-            "el fichero sin señal debe ir a cuarentena individual"
+            "el fichero sin señal debe ir a «sin clasificar» individual"
         )
         // La cáscara vacía queda en origen (nunca se borra) y ya no contiene elementos.
         XCTAssertTrue(FileManager.default.fileExists(atPath: bucket.path), "la cáscara se queda en origen")

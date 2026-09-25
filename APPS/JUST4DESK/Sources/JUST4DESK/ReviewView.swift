@@ -484,22 +484,18 @@ final class ReviewViewModel: ObservableObject {
         } else {
             destinations = DefaultTaxonomy.allRelativePaths.filter { $0 != DefaultTaxonomy.quarantineRelativePath }
         }
-        guard let quarantineURL else {
+        guard let rootPath else {
             items = []
             selection = []
             return
         }
-        let fileManager = FileManager.default
-        let urls = (try? fileManager.contentsOfDirectory(
-            at: quarantineURL,
-            includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey, .isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        )) ?? []
+        // Criterio compartido con el contador de «Inicio» (`QuarantineListing`): ocultos omitidos y
+        // solo ficheros/carpetas — el contador y esta lista no deben discrepar nunca.
+        let urls = QuarantineListing.itemURLs(rootURL: URL(fileURLWithPath: rootPath, isDirectory: true))
         var loaded: [Item] = []
         for url in urls {
-            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey, .isRegularFileKey, .isDirectoryKey])
+            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey, .isDirectoryKey])
             let isDirectory = values?.isDirectory == true
-            guard values?.isRegularFile == true || isDirectory else { continue }
             let name = url.lastPathComponent
             let sizeBytes = Int64(values?.fileSize ?? 0)
             let modifiedAt = values?.contentModificationDate

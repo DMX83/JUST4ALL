@@ -171,14 +171,14 @@ enum SubAppsCatalog {
             assetPrefix: "JUST4DESK",
             accent: Color(red: 0.35, green: 0.34, blue: 0.84),
             systemIcon: "desktopcomputer",
-            description: "Tu escritorio inteligente para Mac: encuentra cualquier archivo en milisegundos y deja que ordene tus carpetas solo — clasifica por contenido con IA opcional, aprende de tus correcciones y archiva con undo y cuarentena. Nunca borra: solo mueve. Todo en tu Mac.",
+            description: "Tu escritorio inteligente para Mac: encuentra cualquier archivo en milisegundos y deja que ordene tus carpetas solo — clasifica por contenido con IA opcional, aprende de tus correcciones y archiva con undo; lo dudoso queda en «sin clasificar» para revisarlo. Nunca borra: solo mueve. Todo en tu Mac.",
             requirements: ["macOS 14+", "Instalado como .app"],
             links: [],
             version: pinnedVersion,
             changelog: [
-                "Nuevo nombre y marca (antes JUST4INDEX): tu escritorio inteligente de documentos",
+                "Nuevo nombre y marca: tu escritorio inteligente de documentos",
                 "Buscador instantaneo con indice local (FTS5 + FSEvents; subcadena y contenido)",
-                "Organizador automatico con taxonomia fina y cuarentena revisable; aprende de tus correcciones"
+                "Organizador automatico con taxonomia fina y cola «sin clasificar» revisable; aprende de tus correcciones"
             ],
             logoName: "Assets/JUST4DESK/logo.png",
             screenshots: [

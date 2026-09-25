@@ -1,4 +1,4 @@
-# EVOLUCIÓN — JUST4INDEX (análisis de mercado y siguiente generación)
+# EVOLUCIÓN — JUST4DESK (análisis de mercado y siguiente generación)
 
 > Fecha: 2026-09-25 · Autor: sesión de diseño de producto (a petición del usuario)
 >
@@ -260,8 +260,9 @@ binario, dominio de preferencias, App Support, logs) · **J4DESK** = marca corta
   - `~/Library/Application Support/JUST4INDEX/` → `…/<NOMBRE>/` (`index.sqlite`, `knowledge.json`
     con 27 reglas, `ai-suggestions.json`) — **movimiento con copia de seguridad**.
   - `~/Library/Logs/JUST4INDEX` → nuevo (arrancar limpio; se conserva el histórico).
-  - **Carpeta destino `~/JUST4INDEX`** (~32 GB ya organizados): **no se renombra automáticamente**;
-    se queda como carpeta de datos (en Ajustes → Organización se puede cambiar cuando el usuario quiera).
+  - **Carpeta destino `~/JUST4INDEX`** (~32 GB ya organizados): renombrada a `~/JUST4DESK`
+    (25-sep, noche) en sitio — sin copiar datos — con reemplazo de prefijo en preferencias,
+    índice (`roots`/`entries`/`entries_fts`), journal y caché.
 - **Plan A (recomendado) — renombrar en sitio**: carpeta `APPS/JUST4INDEX` → `APPS/<NOMBRE>`,
   textos de UI/About/hub/scripts/skill, + **shim de primera ejecución** que copia UserDefaults y mueve
   Application Support (idempotente y con backup). Los módulos internos (`J4ICore`, `J4IIndex`…)
@@ -276,6 +277,7 @@ binario, dominio de preferencias, App Support, logs) · **J4DESK** = marca corta
   verde. Incidencia del despliegue resuelta: el asistente de primer arranque apareció (config
   cacheada antes de migrar) y se completó por error creando un esqueleto **vacío** en
   `~/JUST4DESK`; **0 ficheros afectados** — esqueleto a la Papelera, configuración restaurada y
-  arranque corregido con relectura. **Pendiente**: ¿renombrar también la carpeta de datos
-  `~/JUST4INDEX` (~32 GB)?
+  arranque corregido con relectura. **Carpeta de datos**: renombrada a `~/JUST4DESK` (25-sep,
+  noche) y limpiados los restos: root fantasma del esqueleto eliminado del índice (57 entradas),
+  contador de Inicio alineado con «Por revisar» (ocultos omitidos) y entitlements renombrados.
 

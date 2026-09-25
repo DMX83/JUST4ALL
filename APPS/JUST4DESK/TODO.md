@@ -293,7 +293,10 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
   suite 144 (143 + 1 skip).
 - [x] Incidencia del despliegue resuelta (asistente abierto por caché de configuración; 0 ficheros
   afectados; esqueleto `~/JUST4DESK` a la Papelera; arranque corregido con relectura).
-- [ ] Decisión pendiente del usuario: ¿renombrar la carpeta de datos `~/JUST4INDEX` → `~/JUST4DESK`?
+- [x] Carpeta de datos renombrada `~/JUST4INDEX` → `~/JUST4DESK` (25-sep noche; preferencias,
+  índice, journal y caché migrados en sitio, sin copiar los 32 GB; log rotado).
+- [x] Restos del renombrado limpiados: root fantasma del índice eliminado, contador de Inicio
+  alineado con «Por revisar» (ocultos omitidos), `JUST4DESK.entitlements` y hub sin «cuarentena».
 
 ## G1 — Pantalla «Inicio» (centro de control + omnibox ⌘K) — completada
 

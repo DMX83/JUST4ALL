@@ -1,10 +1,10 @@
-# Changelog — JUST4INDEX
+# Changelog — JUST4DESK
 
 Convención por version + build stamp:
 
 - Version: `CFBundleShortVersionString` · Build: `CFBundleVersion`
 - Build stamp: `J4ABuildStamp` (`YYYYMMDDHHMMSS-<commit-corto>`)
-- Artefacto: `JUST4INDEX-<version>+<buildStamp>.dmg`
+- Artefacto: `JUST4DESK-<version>+<buildStamp>.dmg`
 
 ## [Unreleased] — 2026-09-24
 
@@ -485,3 +485,23 @@ Convención por version + build stamp:
 - Sin migración de datos: la carpeta `99_SinClasificar` y los identificadores internos
   (`quarantine*`) se conservan. Las entradas históricas de CHANGELOG/MEMORY/TODO mantienen el
   término antiguo a propósito.
+
+### Fixed — «Inicio» contaba un `.DS_Store` como elemento «por revisar» (25-sep, noche)
+
+- La bandeja contaba cualquier entrada de `99_SinClasificar`, incluido el `.DS_Store` invisible que
+  Finder crea al abrir la carpeta → «1 elemento(s) por revisar» mientras la ventana «Por revisar»
+  estaba vacía. Ahora ambos usan el mismo criterio (`QuarantineListing`, J4ICore): ocultos omitidos
+  y solo ficheros/carpetas (3 tests nuevos).
+
+### Changed — Carpeta de datos renombrada a `~/JUST4DESK` + limpieza de restos (25-sep, noche)
+
+- `~/JUST4INDEX` → `~/JUST4DESK` (mv en sitio, sin copia de 32 GB): preferencias
+  (`just4desk.filing.rootPath`), índice (`roots`/`entries`/`entries_fts`), journal y caché de
+  análisis migrados con reemplazo de prefijo; caché de sugerencias de la IA actualizada.
+- Eliminado un **root fantasma** `~/JUST4DESK` del índice (57 entradas del esqueleto accidental
+  del renombrado): «Entradas indexadas» deja de sumarlas y no hay resultados a rutas muertas.
+- `packaging/macos/JUST4INDEX.entitlements` → `JUST4DESK.entitlements` (el script de DMG ya
+  esperaba el nombre nuevo).
+- Hub JUST4ALL: textos de la tarjeta reescritos (sin «cuarentena», sin «(antes JUST4INDEX)»).
+- Log rotado a `just4desk.log.pre-rename-20260925` para arrancar con trazas limpias (el histórico
+  se conserva en disco).

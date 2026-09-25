@@ -5,7 +5,7 @@ import XCTest
 final class ReviewSortingTests: XCTestCase {
     private func item(_ name: String, sizeBytes: Int64 = 0, modifiedAt: Date? = nil, isDirectory: Bool = false, folderSummary: String? = nil) -> ReviewViewModel.Item {
         ReviewViewModel.Item(
-            path: "/cuarentena/\(name)",
+            path: "/99_SinClasificar/\(name)",
             name: name,
             sizeBytes: sizeBytes,
             modifiedAt: modifiedAt,
@@ -56,7 +56,7 @@ final class ReviewSortingTests: XCTestCase {
     }
 
     func testExtensionGroupsSeparateFoldersFromExtensionlessFiles() {
-        // Ajuste 24-sep: las carpetas de la cuarentena van a su propio grupo «CARPETAS»
+        // Ajuste 24-sep: las carpetas de la carpeta «sin clasificar» van a su propio grupo «CARPETAS»
         // (antes se mezclaban bajo «SIN EXTENSIÓN») y conservan su resumen de contenido.
         let items = [
             item("zeta.pdf"),

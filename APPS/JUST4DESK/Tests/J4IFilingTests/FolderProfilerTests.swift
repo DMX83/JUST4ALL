@@ -2,7 +2,7 @@ import XCTest
 @testable import J4IFiling
 
 /// Ajuste 2026-09-24: las carpetas-cáscara (sin ficheros, aunque contengan subcarpetas vacías —
-/// p. ej. «AnyUkit» con music/video vacíos) deben detectarse como vacías y no acabar en cuarentena.
+/// p. ej. «AnyUkit» con music/video vacíos) deben detectarse como vacías y no acabar en «sin clasificar».
 final class FolderProfilerTests: XCTestCase {
     func testFolderWithOnlyEmptySubfoldersIsEmptyShell() throws {
         let root = FileManager.default.temporaryDirectory
@@ -12,7 +12,7 @@ final class FolderProfilerTests: XCTestCase {
         try FileManager.default.createDirectory(at: root.appendingPathComponent("video"), withIntermediateDirectories: true)
 
         let summary = FolderProfiler.summarize(folderURL: root, includeText: false)
-        XCTAssertTrue(summary.isEmpty, "sin ficheros en el árbol = cáscara vacía (no cuarentena)")
+        XCTAssertTrue(summary.isEmpty, "sin ficheros en el árbol = cáscara vacía (no «sin clasificar»)")
         XCTAssertEqual(summary.fileCount, 0)
         XCTAssertEqual(summary.directoryCount, 2)
     }

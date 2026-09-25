@@ -33,7 +33,7 @@ final class KnowledgeFilingTests: XCTestCase {
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
         _ = try await index.addRoot(path: rootURL.path)
 
-        // Sin IA disponible: sin la regla aprendida, «.bin» habría ido a cuarentena.
+        // Sin IA disponible: sin la regla aprendida, «.bin» habría ido a «sin clasificar».
         let coordinator = FilingCoordinator(index: index, rootURL: rootURL, knowledge: store)
         let outcome = await coordinator.processItem(at: fileURL)
 

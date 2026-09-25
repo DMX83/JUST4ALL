@@ -61,11 +61,11 @@ final class J4LogTests: XCTestCase {
         let fileURL = directory.appendingPathComponent("test.log", isDirectory: false)
         let core = J4LogCore(capacity: 10, fileURL: fileURL, usesOSLog: false)
 
-        core.log(.warning, .filing, "cuarentena de prueba")
+        core.log(.warning, .filing, "«sin clasificar» de prueba")
         core.log(.info, .index, "indexación de prueba")
 
         let contents = try String(contentsOf: fileURL, encoding: .utf8)
-        XCTAssertTrue(contents.contains("[AVISO] [filing] cuarentena de prueba"), contents)
+        XCTAssertTrue(contents.contains("[AVISO] [filing] «sin clasificar» de prueba"), contents)
         XCTAssertTrue(contents.contains("[INFO] [index] indexación de prueba"), contents)
         XCTAssertTrue(contents.contains("J4LogTests.swift"), contents)
 

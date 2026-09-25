@@ -79,7 +79,7 @@ final class FolderUnitFilingTests: XCTestCase {
         )
         let outcome = await coordinator.processItem(at: weirdFolder)
 
-        // Sin reglas para «.bin» ni para el nombre → cuarentena, pero la carpeta viaja entera.
+        // Sin reglas para «.bin» ni para el nombre → «sin clasificar», pero la carpeta viaja entera.
         XCTAssertEqual(outcome.action, "quarantine")
         XCTAssertEqual(outcome.categoryPath, "99_SinClasificar")
         XCTAssertFalse(FileManager.default.fileExists(atPath: weirdFolder.path))
@@ -100,7 +100,7 @@ final class FolderUnitFilingTests: XCTestCase {
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
 
         // Cajón de sastre con un documento que menciona «factura»/«nómina»: el texto de un documento
-        // suelto NO debe decidir por toda la carpeta → cuarentena (revisable), no Fiscal/Nominas.
+        // suelto NO debe decidir por toda la carpeta → «sin clasificar» (revisable), no Fiscal/Nominas.
         XCTAssertNil(RulesFilingClassifier.classifyFolder(name: "Carpeta de Papeles", dominantExtension: "txt"))
 
         let bucket = tempDir.appendingPathComponent("entrada", isDirectory: true)
