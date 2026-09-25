@@ -1,12 +1,13 @@
 ---
 name: just4desk
-description: "Use when working on JUST4DESK (APPS/JUST4DESK): macOS app that combines instant search (SQLite FTS5 + FSEvents, 'Everything'-style) and intelligent document filing (PDFKit/Vision OCR + optional DeepSeek JSON API). Covers module map, build/test/DMG commands, privacy guardrails, automatic-filing safety (undo journal, quarantine, never-delete) and the mandatory MEMORY.md update cycle. Trigger words: JUST4DESK, buscador instantáneo, organizador de documentos, taxonomía, archivar documentos, Descargas, FTS5, FSEvents, DeepSeek, FilingPlanner, cuarentena, undo."
+description: "Use when working on JUST4DESK (APPS/JUST4DESK): macOS app with a control-room home («Inicio»: inbox, activity, state, omnibox ⌘K) plus instant search (SQLite FTS5 + FSEvents) and intelligent document filing (PDFKit/Vision OCR + optional DeepSeek JSON API). Covers module map, build/test/DMG commands, privacy guardrails, automatic-filing safety (undo journal, quarantine, never-delete) and the mandatory MEMORY.md update cycle. Trigger words: JUST4DESK, Inicio, omnibox, buscador instantáneo, organizador de documentos, taxonomía, archivar documentos, Descargas, FTS5, FSEvents, DeepSeek, FilingPlanner, cuarentena, undo."
 ---
 
 # JUST4DESK — desarrollo
 
-App macOS (SwiftUI + SPM) en `APPS/JUST4DESK`. Dos pilares: buscador instantáneo + organizador
-inteligente de documentos. Subapp del hub JUST4ALL.
+App macOS (SwiftUI + SPM) en `APPS/JUST4DESK`. Tres pilares: **Inicio** (centro de control: bandeja,
+actividad, estado, accesos) + **buscador instantáneo** (omnibox ⌘K en Inicio y ventana «Buscar» ⌘F)
++ **organizador inteligente** de documentos. Subapp del hub JUST4ALL.
 
 ## Ciclo obligatorio (implementar → validar → documentar)
 
@@ -25,7 +26,7 @@ inteligente de documentos. Subapp del hub JUST4ALL.
 | `J4IDocs` | `Sources/J4IDocs` | PDFKit, Vision OCR, txt/md/rtf, docx/xlsx, regex de metadatos |
 | `J4IAI` | `Sources/J4IAI` | `DeepSeekClient`, `DeepSeekFilingAdvisor`, cache por hash |
 | `J4IFiling` | `Sources/J4IFiling` | Ejecución mkdirs+move (J4FOps), journal+undo, cuarentena, simulación |
-| `JUST4DESK` | `Sources/JUST4DESK` | App SwiftUI: onboarding, buscador, actividad, cuarentena, settings |
+| `JUST4DESK` | `Sources/JUST4DESK` | App SwiftUI: **Inicio** (`HomeView`), ventana «Buscar», explorador, revisión, ajustes |
 
 Dependencia local: `APPS/JUST4FOLDERS` (`.package(path: "../JUST4FOLDERS")`, productos
 `J4FFileSystem`/`J4FOps`; los library products se añadieron en F0).

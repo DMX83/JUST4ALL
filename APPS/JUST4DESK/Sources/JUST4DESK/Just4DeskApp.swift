@@ -4,10 +4,13 @@ import AppKit
 @main
 struct Just4DeskApp: App {
     @NSApplicationDelegateAdaptor(J4IAppDelegate.self) private var appDelegate
+    /// Motor compartido (G1): «Inicio» y «Buscar» usan el mismo modelo (arranque idempotente).
+    @StateObject private var engine = SearchViewModel()
 
     var body: some Scene {
         WindowGroup("JUST4DESK") {
-            ContentView()
+            HomeView()
+                .environmentObject(engine)
                 .tint(J4I.brand)
                 .onAppear {
                     NSApp.setActivationPolicy(.regular)
@@ -21,7 +24,7 @@ struct Just4DeskApp: App {
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
-        .defaultSize(width: 1020, height: 680)
+        .defaultSize(width: 1120, height: 720)
         .commands {
             CommandGroup(after: .sidebar) {
                 Button("Abrir explorador") {
@@ -32,6 +35,14 @@ struct Just4DeskApp: App {
                     NotificationCenter.default.post(name: .j4iOpenReview, object: nil)
                 }
                 .keyboardShortcut("r", modifiers: .command)
+                Button("Buscar…") {
+                    NotificationCenter.default.post(name: .j4iOpenSearch, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: .command)
+                Button("Ir al buscador") {
+                    NotificationCenter.default.post(name: .j4iFocusOmnibox, object: nil)
+                }
+                .keyboardShortcut("k", modifiers: .command)
                 Button("Ver registro") {
                     NotificationCenter.default.post(name: .j4iShowLogViewer, object: nil)
                 }
@@ -54,6 +65,13 @@ struct Just4DeskApp: App {
                 .keyboardShortcut("a", modifiers: .command)
             }
         }
+
+        Window("Buscar", id: "search") {
+            ContentView()
+                .environmentObject(engine)
+                .tint(J4I.brand)
+        }
+        .defaultSize(width: 1020, height: 680)
 
         Window("Explorador", id: "explorer") {
             ExplorerView()

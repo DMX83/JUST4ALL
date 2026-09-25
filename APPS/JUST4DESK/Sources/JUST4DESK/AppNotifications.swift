@@ -7,6 +7,10 @@ extension Notification.Name {
     static let j4iOpenExplorer = Notification.Name("j4i.openExplorer")
     /// Abrir la cola de revisión de cuarentena (comando de menú ⌘R).
     static let j4iOpenReview = Notification.Name("j4i.openReview")
+    /// Abrir la ventana «Buscar» (comando de menú ⌘F).
+    static let j4iOpenSearch = Notification.Name("j4i.openSearch")
+    /// Enfocar el omnibox de «Inicio» (comando de menú ⌘K).
+    static let j4iFocusOmnibox = Notification.Name("j4i.focusOmnibox")
     /// Mostrar el visor de registro (comando de menú ⌘L).
     static let j4iShowLogViewer = Notification.Name("j4i.showLogViewer")
     /// La configuración de archivado ha cambiado (la emite `SearchViewModel`; la escuchan Ajustes/explorador).

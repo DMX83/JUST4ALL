@@ -3,17 +3,16 @@ import SwiftUI
 import J4ICore
 import J4IIndex
 
-/// Ventana principal (F2): buscador instantáneo conectado al índice.
+/// Ventana «Buscar» (F2/G1): buscador instantáneo conectado al índice.
 ///
-/// Keyboard-first: campo con foco al arrancar, flechas para navegar la lista,
-/// Enter para abrir (desde el campo o desde la lista), acciones en menú contextual
-/// y en la barra inferior.
+/// Desde G1 la pantalla principal es «Inicio»; esta ventana (⌘F) ofrece la búsqueda completa:
+/// filtros por tipo, scope por carpeta, búsqueda en contenido y acciones en menú contextual.
+/// Comparte el mismo `SearchViewModel` con «Inicio» (arranque idempotente).
 struct ContentView: View {
-    @StateObject private var viewModel = SearchViewModel()
+    @EnvironmentObject private var viewModel: SearchViewModel
     @State private var showLogViewer = false
     @State private var showRootMenu = false
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.openSettings) private var openSettings
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -30,49 +29,8 @@ struct ContentView: View {
             await viewModel.start()
             searchFocused = true
         }
-        .alert(
-            "Ha ocurrido un problema",
-            isPresented: Binding(
-                get: { viewModel.lastErrorMessage != nil },
-                set: { if !$0 { viewModel.lastErrorMessage = nil } }
-            ),
-            actions: {
-                if viewModel.accessIssue != nil {
-                    Button("Abrir Ajustes del Sistema…") { viewModel.openPrivacySettings() }
-                    Button("Reintentar") { viewModel.retrySourceAccess() }
-                }
-                Button("Vale", role: .cancel) {}
-            },
-            message: {
-                Text(viewModel.lastErrorMessage ?? "")
-            }
-        )
-        .sheet(isPresented: $viewModel.showInitialSetup) {
-            InitialSetupSheet(
-                initialPath: viewModel.filingRootPath ?? FilingConfiguration.suggestedRootPath,
-                initialSourcePath: viewModel.sourceFolderPath ?? FilingConfiguration.suggestedSourcePath
-            ) { rootPath, sourcePath in
-                viewModel.completeInitialSetup(rootPath: rootPath, sourcePath: sourcePath)
-            }
-        }
-        .sheet(isPresented: $viewModel.showActivity) {
-            FilingActivitySheet(viewModel: viewModel)
-        }
         .sheet(isPresented: $showLogViewer) {
             LogViewerSheet()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .j4iShowLogViewer)) { _ in
-            showLogViewer = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .j4iOpenExplorer)) { _ in
-            openWindow(id: "explorer")
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .j4iOpenReview)) { _ in
-            openWindow(id: "review")
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .j4iRequestOpenSettings)) { _ in
-            J4Log.debug(.app, "Ajustes: abiertos vía SwiftUI (openSettings).")
-            openSettings()
         }
     }
 

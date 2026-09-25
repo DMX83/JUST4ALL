@@ -295,6 +295,16 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
   afectados; esqueleto `~/JUST4DESK` a la Papelera; arranque corregido con relectura).
 - [ ] Decisión pendiente del usuario: ¿renombrar la carpeta de datos `~/JUST4INDEX` → `~/JUST4DESK`?
 
+## G1 — Pantalla «Inicio» (centro de control + omnibox ⌘K) — completada
+
+- [x] `HomeView` como pantalla principal: bandeja de decisiones (cuarentena + deshacer + avisos),
+  actividad de hoy, estado (destino/índice/IA/reglas) y accesos rápidos con atajos.
+- [x] Omnibox ⌘K con resultados inmediatos (Enter abre el primero; «Ver todos» → ventana Buscar).
+- [x] Ventana «Buscar» (⌘F) con la búsqueda completa; `SearchViewModel` compartido e idempotente.
+- [x] Validación visual (Inicio/omnibox/Buscar) y suite 144 (143 + 1 skip).
+- [ ] G2: sugerencias proactivas (duplicados por hash, capturas sueltas, grandes/olvidados).
+- [ ] G3: reglas visibles y portables (pantalla + export/import).
+
 ## Referencias
 
 - Propuestas de mejora priorizadas (candidatas, sin aprobar): `MEJORAS.md`

@@ -114,6 +114,11 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 - La app **arranca mostrando estado y decisiones**, no un cursor vacío. En 5 segundos se entiende
   qué hace JUST4INDEX aunque nunca lo hayas usado.
 
+> **Implementado (25-sep, G1)**: «Inicio» es la ventana principal (`HomeView`) con bandeja,
+> actividad, estado y accesos; el omnibox ⌘K busca al instante (resultados bajo el campo, Enter
+> abre el primero) y la búsqueda completa vive en la ventana «Buscar» (⌘F), compartiendo un único
+> `SearchViewModel` con arranque idempotente.
+
 ### 3.2 Las cuatro capas nuevas (y por qué encajan con lo ya construido)
 
 1. **Bandeja de decisiones** *(reusa: cuarentena ⌘R, journal, reclassify)*
@@ -160,7 +165,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 
 | Fase | Qué | Por qué primero | Esfuerzo |
 |------|-----|------------------|----------|
-| **G1** | **Inicio / Centro de control** + omnibox (⌘K) + buscador como vista/overlay | Cambia la historia del producto sin añadir motores nuevos (todo existe ya) | Medio |
+| **G1** ✅ | **Inicio / Centro de control** + omnibox (⌘K) + buscador como vista/overlay | Cambia la historia del producto sin añadir motores nuevos (todo existe ya) | Medio |
 | **G2** | **Sugerencias proactivas v1**: duplicados (hash), capturas/Escritorio, grandes y olvidados | «Resultados que se pagan» (+ GB) con riesgo cero (undo) | Medio |
 | **G3** | **Reglas visibles** (pantalla + export/import) | Confianza y control; explota lo ya aprendido (27 reglas reales ya) | Bajo-Medio |
 | **G4** | **N5: menú de barra + atajo global + Quick Action Finder** | La app pasa de «ventana» a «presencia» (lo pide el mercado) | Bajo-Medio |

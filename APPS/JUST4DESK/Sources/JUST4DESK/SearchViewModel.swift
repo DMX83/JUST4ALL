@@ -127,9 +127,14 @@ final class SearchViewModel: ObservableObject {
     @Published var showActivity = false
     @Published private(set) var activityEntries: [JournalEntry] = []
     @Published private(set) var organizedTodayCount = 0
+    /// Elementos pendientes en la cuarentena (para la bandeja de «Inicio», G1).
+    @Published private(set) var quarantineCount = 0
     @Published var lastOutcomeMessage: String?
     @Published var showInitialSetup = false
     @Published var accessIssue: AccessIssue?
+
+    /// Arranque idempotente (G1): «Inicio» y «Buscar» comparten el mismo modelo.
+    private var hasStarted = false
 
     // MARK: - Derivados
 
@@ -194,6 +199,9 @@ final class SearchViewModel: ObservableObject {
     // MARK: - Ciclo de vida
 
     func start() async {
+        // «Inicio» y «Buscar» comparten este modelo: solo el primer arranque hace el trabajo.
+        guard !hasStarted else { return }
+        hasStarted = true
         // Renombrado JUST4INDEX → JUST4DESK (25-sep): copia preferencias y datos locales una vez.
         // OJO: la configuración se cachea en las propiedades al crear el modelo (antes de que
         // corra la migración), así que tras migrar hay que releerla — si no, la app arrancaría
@@ -527,6 +535,21 @@ final class SearchViewModel: ObservableObject {
         activityEntries = entries ?? []
         let startOfDay = Calendar.current.startOfDay(for: Date())
         organizedTodayCount = activityEntries.filter { $0.action == "move" && $0.timestamp >= startOfDay }.count
+        await refreshQuarantineCount()
+    }
+
+    /// Cuenta los elementos de la cuarentena (listado plano y barato) para la bandeja de «Inicio».
+    func refreshQuarantineCount() async {
+        guard let rootPath = filingRootPath else {
+            quarantineCount = 0
+            return
+        }
+        let quarantine = URL(fileURLWithPath: rootPath, isDirectory: true)
+            .appendingPathComponent(DefaultTaxonomy.quarantineRelativePath, isDirectory: true)
+        let count = await Task.detached(priority: .utility) { () -> Int in
+            (try? FileManager.default.contentsOfDirectory(atPath: quarantine.path))?.count ?? 0
+        }.value
+        quarantineCount = count
     }
 
     func undo(entry: JournalEntry) {

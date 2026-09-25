@@ -458,3 +458,19 @@ Convención por version + build stamp:
   Papelera, configuración restaurada y arranque corregido (relectura tras migrar).
 - Tests: `RenameMigrationTests` (3: copia de claves sin pisar, copia de carpeta conservando el
   original, idempotencia); suite **144 (143 en verde + 1 skip)**.
+
+### Added — G1 (pantalla «Inicio»: centro de control + omnibox ⌘K)
+
+- **«Inicio» es ahora la pantalla principal**: bandeja de decisiones (cuarentena con contador y
+  «Revisar», deshacer el último archivado con su nombre, avisos de organización sin
+  configurar/pausada), actividad de hoy (archivados + últimos movimientos con hora y categoría,
+  «Ver todo»), estado (destino, entradas indexadas, carpetas de entrada, uso de IA y reglas
+  aprendidas) y accesos rápidos con sus atajos. El buscador deja de ser la identidad de arranque.
+- **Omnibox ⌘K**: busca al instante desde Inicio (resultados inmediatos bajo el campo con iconos
+  reales; Enter abre el primero; «Ver todos los resultados (N)» → ventana «Buscar»).
+- **Ventana «Buscar» (⌘F)**: la búsqueda completa (filtros por tipo, scope por carpeta, búsqueda
+  en contenido) pasa a ser su propia ventana y comparte el mismo `SearchViewModel` (arranque
+  idempotente: una sola vigilancia y un solo pipeline aunque haya dos ventanas abiertas).
+- Detalles: rejilla adaptativa 2×2, ventana principal 1120×720, pie con píldora de organización y
+  última operación; «Inicio» aloja el asistente inicial, la actividad y el visor de registro.
+- Validación: capturas de Inicio, omnibox con resultados y ventana «Buscar»; suite 144 (143 + 1).

@@ -542,6 +542,17 @@
   un esqueleto vacío en `~/JUST4DESK`; **0 ficheros afectados**; esqueleto a la Papelera,
   config restaurada, relectura implementada). Suite 144 (143 + 1 skip). Pendiente de decisión del
   usuario: renombrar también la carpeta de datos `~/JUST4INDEX` (~32 GB).
+- G1 (25-sep): **pantalla «Inicio» — centro de control + omnibox ⌘K** (`HomeView`): bandeja
+  (cuarentena con contador + «Revisar», deshacer con nombre del último archivado, avisos de
+  configuración/pausa), actividad (N archivados hoy + últimos movimientos), estado (destino,
+  entradas, carpetas de entrada, uso de IA, reglas aprendidas) y accesos con atajos. El buscador
+  completo pasa a la ventana **«Buscar» (⌘F)**; el omnibox busca desde Inicio (Enter abre el
+  primero, «Ver todos» → Buscar). **Motor compartido**: `SearchViewModel` se crea una vez en
+  `Just4DeskApp` y se inyecta por `environmentObject`; `start()` es idempotente (`hasStarted`)
+  para que Inicio y Buscar convivan sin duplicar vigilancia/pipeline. Cuarentena contada con
+  listado plano barato (`refreshQuarantineCount`, refresco junto a `refreshActivity`). Atajos
+  nuevos: ⌘F Buscar y ⌘K omnibox (comandos + notificaciones `j4iOpenSearch`/`j4iFocusOmnibox`).
+  Suite 144 (143 + 1 skip); capturas validadas (Inicio/omnibox/Buscar).
 - Fix F12.0 (25-sep): **aislamiento del conocimiento local en tests** (los de archivado no
   inyectaban `knowledge` y contaminaban el almacén real) + `noSignalExtensions` (txt/dat/log/
   tmp/bak/old/md: no se aprende regla de extensión desde datos automáticos; las correcciones
