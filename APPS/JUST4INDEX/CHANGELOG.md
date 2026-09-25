@@ -401,3 +401,38 @@ Convención por version + build stamp:
   momento** (Enter o al salir del campo); antes el valor se revertía al escribir (carrera con el
   puente de notificaciones) y el interruptor de IA podía quedar desincronizado — ambos aplican
   ahora de forma síncrona.
+
+### Added — F15.0 (sistema de diseño + rediseño de la interfaz)
+
+- `DesignKit.swift`: sistema de diseño J4I — **marca** índigo/violeta (glifo documento + lupa),
+  **tokens** (espaciado 4–24, radios 6/10/14, semánticos éxito/aviso/peligro/superficie/hairline),
+  títulos en redondeada y componentes propios: `BrandMark`, `Chip`/`ToggleChip`, `J4ICard`,
+  `SectionHeader`, `PropertyRow`, `StatusPill`, `J4IEmptyState`, `GhostIconButton`, `ToolbarSeparator`.
+- **Buscador**: cabecera con marca + campo con anillo de foco de marca; chips **sin cortes**
+  (carrusel horizontal con fundido en el borde; toggles «Solo carpetas»/«En contenido» como chips
+  con check); menú de carpeta indexada con el mismo lenguaje visual; estado inicial con marca,
+  atajos y píldoras de datos; barra de estado segmentada (contadores tabulares, píldora de
+  organización, acciones agrupadas).
+- **Explorador**: cabeceras de panel en versalitas, **selección visible** (índigo suave + borde),
+  campo de filtro integrado, propiedades como **tarjeta** con jerarquía y toolbar con acción
+  primaria («Mover a…»); se elimina la ruta duplicada de la cabecera.
+- **Por revisar**: toolbar **sin truncados** (orden + «Reevaluar con IA» + «Mover sugeridos (N)»
+  prominente + menú «⋯» con selección/Finder/actualizar); vacío con placa de éxito; barra de
+  selección en índigo suave; cabecera con contador en cápsula.
+- **Ajustes**: de cajas de sistema a **tarjetas J4I** en las cuatro pestañas (Organización con
+  carpetas de entrada como filas; IA con reglas/uso/skill/conocimiento; Indexado; Acerca de con
+  marca, atajos y diagnóstico); cap diario con botones **− / +50** además del campo escribible.
+- Títulos de ventana **limpios** («JUST4INDEX», «Explorador», «Por revisar»); la etiqueta dev
+  (v/build/stamp) queda solo en «Acerca de» y en el registro; `tint` de marca en todas las ventanas.
+- QA visual en **claro y oscuro** de las cuatro ventanas (capturas antes/después); suite en verde.
+
+### Fix (25-sep) — conocimiento local: tests aislados y extensiones sin señal
+
+- Los tests de archivado (`FilingCoordinatorTests`, `FilingPipelineTests`, `FilingSuggestTests`,
+  `FolderSplitTests`, `FolderUnitFilingTests`) no inyectaban `knowledge` y **leían/escribían el
+  almacén real** de conocimiento local. Ahora todos usan un `LocalKnowledgeStore` temporal.
+- `LocalKnowledgeStore.noSignalExtensions` (`txt`, `dat`, `log`, `tmp`, `bak`, `old`, `md`): no se
+  aprende una regla de extensión a partir de datos automáticos (IA/reglas) — una **corrección
+  explícita del usuario** siempre se aprende. Retirada del almacén real la regla contaminada
+  «txt → 09_Identidad/Documentos» (copia de seguridad `knowledge.json.bak-…`).
+- Suite: **141 (140 en verde + 1 skip)**.

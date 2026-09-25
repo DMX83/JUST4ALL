@@ -24,7 +24,11 @@ final class FolderSplitTests: XCTestCase {
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
         _ = try await index.addRoot(path: rootURL.path)
 
-        let coordinator = FilingCoordinator(index: index, rootURL: rootURL)
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: rootURL,
+            knowledge: LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        )
         let outcome = await coordinator.splitFolder(at: bucket)
 
         XCTAssertEqual(outcome.action, "split")

@@ -22,7 +22,11 @@ final class FilingSuggestTests: XCTestCase {
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
         _ = try await index.addRoot(path: rootURL.path)
 
-        let coordinator = FilingCoordinator(index: index, rootURL: rootURL)
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: rootURL,
+            knowledge: LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        )
         let suggestion = await coordinator.proposeDestination(for: movieFolder)
 
         XCTAssertEqual(suggestion?.categoryPath, "13_Multimedia/Documentales")
@@ -49,7 +53,11 @@ final class FilingSuggestTests: XCTestCase {
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
         _ = try await index.addRoot(path: rootURL.path)
 
-        let coordinator = FilingCoordinator(index: index, rootURL: rootURL)
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: rootURL,
+            knowledge: LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        )
         let suggestion = await coordinator.proposeDestination(for: invoice)
 
         XCTAssertEqual(suggestion?.categoryPath, "01_Fiscal/Facturas")
@@ -73,7 +81,11 @@ final class FilingSuggestTests: XCTestCase {
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
         _ = try await index.addRoot(path: rootURL.path)
 
-        let coordinator = FilingCoordinator(index: index, rootURL: rootURL)
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: rootURL,
+            knowledge: LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        )
         let suggestion = await coordinator.proposeDestination(for: notes)
 
         XCTAssertEqual(suggestion?.categoryPath, "99_SinClasificar")

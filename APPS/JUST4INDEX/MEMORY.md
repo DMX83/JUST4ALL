@@ -14,7 +14,7 @@
 
 ## Estado actual
 
-- Fecha: 2026-09-24
+- Fecha: 2026-09-25
 - Fase: **F7.1 completada** — sobre F3–F6, F6.1 y F7 (registro en vivo, análisis «lite» por
   nombre/extensión, taxonomía ampliada, cola acotada): + ventana de **Ajustes (⌘,)** con
   organización/indexado/diagnóstico, comandos en el menú **Ver** con atajos visibles (⌘E explorador,
@@ -522,6 +522,21 @@
 - Fix (25-sep, tarde): el cap diario (Ajustes → IA) es un campo de **solo dígitos** aplicado al
   momento (Enter o al salir); antes se revertía al escribir por la carrera con el puente de
   notificaciones (`refresh()` leía el valor viejo); el interruptor de IA aplica ahora síncrono.
+- F15.0 (25-sep): **sistema de diseño + rediseño vendible de la interfaz** — `DesignKit.swift`
+  (marca índigo/violeta `BrandMark`, tokens de espaciado/radios/colores y componentes: chips,
+  toggles-chip, tarjetas, cabeceras en versalitas, píldoras de estado, estados vacíos, botones
+  fantasma). Rediseño de las 4 ventanas: buscador con marca + barra de estado segmentada +
+  carrusel de chips con fundido; explorador con selección visible y propiedades en tarjeta;
+  «Por revisar» sin truncados (menú «⋯» para acciones secundarias); ajustes en tarjetas y cap
+  con −/+50. Títulos de ventana limpios (la etiqueta dev queda en «Acerca de» y el registro) y
+  `tint` de marca. Decisión autónoma por ausencia del usuario: acento índigo, estilo «nativo
+  refinado». QA visual en claro y oscuro de las 4 ventanas con capturas.
+- Fix F12.0 (25-sep): **aislamiento del conocimiento local en tests** (los de archivado no
+  inyectaban `knowledge` y contaminaban el almacén real) + `noSignalExtensions` (txt/dat/log/
+  tmp/bak/old/md: no se aprende regla de extensión desde datos automáticos; las correcciones
+  del usuario sí). Retirada del almacén real la regla «txt → 09_Identidad/Documentos» (copia
+  `knowledge.json.bak-20260925-125023`). Suite 141 (140 + 1 skip) — el fallo detectado en esta
+  sesión lo destapó precisamente esa contaminación.
 
 ## Lecciones y trampas
 

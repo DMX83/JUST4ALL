@@ -25,7 +25,9 @@ final class FilingCoordinatorTests: XCTestCase {
     }
 
     private func makeCoordinator(simulation: Bool = false) -> FilingCoordinator {
-        FilingCoordinator(index: index, rootURL: rootURL, simulationMode: simulation, advisor: nil)
+        // Conocimiento local aislado (F12.0): los tests no deben leer ni escribir el almacén real.
+        let knowledge = LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        return FilingCoordinator(index: index, rootURL: rootURL, simulationMode: simulation, advisor: nil, knowledge: knowledge)
     }
 
     func testProcessesInvoiceIntoFiscalFacturas() async throws {

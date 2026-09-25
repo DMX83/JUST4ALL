@@ -49,6 +49,15 @@ public final class LocalKnowledgeStore: @unchecked Sendable {
     public static let minShare = 0.75
     public static let minAverageConfidence = 0.7
 
+    /// Extensiones genéricas **sin señal propia**: no se aprenden como regla de extensión a
+    /// partir de datos automáticos (la IA o las reglas). («.txt» puede ser una factura, una
+    /// nota o un fragmento de código; una regla «txt → X» promovida con tres muestras desviaría
+    /// clasificaciones futuras.) Detectado el 25-sep: la regla «txt → 09_Identidad/Documentos»
+    /// — reforzada por los propios tests, que no aislaban el almacén — mandaba a Identidad
+    /// documentos que debían acabar en Facturas. Una **corrección explícita del usuario**
+    /// siempre se aprende, aunque la extensión esté en esta lista.
+    public static let noSignalExtensions: Set<String> = ["txt", "dat", "log", "tmp", "bak", "old", "md"]
+
     public static let shared = LocalKnowledgeStore()
 
     private struct Payload: Codable {
@@ -82,6 +91,8 @@ public final class LocalKnowledgeStore: @unchecked Sendable {
     public func record(kind: FeatureKind, value: String, categoryPath: String, confidence: Double, fromUser: Bool = false) -> Bool {
         let normalized = Self.normalize(value)
         guard !normalized.isEmpty, !categoryPath.isEmpty else { return false }
+        // Sin señal automática para extensiones genéricas (las correcciones del usuario sí cuentan).
+        guard !(kind == .fileExtension && Self.noSignalExtensions.contains(normalized) && !fromUser) else { return false }
         let key = Self.key(kind: kind, value: normalized)
         lock.lock()
         var entry = entries[key] ?? Entry(

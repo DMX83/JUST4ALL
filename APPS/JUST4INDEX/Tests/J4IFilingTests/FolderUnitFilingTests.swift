@@ -21,7 +21,11 @@ final class FolderUnitFilingTests: XCTestCase {
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
         _ = try await index.addRoot(path: rootURL.path)
 
-        let coordinator = FilingCoordinator(index: index, rootURL: rootURL)
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: rootURL,
+            knowledge: LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        )
         let outcome = await coordinator.processItem(at: movieFolder)
 
         // Clasificación: «documental» en el nombre → 13_Multimedia/Documentales (taxonomía fina F9.2).
@@ -68,7 +72,11 @@ final class FolderUnitFilingTests: XCTestCase {
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
         _ = try await index.addRoot(path: rootURL.path)
 
-        let coordinator = FilingCoordinator(index: index, rootURL: rootURL)
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: rootURL,
+            knowledge: LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        )
         let outcome = await coordinator.processItem(at: weirdFolder)
 
         // Sin reglas para «.bin» ni para el nombre → cuarentena, pero la carpeta viaja entera.
@@ -103,7 +111,11 @@ final class FolderUnitFilingTests: XCTestCase {
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
         _ = try await index.addRoot(path: rootURL.path)
 
-        let coordinator = FilingCoordinator(index: index, rootURL: rootURL)
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: rootURL,
+            knowledge: LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        )
         let outcome = await coordinator.processItem(at: bucket)
         XCTAssertEqual(outcome.action, "quarantine")
         XCTAssertEqual(outcome.categoryPath, "99_SinClasificar")
@@ -145,7 +157,11 @@ final class FolderUnitFilingTests: XCTestCase {
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
         _ = try await index.addRoot(path: rootURL.path)
 
-        let coordinator = FilingCoordinator(index: index, rootURL: rootURL)
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: rootURL,
+            knowledge: LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        )
         let outcome = await coordinator.processItem(at: shell)
 
         XCTAssertEqual(outcome.action, "skipped-empty")

@@ -31,7 +31,7 @@ struct SettingsView: View {
                 .tabItem { Label("Acerca de", systemImage: "info.circle") }
                 .tag(Tab.about)
         }
-        .frame(width: 560, height: 400)
+        .frame(width: 620, height: 460)
         .onAppear(perform: applyPendingTab)
         .onReceive(NotificationCenter.default.publisher(for: .j4iOpenAISettings)) { _ in
             applyPendingTab()
@@ -51,6 +51,65 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Piezas de Ajustes (F15.0)
+
+/// Tarjeta de ajustes: cabecera de sección + tarjeta elevada con filas.
+struct SettingsCard<Content: View>: View {
+    let title: String
+    var systemImage: String?
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            SectionHeader(title, systemImage: systemImage)
+            J4ICard {
+                VStack(alignment: .leading, spacing: 8) {
+                    content
+                }
+            }
+        }
+    }
+}
+
+/// Fila de ajuste: etiqueta (con subtítulo opcional) y contenido a la derecha.
+struct SettingsRow<Content: View>: View {
+    let title: String
+    var subtitle: String?
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: J4I.Space.m) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 12.5))
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: J4I.Space.m)
+            content
+        }
+    }
+}
+
+/// Nota pequeña dentro de una tarjeta de ajustes.
+struct SettingsNote: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 // MARK: - Organización
 
 private struct OrganizationSettingsView: View {
@@ -60,69 +119,78 @@ private struct OrganizationSettingsView: View {
     @State private var paused = FilingConfiguration.organizationPaused
 
     var body: some View {
-        Form {
-            Section("Carpetas") {
-                LabeledContent("Carpeta de organización") {
-                    HStack(spacing: 8) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: J4I.Space.l) {
+                SettingsCard(title: "Carpeta de organización", systemImage: "folder") {
+                    HStack(spacing: J4I.Space.s) {
                         Text(rootPath.isEmpty ? "Sin configurar" : (rootPath as NSString).abbreviatingWithTildeInPath)
-                            .foregroundStyle(rootPath.isEmpty ? .secondary : .primary)
+                            .font(.system(size: 12))
+                            .foregroundStyle(rootPath.isEmpty ? Color.secondary : Color.primary)
                             .lineLimit(1)
                             .truncationMode(.middle)
+                        Spacer(minLength: J4I.Space.s)
                         Button("Cambiar…") {
                             chooseFolder { path in
                                 NotificationCenter.default.post(name: .j4iSetFilingRoot, object: path)
                             }
                         }
+                        .controlSize(.small)
                     }
                 }
-                LabeledContent("Carpetas de entrada") {
-                    VStack(alignment: .trailing, spacing: 4) {
+                SettingsCard(title: "Carpetas de entrada", systemImage: "tray.and.arrow.down") {
+                    if sourcePaths.isEmpty {
+                        Text("Sin configurar")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    } else {
                         ForEach(sourcePaths, id: \.self) { path in
                             HStack(spacing: 8) {
+                                Image(systemName: "folder")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
                                 Text((path as NSString).abbreviatingWithTildeInPath)
+                                    .font(.system(size: 12))
                                     .lineLimit(1)
                                     .truncationMode(.middle)
+                                Spacer(minLength: J4I.Space.s)
                                 Button("Quitar") {
                                     NotificationCenter.default.post(name: .j4iRemoveSourceFolder, object: path)
                                 }
                                 .controlSize(.small)
                             }
-                        }
-                        if sourcePaths.isEmpty {
-                            Text("Sin configurar")
-                                .foregroundStyle(.secondary)
-                        }
-                        HStack(spacing: 8) {
-                            Button("Añadir…") {
-                                chooseFolder { path in
-                                    NotificationCenter.default.post(name: .j4iAddSourceFolder, object: path)
-                                }
-                            }
-                            Button("Usar ~/Descargas") {
-                                NotificationCenter.default.post(name: .j4iAddSourceFolder, object: FilingConfiguration.suggestedSourcePath)
-                            }
-                            Button("Usar ~/Downloads") {
-                                NotificationCenter.default.post(name: .j4iAddSourceFolder, object: FilingConfiguration.suggestedDownloadsPath)
-                            }
+                            .padding(.vertical, 1)
                         }
                     }
+                    HStack(spacing: J4I.Space.s) {
+                        Button("Añadir…") {
+                            chooseFolder { path in
+                                NotificationCenter.default.post(name: .j4iAddSourceFolder, object: path)
+                            }
+                        }
+                        Button("Usar ~/Descargas") {
+                            NotificationCenter.default.post(name: .j4iAddSourceFolder, object: FilingConfiguration.suggestedSourcePath)
+                        }
+                        Button("Usar ~/Downloads") {
+                            NotificationCenter.default.post(name: .j4iAddSourceFolder, object: FilingConfiguration.suggestedDownloadsPath)
+                        }
+                    }
+                    .controlSize(.small)
+                    .padding(.top, 2)
+                }
+                SettingsCard(title: "Comportamiento", systemImage: "gearshape.2") {
+                    Toggle("Modo simulación (no mover nada)", isOn: $simulation)
+                        .onChange(of: simulation) { _, newValue in
+                            NotificationCenter.default.post(name: .j4iSetSimulationMode, object: newValue)
+                        }
+                    Toggle("Organización pausada", isOn: $paused)
+                        .onChange(of: paused) { _, newValue in
+                            NotificationCenter.default.post(name: .j4iSetPaused, object: newValue)
+                        }
+                    SettingsNote("Los cambios se aplican al momento en la ventana principal (y quedan guardados).")
                 }
             }
-            Section("Comportamiento") {
-                Toggle("Modo simulación (no mover nada)", isOn: $simulation)
-                    .onChange(of: simulation) { _, newValue in
-                        NotificationCenter.default.post(name: .j4iSetSimulationMode, object: newValue)
-                    }
-                Toggle("Organización pausada", isOn: $paused)
-                    .onChange(of: paused) { _, newValue in
-                        NotificationCenter.default.post(name: .j4iSetPaused, object: newValue)
-                    }
-            }
-            Text("Los cambios se aplican al momento en la ventana principal (y quedan guardados).")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            .padding(J4I.Space.l)
         }
-        .formStyle(.grouped)
         .onAppear(perform: reload)
         .onReceive(NotificationCenter.default.publisher(for: .j4iFilingConfigChanged)) { _ in
             reload()
@@ -159,79 +227,103 @@ private struct AISettingsView: View {
     @State private var hasKey = DeepSeekKeyResolver.resolve() != nil
 
     var body: some View {
-        Form {
-            Section("Clasificación con IA (DeepSeek)") {
-                if hasKey {
-                    Toggle("Usar la IA al clasificar", isOn: $enabled)
-                        .onChange(of: enabled) { _, newValue in
-                            // Fuente de verdad al momento: evita que refresh() reverte el toggle
-                            // por la carrera con el puente de notificaciones.
-                            AIControlCenter.shared.isEnabled = newValue
-                            NotificationCenter.default.post(name: .j4iSetAIEnabled, object: newValue)
-                            refresh()
-                        }
-                    LabeledContent("Límite diario de llamadas") {
-                        HStack(spacing: 8) {
-                            TextField("", text: $dailyLimitText)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 72)
-                                .multilineTextAlignment(.trailing)
-                                .focused($capFieldFocused)
-                                .onChange(of: dailyLimitText) { _, newValue in
-                                    // Solo dígitos (máx. 4): las letras no llegan a entrar.
-                                    let digits = String(newValue.filter(\.isNumber).prefix(4))
-                                    if digits != newValue {
-                                        dailyLimitText = digits
+        ScrollView {
+            VStack(alignment: .leading, spacing: J4I.Space.l) {
+                SettingsCard(title: "Clasificación con IA (DeepSeek)", systemImage: "sparkles") {
+                    if hasKey {
+                        Toggle("Usar la IA al clasificar", isOn: $enabled)
+                            .onChange(of: enabled) { _, newValue in
+                                // Fuente de verdad al momento: evita que refresh() reverte el toggle
+                                // por la carrera con el puente de notificaciones.
+                                AIControlCenter.shared.isEnabled = newValue
+                                NotificationCenter.default.post(name: .j4iSetAIEnabled, object: newValue)
+                                refresh()
+                            }
+                        Divider()
+                        SettingsRow(title: "Límite diario de llamadas") {
+                            HStack(spacing: 8) {
+                                TextField("", text: $dailyLimitText)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 72)
+                                    .multilineTextAlignment(.trailing)
+                                    .focused($capFieldFocused)
+                                    .onChange(of: dailyLimitText) { _, newValue in
+                                        // Solo dígitos (máx. 4): las letras no llegan a entrar.
+                                        let digits = String(newValue.filter(\.isNumber).prefix(4))
+                                        if digits != newValue {
+                                            dailyLimitText = digits
+                                        }
                                     }
+                                    .onSubmit { commitDailyLimitText() }
+                                    .onChange(of: capFieldFocused) { _, focused in
+                                        if !focused { commitDailyLimitText() }
+                                    }
+                                    .help("Escribe el número y pulsa Enter (o usa los botones ± 50)")
+                                Text("llamada(s)")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                HStack(spacing: 4) {
+                                    Button {
+                                        commitDailyLimit(dailyLimit - 50)
+                                    } label: {
+                                        Image(systemName: "minus")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .frame(width: 18, height: 16)
+                                    }
+                                    .help("Bajar 50")
+                                    Button {
+                                        commitDailyLimit(dailyLimit + 50)
+                                    } label: {
+                                        Image(systemName: "plus")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .frame(width: 18, height: 16)
+                                    }
+                                    .help("Subir 50")
                                 }
-                                .onSubmit { commitDailyLimitText() }
-                                .onChange(of: capFieldFocused) { _, focused in
-                                    if !focused { commitDailyLimitText() }
-                                }
-                                .help("Escribe el número y pulsa Enter (o usa los botones ± 50)")
-                            Text("llamada(s)")
-                                .foregroundStyle(.secondary)
-                            Stepper("", value: $dailyLimit, in: 0...5000, step: 50)
-                                .labelsHidden()
-                                .onChange(of: dailyLimit) { _, newValue in
-                                    commitDailyLimit(newValue)
-                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
                         }
-                    }
-                    LabeledContent("Uso") {
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("Hoy: \(usage.callsToday)/\(usage.dailyLimit) llamadas · \(usage.tokensToday.formatted()) tokens")
-                            Text("Total: \(usage.callsTotal) llamadas · \(usage.tokensTotal.formatted()) tokens")
+                        Divider()
+                        SettingsRow(title: "Uso") {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("Hoy: \(usage.callsToday)/\(usage.dailyLimit) llamadas · \(usage.tokensToday.formatted()) tokens")
+                                Text("Total: \(usage.callsTotal) llamadas · \(usage.tokensTotal.formatted()) tokens")
+                            }
+                            .font(.system(size: 11.5))
+                            .monospacedDigit()
+                            .foregroundStyle(usage.limitReached ? J4I.warning : Color.secondary)
                         }
-                        .foregroundStyle(usage.limitReached ? Color.orange : Color.secondary)
+                    } else {
+                        Text("Sin clave de DeepSeek. Añade `DEEPSEEK_API_KEY=…` en el `.env.secrets` del repo (o en el entorno) y reinicia la app. Mientras, la clasificación usa solo reglas locales.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                } else {
-                    Text("Sin clave de DeepSeek. Añade `DEEPSEEK_API_KEY=…` en el `.env.secrets` del repo (o en el entorno) y reinicia la app. Mientras, la clasificación usa solo reglas locales.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                }
+                SettingsCard(title: "Skill del clasificador", systemImage: "wand.and.stars") {
+                    SettingsRow(title: "Versión") {
+                        Text("v\(FilingSkill.version) · \(FilingSkill.curatedCases.count) casos curados")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    SettingsNote("La skill es interna y se afina con la app (sin edición manual); cada caso nuevo entra como prueba de regresión.")
+                }
+                SettingsCard(title: "Conocimiento local (aprendido)", systemImage: "brain") {
+                    SettingsRow(title: "Reglas promovidas") {
+                        Text("\(knowledgeStats.promotedCount) · características observadas: \(knowledgeStats.learnedEntries)")
+                            .font(.system(size: 12, weight: .medium))
+                            .monospacedDigit()
+                    }
+                    SettingsRow(title: "Clasificaciones sin IA") {
+                        Text("Hoy: \(knowledgeStats.appliedToday) · Total: \(knowledgeStats.appliedTotal)")
+                            .font(.system(size: 12, weight: .medium))
+                            .monospacedDigit()
+                    }
+                    SettingsNote("Cada decisión de la IA y cada corrección tuya se resumen por característica (extensión de fichero y palabras del nombre de carpeta); con ≥3 coincidencias se promueve a regla local y las próximas unidades así se clasifican sin gastar tokens.")
                 }
             }
-            Section("Skill del clasificador") {
-                LabeledContent("Versión") {
-                    Text("v\(FilingSkill.version) · \(FilingSkill.curatedCases.count) casos curados")
-                }
-                Text("La skill es interna y se afina con la app (sin edición manual); cada caso nuevo entra como prueba de regresión.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Section("Conocimiento local (aprendido)") {
-                LabeledContent("Reglas promovidas") {
-                    Text("\(knowledgeStats.promotedCount) · características observadas: \(knowledgeStats.learnedEntries)")
-                }
-                LabeledContent("Clasificaciones sin IA") {
-                    Text("Hoy: \(knowledgeStats.appliedToday) · Total: \(knowledgeStats.appliedTotal)")
-                }
-                Text("Cada decisión de la IA y cada corrección tuya se resumen por característica (extensión de fichero y palabras del nombre de carpeta); con ≥3 coincidencias se promueve a regla local y las próximas unidades así se clasifican sin gastar tokens.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            .padding(J4I.Space.l)
         }
-        .formStyle(.grouped)
         .onAppear(perform: refresh)
         .onReceive(NotificationCenter.default.publisher(for: .j4iFilingConfigChanged)) { _ in
             refresh()
@@ -284,26 +376,30 @@ private struct IndexSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if roots.isEmpty {
-                ContentUnavailableView {
-                    Label("Sin carpetas indexadas", systemImage: "folder.badge.plus")
-                } description: {
-                    Text("Añade una carpeta para la búsqueda instantánea.")
-                } actions: {
+                J4IEmptyState(
+                    systemImage: "folder.badge.plus",
+                    title: "Sin carpetas indexadas",
+                    message: "Añade una carpeta para la búsqueda instantánea."
+                ) {
                     Button("Añadir carpeta…") {
                         NotificationCenter.default.post(name: .j4iRequestAddRoot, object: nil)
                     }
+                    .buttonStyle(.borderedProminent)
                 }
             } else {
                 List(roots) { root in
                     HStack(spacing: 10) {
                         Image(systemName: "folder")
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 12))
+                            .foregroundStyle(J4I.brand)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(root.displayName)
+                                .font(.system(size: 12.5, weight: .medium))
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                             Text("\(root.entryCount) entradas · \(root.state)")
-                                .font(.caption)
+                                .font(.system(size: 11))
+                                .monospacedDigit()
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
@@ -319,7 +415,7 @@ private struct IndexSettingsView: View {
                 .listStyle(.inset)
             }
             Divider()
-            HStack {
+            HStack(spacing: J4I.Space.s) {
                 Button("Añadir carpeta…") {
                     NotificationCenter.default.post(name: .j4iRequestAddRoot, object: nil)
                 }
@@ -327,7 +423,7 @@ private struct IndexSettingsView: View {
                 Button("Actualizar") { Task { await reload() } }
             }
             .controlSize(.small)
-            .padding(10)
+            .padding(J4I.Space.m)
         }
         .task {
             while !Task.isCancelled {
@@ -370,34 +466,61 @@ private struct AboutSettingsView: View {
     @State private var hasAIKey = false
 
     var body: some View {
-        Form {
-            Section("JUST4INDEX") {
-                LabeledContent("Versión", value: BuildInfo.displayLabel)
-                LabeledContent("Clasificación IA", value: hasAIKey ? "Activada (DeepSeek)" : "Solo reglas locales (sin clave)")
-                LabeledContent("Carpeta de organización") {
-                    Text((FilingConfiguration.rootPath ?? "Sin configurar") as NSString as String)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                LabeledContent("Atajos", value: "⌘E explorador · ⌘R revisar · ⌘L registro · ⌘A ajustes")
-            }
-            Section("Diagnóstico") {
-                HStack(spacing: 8) {
-                    Button("Abrir registro (⌘L)") {
-                        NotificationCenter.default.post(name: .j4iShowLogViewer, object: nil)
+        ScrollView {
+            VStack(alignment: .leading, spacing: J4I.Space.l) {
+                SettingsCard(title: "JUST4INDEX", systemImage: "info.circle") {
+                    HStack(spacing: J4I.Space.m) {
+                        BrandMark(size: 42)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("JUST4INDEX")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            Text(BuildInfo.displayLabel)
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
                     }
-                    Button("Revelar archivo de log") {
-                        if let logURL = J4Log.fileURL {
-                            NSWorkspace.shared.activateFileViewerSelecting([logURL])
+                    .padding(.bottom, 2)
+                    Divider()
+                    SettingsRow(title: "Clasificación IA") {
+                        Text(hasAIKey ? "Activada (DeepSeek)" : "Solo reglas locales (sin clave)")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    SettingsRow(title: "Carpeta de organización") {
+                        Text(FilingConfiguration.rootPath ?? "Sin configurar")
+                            .font(.system(size: 12))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+                SettingsCard(title: "Atajos", systemImage: "keyboard") {
+                    HStack(spacing: J4I.Space.l) {
+                        KeycapBadge(keys: "⌘E", label: "Explorador")
+                        KeycapBadge(keys: "⌘R", label: "Por revisar")
+                        KeycapBadge(keys: "⌘L", label: "Registro")
+                        KeycapBadge(keys: "⌘A", label: "Ajustes")
+                        Spacer()
+                    }
+                }
+                SettingsCard(title: "Diagnóstico", systemImage: "wrench.and.screwdriver") {
+                    HStack(spacing: J4I.Space.s) {
+                        Button("Abrir registro (⌘L)") {
+                            NotificationCenter.default.post(name: .j4iShowLogViewer, object: nil)
+                        }
+                        Button("Revelar archivo de log") {
+                            if let logURL = J4Log.fileURL {
+                                NSWorkspace.shared.activateFileViewerSelecting([logURL])
+                            }
+                        }
+                        Button("Abrir explorador (⌘E)") {
+                            NotificationCenter.default.post(name: .j4iOpenExplorer, object: nil)
                         }
                     }
-                    Button("Abrir explorador (⌘E)") {
-                        NotificationCenter.default.post(name: .j4iOpenExplorer, object: nil)
-                    }
+                    .controlSize(.small)
                 }
             }
+            .padding(J4I.Space.l)
         }
-        .formStyle(.grouped)
         .onAppear {
             hasAIKey = DeepSeekKeyResolver.resolve() != nil
         }

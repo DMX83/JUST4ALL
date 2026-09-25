@@ -6,14 +6,15 @@ struct Just4IndexApp: App {
     @NSApplicationDelegateAdaptor(J4IAppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        WindowGroup("JUST4INDEX \(BuildInfo.displayLabel)") {
+        WindowGroup("JUST4INDEX") {
             ContentView()
+                .tint(J4I.brand)
                 .onAppear {
                     NSApp.setActivationPolicy(.regular)
                     NSApp.activate(ignoringOtherApps: true)
                     DispatchQueue.main.async {
                         guard let window = NSApplication.shared.windows.first else { return }
-                        window.title = "JUST4INDEX \(BuildInfo.displayLabel)"
+                        window.title = "JUST4INDEX"
                         window.makeKeyAndOrderFront(nil)
                     }
                 }
@@ -54,18 +55,21 @@ struct Just4IndexApp: App {
             }
         }
 
-        Window("Explorador — JUST4INDEX \(BuildInfo.displayLabel)", id: "explorer") {
+        Window("Explorador", id: "explorer") {
             ExplorerView()
+                .tint(J4I.brand)
         }
         .defaultSize(width: 1080, height: 640)
 
-        Window("Por revisar — JUST4INDEX \(BuildInfo.displayLabel)", id: "review") {
+        Window("Por revisar", id: "review") {
             ReviewView()
+                .tint(J4I.brand)
         }
         .defaultSize(width: 820, height: 560)
 
         Settings {
             SettingsView()
+                .tint(J4I.brand)
         }
     }
 }

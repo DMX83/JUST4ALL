@@ -22,10 +22,11 @@ struct SearchResultRow: View {
                 HStack(spacing: 6) {
                     if hit.matchedContent {
                         Label("contenido", systemImage: "text.magnifyingglass")
-                            .font(.caption2)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(J4I.brand)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 1)
-                            .background(Capsule().fill(Color.accentColor.opacity(0.18)))
+                            .background(Capsule().fill(J4I.brandSoft))
                     }
                     Text(Self.displayPath(for: hit.entry.path))
                         .font(.caption)

@@ -29,11 +29,12 @@ struct ReviewView: View {
     var body: some View {
         Group {
             if model.rootPath == nil {
-                ContentUnavailableView {
-                    Label("Organización sin configurar", systemImage: "folder.badge.questionmark")
-                } description: {
-                    Text("Configura la carpeta de organización desde la ventana principal (menú Carpetas → Carpeta de organización…).")
-                }
+                J4IEmptyState(
+                    systemImage: "folder.badge.questionmark",
+                    title: "Organización sin configurar",
+                    message: "Configura la carpeta de organización desde la ventana principal (menú Carpetas → Carpeta de organización…).",
+                    tint: J4I.warning
+                )
             } else {
                 content
             }
@@ -80,16 +81,29 @@ struct ReviewView: View {
     // MARK: - Cabecera
 
     private var toolbar: some View {
-        HStack(spacing: 10) {
-            Label("Por revisar (\(model.items.count))", systemImage: "tray.full")
-                .font(.headline)
-            Spacer()
-            Picker("Ordenar", selection: $model.sortKey) {
+        HStack(spacing: J4I.Space.s) {
+            HStack(spacing: 6) {
+                Image(systemName: "tray.full")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(J4I.brand)
+                Text("Por revisar")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                Text("\(model.items.count)")
+                    .font(.system(size: 11, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(Color.primary.opacity(0.07)))
+            }
+            Spacer(minLength: J4I.Space.s)
+            Picker("", selection: $model.sortKey) {
                 ForEach(ReviewViewModel.SortKey.allCases) { key in
                     Text(key.label).tag(key)
                 }
             }
             .pickerStyle(.menu)
+            .labelsHidden()
             .fixedSize()
             .help("Orden de la lista: por extensión (con secciones), nombre, fecha o tamaño")
             Button {
@@ -108,25 +122,37 @@ struct ReviewView: View {
             } label: {
                 Label("Mover sugeridos (\(model.suggestedCount))", systemImage: "arrow.right.circle")
             }
+            .buttonStyle(.borderedProminent)
             .disabled(model.suggestedCount == 0 || model.reevaluating || !model.busyPaths.isEmpty)
             .help("Mueve de una vez todos los elementos con propuesta de la IA (los «sin destino claro» se quedan). Primero «Reevaluar con IA»")
-            Button("Seleccionar todo") {
-                model.selectAll()
-            }
-            .disabled(model.items.isEmpty || model.selection.count == model.items.count)
-            Button {
-                model.revealQuarantine()
+            Menu {
+                Button("Seleccionar todo") {
+                    model.selectAll()
+                }
+                .disabled(model.items.isEmpty || model.selection.count == model.items.count)
+                Button("Quitar selección") {
+                    model.selection = []
+                }
+                .disabled(model.selection.isEmpty)
+                Divider()
+                Button("Abrir cuarentena en Finder") {
+                    model.revealQuarantine()
+                }
+                Button("Actualizar lista") {
+                    model.load()
+                }
             } label: {
-                Label("Abrir en Finder", systemImage: "arrow.up.forward.app")
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: 24, height: 20)
+                    .contentShape(Rectangle())
             }
-            Button {
-                model.load()
-            } label: {
-                Label("Actualizar", systemImage: "arrow.clockwise")
-            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help("Más acciones (selección, Finder, actualizar)")
         }
         .controlSize(.small)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, J4I.Space.m)
         .padding(.vertical, 8)
         .confirmationDialog(
             moveAllTitle,
@@ -166,7 +192,7 @@ struct ReviewView: View {
             Image(systemName: model.aiSuggestions[item.path] != nil
                   ? "sparkles"
                   : (item.isDirectory ? "folder" : "exclamationmark.triangle"))
-                .foregroundStyle(model.aiSuggestions[item.path] != nil ? Color.accentColor : Color.orange)
+                .foregroundStyle(model.aiSuggestions[item.path] != nil ? J4I.brand : J4I.warning)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .lineLimit(1)
@@ -290,9 +316,9 @@ struct ReviewView: View {
             }
         }
         .controlSize(.small)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color.accentColor.opacity(0.10))
+        .padding(.horizontal, J4I.Space.m)
+        .padding(.vertical, 7)
+        .background(J4I.brand.opacity(0.10))
     }
 
     private func subtitle(for item: ReviewViewModel.Item) -> String {
@@ -325,11 +351,12 @@ struct ReviewView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Nada por revisar", systemImage: "checkmark.seal")
-        } description: {
-            Text("La cuarentena está vacía. Aquí aparecerán los documentos que el archivado automático no pudo clasificar, con una sugerencia de destino para reubicarlos en un clic.")
-        }
+        J4IEmptyState(
+            systemImage: "checkmark.seal",
+            title: "Nada por revisar",
+            message: "La cuarentena está vacía. Aquí aparecerán los documentos que el archivado automático no pudo clasificar, con una sugerencia de destino para reubicarlos en un clic.",
+            tint: J4I.success
+        )
     }
 
     /// Título del diálogo de confirmación del movimiento en lote de las propuestas de la IA.
@@ -345,7 +372,7 @@ struct ReviewView: View {
         HStack(spacing: 10) {
             if let error = model.errorMessage {
                 Text(error)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(J4I.danger)
             } else if let status = model.statusMessage {
                 Text(status)
                     .foregroundStyle(.secondary)
@@ -355,11 +382,11 @@ struct ReviewView: View {
             }
             Spacer()
         }
-        .font(.caption)
+        .font(.system(size: 11))
         .lineLimit(1)
         .truncationMode(.middle)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, J4I.Space.m)
+        .padding(.vertical, 7)
     }
 }
 

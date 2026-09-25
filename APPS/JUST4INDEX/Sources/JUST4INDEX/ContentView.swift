@@ -11,6 +11,7 @@ import J4IIndex
 struct ContentView: View {
     @StateObject private var viewModel = SearchViewModel()
     @State private var showLogViewer = false
+    @State private var showRootMenu = false
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @FocusState private var searchFocused: Bool
@@ -78,46 +79,53 @@ struct ContentView: View {
     // MARK: - Cabecera (campo de búsqueda)
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(searchFocused || !viewModel.trimmedQuery.isEmpty ? Color.accentColor : Color.secondary)
-                TextField("Buscar…", text: $viewModel.query)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 17))
-                    .focused($searchFocused)
-                    .onSubmit { viewModel.openSelectedOrFirst() }
-                if viewModel.isSearching {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-                if !viewModel.trimmedQuery.isEmpty {
-                    Button {
-                        viewModel.query = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                BrandMark(size: 30)
+                HStack(spacing: 9) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(searchFocused || !viewModel.trimmedQuery.isEmpty ? J4I.brand : Color.secondary)
+                    TextField("Buscar en tus carpetas…", text: $viewModel.query)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 16))
+                        .focused($searchFocused)
+                        .onSubmit { viewModel.openSelectedOrFirst() }
+                    if viewModel.isSearching {
+                        ProgressView()
+                            .controlSize(.small)
                     }
-                    .buttonStyle(.plain)
-                    .help("Limpiar búsqueda")
+                    if !viewModel.trimmedQuery.isEmpty {
+                        Button {
+                            viewModel.query = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Limpiar búsqueda")
+                    }
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(
+                    RoundedRectangle(cornerRadius: J4I.Radius.medium, style: .continuous)
+                        .fill(J4I.well)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: J4I.Radius.medium, style: .continuous)
+                        .strokeBorder(
+                            searchFocused ? J4I.brand.opacity(0.75) : J4I.hairline.opacity(0.6),
+                            lineWidth: searchFocused ? 1.5 : 1
+                        )
+                )
+                .shadow(
+                    color: searchFocused ? J4I.brand.opacity(0.18) : J4I.cardShadow,
+                    radius: searchFocused ? 7 : 4,
+                    y: 1
+                )
+                .animation(.easeOut(duration: 0.15), value: searchFocused)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(nsColor: .textBackgroundColor))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(
-                        searchFocused ? Color.accentColor.opacity(0.65) : Color.secondary.opacity(0.22),
-                        lineWidth: searchFocused ? 1.5 : 1
-                    )
-            )
-            .shadow(color: .black.opacity(0.07), radius: 8, y: 2)
-            .animation(.easeOut(duration: 0.15), value: searchFocused)
 
             if let label = viewModel.indexingLabel {
                 HStack(spacing: 8) {
@@ -127,67 +135,126 @@ struct ContentView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .padding(.leading, 40)
             }
         }
-        .padding(14)
+        .padding(.horizontal, J4I.Space.l)
+        .padding(.top, J4I.Space.m)
+        .padding(.bottom, J4I.Space.s)
     }
 
     // MARK: - Filtros
 
     private var filterBar: some View {
-        HStack(spacing: 8) {
-            ForEach(SearchViewModel.ResultKindFilter.allCases) { kind in
-                kindChip(kind)
-            }
-            Spacer(minLength: 8)
-            Toggle(isOn: $viewModel.directoriesOnly) {
-                Text("Solo carpetas")
-                    .font(.caption)
-            }
-            .toggleStyle(.checkbox)
-            Toggle(isOn: $viewModel.searchInContent) {
-                Text("En contenido")
-                    .font(.caption)
-            }
-            .toggleStyle(.checkbox)
-            .help("Busca también dentro del texto de los documentos archivados")
-            Picker("", selection: $viewModel.selectedRootID) {
-                Text("Todas las carpetas").tag(Int64?.none)
-                ForEach(viewModel.roots) { row in
-                    Text(row.displayName).tag(Int64?.some(row.id))
+        HStack(spacing: J4I.Space.s) {
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    ForEach(SearchViewModel.ResultKindFilter.allCases) { kind in
+                        Chip(
+                            title: kind.label,
+                            systemImage: kind.symbolName,
+                            selected: viewModel.selectedKind == kind,
+                            help: "Filtrar por tipo: \(kind.label)"
+                        ) {
+                            viewModel.selectedKind = kind
+                        }
+                    }
                 }
+                .padding(.leading, 40)
+                .padding(.trailing, 14)
+                .padding(.vertical, 2)
             }
-            .labelsHidden()
-            .frame(maxWidth: 240)
+            .scrollIndicators(.never)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.02),
+                        .init(color: .black, location: 0.97),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            Spacer(minLength: J4I.Space.s)
+            ToggleChip(
+                title: "Solo carpetas",
+                systemImage: "folder",
+                isOn: $viewModel.directoriesOnly,
+                help: "Mostrar solo carpetas en los resultados"
+            )
+            ToggleChip(
+                title: "En contenido",
+                systemImage: "text.magnifyingglass",
+                isOn: $viewModel.searchInContent,
+                help: "Busca también dentro del texto de los documentos archivados"
+            )
+            rootMenu
         }
-        .padding(.horizontal, 14)
-        .padding(.bottom, 10)
+        .padding(.horizontal, J4I.Space.l)
+        .padding(.bottom, J4I.Space.m)
     }
 
-    private func kindChip(_ kind: SearchViewModel.ResultKindFilter) -> some View {
-        let selected = viewModel.selectedKind == kind
-        return Button {
-            viewModel.selectedKind = kind
+    /// Menú de carpeta indexada con el lenguaje visual de los chips (F15.0).
+    private var rootMenu: some View {
+        Button {
+            showRootMenu.toggle()
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: kind.symbolName)
-                    .font(.caption)
-                Text(kind.label)
-                    .font(.callout)
-            }
-            .foregroundStyle(selected ? Color.white : Color.primary)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 5)
-            .background(
-                Capsule().fill(selected ? Color.accentColor : Color.secondary.opacity(0.12))
-            )
-            .overlay(
-                Capsule().strokeBorder(selected ? Color.accentColor : Color.secondary.opacity(0.18))
-            )
+            ChipLabel(title: selectedRootTitle, systemImage: "square.stack.3d.up", showsChevron: true)
         }
         .buttonStyle(.plain)
-        .animation(.easeOut(duration: 0.12), value: selected)
-        .help("Filtrar por tipo: \(kind.label)")
+        .help("Filtrar por carpeta indexada")
+        .popover(isPresented: $showRootMenu, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 1) {
+                rootMenuItem(title: "Todas las carpetas", selected: viewModel.selectedRootID == nil) {
+                    viewModel.selectedRootID = nil
+                    showRootMenu = false
+                }
+                if !viewModel.roots.isEmpty {
+                    Divider()
+                        .padding(.vertical, 3)
+                }
+                ForEach(viewModel.roots) { row in
+                    rootMenuItem(title: row.displayName, selected: viewModel.selectedRootID == row.id) {
+                        viewModel.selectedRootID = row.id
+                        showRootMenu = false
+                    }
+                }
+            }
+            .padding(6)
+            .frame(minWidth: 220)
+        }
+    }
+
+    private var selectedRootTitle: String {
+        guard let id = viewModel.selectedRootID,
+              let row = viewModel.roots.first(where: { $0.id == id }) else {
+            return "Todas las carpetas"
+        }
+        return row.displayName
+    }
+
+    private func rootMenuItem(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(J4I.brand)
+                    .opacity(selected ? 1 : 0)
+                    .frame(width: 12)
+                Text(title)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 3)
+            .padding(.horizontal, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .hoverHighlight(intensity: 0.06)
     }
 
     // MARK: - Resultados
@@ -195,11 +262,11 @@ struct ContentView: View {
     @ViewBuilder
     private var results: some View {
         if viewModel.roots.isEmpty {
-            ContentUnavailableView {
-                Label("Sin carpetas indexadas", systemImage: "folder.badge.plus")
-            } description: {
-                Text("Añade una carpeta (por ejemplo, tu carpeta de Descargas) para empezar a buscar al instante.")
-            } actions: {
+            J4IEmptyState(
+                systemImage: "folder.badge.plus",
+                title: "Sin carpetas indexadas",
+                message: "Añade una carpeta (por ejemplo, tu carpeta de Descargas) para empezar a buscar al instante."
+            ) {
                 Button("Añadir carpeta…") {
                     viewModel.addRootViaPanel()
                 }
@@ -208,11 +275,11 @@ struct ContentView: View {
         } else if viewModel.trimmedQuery.isEmpty {
             searchIdleState
         } else if viewModel.hits.isEmpty {
-            ContentUnavailableView {
-                Label(viewModel.isSearching ? "Buscando…" : "Sin resultados", systemImage: "magnifyingglass")
-            } description: {
-                Text("No hay coincidencias para «\(viewModel.trimmedQuery)» con los filtros actuales.")
-            }
+            J4IEmptyState(
+                systemImage: "magnifyingglass",
+                title: viewModel.isSearching ? "Buscando…" : "Sin resultados",
+                message: "No hay coincidencias para «\(viewModel.trimmedQuery)» con los filtros actuales."
+            )
         } else {
             List(selection: $viewModel.selection) {
                 ForEach(viewModel.hits, id: \.entry.id) { hit in
@@ -239,99 +306,103 @@ struct ContentView: View {
     // MARK: - Estado inicial (sin búsqueda)
 
     private var searchIdleState: some View {
-        VStack(spacing: 18) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.accentColor.opacity(0.85), Color.accentColor.opacity(0.45)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 84, height: 84)
-                    .shadow(color: Color.accentColor.opacity(0.35), radius: 14, y: 6)
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
+        VStack(spacing: J4I.Space.l) {
+            BrandMark(size: 64)
             VStack(spacing: 6) {
                 Text("Búsqueda instantánea")
-                    .font(.title2.weight(.semibold))
-                    .fontDesign(.rounded)
+                    .font(.system(size: 21, weight: .semibold, design: .rounded))
                 Text("Escribe para buscar por nombre o ruta en tus carpetas indexadas.\nActiva «En contenido» para buscar también dentro de los documentos.")
-                    .font(.callout)
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-            HStack(spacing: 18) {
+            HStack(spacing: J4I.Space.l) {
                 KeycapBadge(keys: "⌘E", label: "Explorador")
                 KeycapBadge(keys: "⌘R", label: "Por revisar")
                 KeycapBadge(keys: "⌘L", label: "Registro")
             }
-            .padding(.top, 4)
+            .padding(.top, 2)
+            HStack(spacing: J4I.Space.s) {
+                StatusPill(
+                    systemImage: "square.stack.3d.up",
+                    title: "\(viewModel.totalIndexedEntries.formatted()) entradas indexadas",
+                    tint: J4I.brand
+                )
+                StatusPill(
+                    systemImage: "folder",
+                    title: "\(viewModel.roots.count) carpeta(s) de entrada",
+                    tint: Color.secondary
+                )
+            }
+            .padding(.top, 6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
+        .padding(J4I.Space.xl)
     }
 
     // MARK: - Barra de estado
 
     private var statusBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: J4I.Space.s) {
             Text("\(viewModel.hits.count) resultados")
+                .font(.system(size: 11, weight: .medium))
+                .monospacedDigit()
             Text("·")
-                .foregroundStyle(.tertiary)
-            Text("\(viewModel.totalIndexedEntries) entradas indexadas")
-            Text("·")
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 11))
+                .foregroundStyle(.quaternary)
+            Text("\(viewModel.totalIndexedEntries) entradas")
+                .font(.system(size: 11))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
             if let status = viewModel.organizationStatusLabel {
-                Button {
+                StatusPill(
+                    systemImage: "tray.2",
+                    title: status,
+                    tint: J4I.success,
+                    help: "Ver actividad de organización"
+                ) {
                     viewModel.showActivity = true
-                } label: {
-                    Label(status, systemImage: "tray.2")
                 }
-                .buttonStyle(.plain)
-                .help("Ver actividad de organización")
             } else {
-                Text("Organización sin configurar")
-                    .foregroundStyle(.orange)
+                StatusPill(
+                    systemImage: "exclamationmark.triangle",
+                    title: "Organización sin configurar",
+                    tint: J4I.warning,
+                    help: "Configura la carpeta de organización en Ajustes → Organización"
+                )
             }
             if let outcome = viewModel.lastOutcomeMessage {
-                Text("·")
-                    .foregroundStyle(.tertiary)
                 Text(outcome)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            Spacer()
-            HStack(spacing: 4) {
-                Button {
+            Spacer(minLength: J4I.Space.s)
+            HStack(spacing: 2) {
+                GhostIconButton(
+                    systemImage: "doc.on.doc",
+                    help: "Copiar ruta del resultado seleccionado",
+                    disabled: viewModel.selectedHit == nil
+                ) {
                     viewModel.copySelectedPath()
-                } label: {
-                    Image(systemName: "doc.on.doc")
                 }
-                .disabled(viewModel.selectedHit == nil)
-                .help("Copiar ruta del resultado seleccionado")
-                Button {
+                GhostIconButton(
+                    systemImage: "folder",
+                    help: "Mostrar en Finder",
+                    disabled: viewModel.selectedHit == nil
+                ) {
                     viewModel.revealSelected()
-                } label: {
-                    Image(systemName: "folder")
                 }
-                .disabled(viewModel.selectedHit == nil)
-                .help("Mostrar en Finder")
-                Button {
+                GhostIconButton(
+                    systemImage: "arrow.up.forward.app",
+                    help: "Abrir el resultado seleccionado (Enter)",
+                    disabled: viewModel.hits.isEmpty
+                ) {
                     viewModel.openSelectedOrFirst()
-                } label: {
-                    Image(systemName: "arrow.up.forward.app")
                 }
-                .disabled(viewModel.hits.isEmpty)
-                .help("Abrir el resultado seleccionado (Enter)")
             }
-            .buttonStyle(.plain)
-            Divider()
-                .frame(height: 12)
+            ToolbarSeparator()
             Menu {
                 Button("Carpeta de organización…") {
                     viewModel.reconfigureFilingRoot()
@@ -389,34 +460,31 @@ struct ContentView: View {
             } label: {
                 Label("Carpetas", systemImage: "folder")
             }
+            .controlSize(.small)
             .menuStyle(.borderlessButton)
             .fixedSize()
-            Divider()
-                .frame(height: 12)
-            Button {
+            ToolbarSeparator()
+            GhostIconButton(
+                systemImage: "rectangle.split.2x1",
+                help: "Explorador — navegar por la carpeta de organización (⌘E)"
+            ) {
                 openWindow(id: "explorer")
-            } label: {
-                Image(systemName: "rectangle.split.2x1")
             }
-            .buttonStyle(.plain)
-            .help("Explorador — navegar por la carpeta de organización (⌘E)")
-            Button {
+            GhostIconButton(systemImage: "text.alignleft", help: "Registro en vivo (⌘L)") {
                 showLogViewer = true
-            } label: {
-                Image(systemName: "text.alignleft")
             }
-            .buttonStyle(.plain)
-            .help("Registro en vivo (⌘L)")
             SettingsLink {
                 Image(systemName: "gearshape")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: 24, height: 20)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .controlSize(.small)
             .help("Ajustes (⌘A)")
         }
-        .controlSize(.small)
-        .font(.caption)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, J4I.Space.m)
+        .padding(.vertical, 7)
     }
 
     private func stateLabel(_ state: IndexRootState) -> String {

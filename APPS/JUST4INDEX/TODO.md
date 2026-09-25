@@ -243,6 +243,27 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
 - [x] Ajustes → IA: cap diario escribible (0–5000) además del stepper.
 - [x] Tests: `TaxonomyInventoryTests` (3) + saneado (1); suite 141.
 
+## F15.0 — Sistema de diseño + rediseño de la interfaz — completada
+
+- [x] `DesignKit.swift`: marca, tokens (espaciado/radios/colores) y componentes (chips, tarjetas,
+  cabeceras, píldoras de estado, estados vacíos, botones fantasma, separadores).
+- [x] Buscador: marca + anillo de foco, chips sin cortes (carrusel con fundido), toggles-chip,
+  menú de carpeta con el mismo lenguaje, estado inicial con datos y barra de estado segmentada.
+- [x] Explorador: cabeceras en versalitas, selección visible, filtro integrado, propiedades en
+  tarjeta, toolbar con acción primaria.
+- [x] Por revisar: toolbar adaptable sin truncados (menú «⋯»), vacío con placa de éxito, barra de
+  selección en índigo suave.
+- [x] Ajustes: tarjetas J4I en las cuatro pestañas; cap con botones −/+50; Acerca de con marca y
+  atajos.
+- [x] Títulos de ventana limpios + `tint` de marca; QA visual claro/oscuro de las 4 ventanas.
+
+## F15.x — Siguientes de diseño (candidatos)
+
+- [ ] Icono de app propio (Dock/DMG) y pantalla «Acerca de» con créditos.
+- [ ] Densidad configurable de listas (compacta/cómoda).
+- [ ] Animaciones de transición de paneles + respeto a «Reducir movimiento».
+- [ ] Revisión de accesibilidad (VoiceOver en listas/árbol, contraste AA) y tamaño de texto.
+
 ## N1 — Control de la IA (cap, contadores, interruptor) — completada
 
 - [x] `AIControlCenter` (J4IAI): interruptor, cap diario (200 por defecto) y contadores hoy/total con reinicio diario.

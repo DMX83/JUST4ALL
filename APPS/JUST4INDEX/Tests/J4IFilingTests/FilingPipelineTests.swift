@@ -56,7 +56,9 @@ final class FilingPipelineTests: XCTestCase {
         try FileManager.default.createDirectory(at: sourceURL, withIntermediateDirectories: true)
 
         let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
-        let coordinator = FilingCoordinator(index: index, rootURL: rootURL, simulationMode: false, advisor: nil)
+        // Conocimiento local aislado (F12.0): nunca contra el almacén real.
+        let knowledge = LocalKnowledgeStore(fileURL: tempDir.appendingPathComponent("knowledge.json"))
+        let coordinator = FilingCoordinator(index: index, rootURL: rootURL, simulationMode: false, advisor: nil, knowledge: knowledge)
         let pipeline = FilingPipeline(coordinator: coordinator, maxConcurrent: 2)
 
         var urls: [URL] = []

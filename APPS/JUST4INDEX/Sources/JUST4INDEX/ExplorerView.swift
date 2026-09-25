@@ -28,11 +28,12 @@ struct ExplorerView: View {
     var body: some View {
         Group {
             if model.rootPath == nil {
-                ContentUnavailableView {
-                    Label("Organización sin configurar", systemImage: "folder.badge.questionmark")
-                } description: {
-                    Text("Configura la carpeta de organización desde la ventana principal (menú Carpetas → Carpeta de organización…).")
-                }
+                J4IEmptyState(
+                    systemImage: "folder.badge.questionmark",
+                    title: "Organización sin configurar",
+                    message: "Configura la carpeta de organización desde la ventana principal (menú Carpetas → Carpeta de organización…).",
+                    tint: J4I.warning
+                )
             } else {
                 content
             }
@@ -137,7 +138,7 @@ struct ExplorerView: View {
     // MARK: - Cabecera
 
     private var toolbar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: J4I.Space.s) {
             Button {
                 model.goUp()
             } label: {
@@ -152,12 +153,14 @@ struct ExplorerView: View {
             }
 
             if !model.selectedFileIDs.isEmpty {
+                ToolbarSeparator()
                 Button {
                     let count = model.selectedFiles.count
                     moveRequest = MoveRequest(summary: "\(count) fichero(s)") { model.moveSelectedFiles(to: $0) }
                 } label: {
                     Label("Mover a…", systemImage: "arrow.right.doc.on.clipboard")
                 }
+                .buttonStyle(.borderedProminent)
                 .fixedSize()
                 Button {
                     model.suggestWithAI()
@@ -171,18 +174,13 @@ struct ExplorerView: View {
                 } label: {
                     Label(model.selectedFileIDs.count > 1 ? "Papelera (\(model.selectedFileIDs.count))" : "Papelera", systemImage: "trash")
                 }
+                .buttonStyle(.borderless)
             }
 
             Spacer()
-
-            Text(model.currentPathDisplay)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
         }
         .controlSize(.small)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, J4I.Space.m)
         .padding(.vertical, 8)
     }
 
@@ -217,28 +215,16 @@ struct ExplorerView: View {
 
     private var folderPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
-                Label("Carpetas", systemImage: "folder.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button {
-                    model.expandAll()
-                } label: {
-                    Image(systemName: "chevron.down.circle")
+            SectionHeader(title: "Carpetas", systemImage: "folder.fill") {
+                HStack(spacing: 2) {
+                    GhostIconButton(systemImage: "chevron.down.circle", help: "Expandir todo") {
+                        model.expandAll()
+                    }
+                    GhostIconButton(systemImage: "chevron.right.circle", help: "Contraer todo") {
+                        model.collapseAll()
+                    }
                 }
-                .buttonStyle(.plain)
-                .help("Expandir todo")
-                Button {
-                    model.collapseAll()
-                } label: {
-                    Image(systemName: "chevron.right.circle")
-                }
-                .buttonStyle(.plain)
-                .help("Contraer todo")
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
             if model.tree.isEmpty {
                 Spacer()
                 Text("Sin subcarpetas")
@@ -280,7 +266,7 @@ struct ExplorerView: View {
             .onTapGesture { model.toggleExpanded(node) }
 
             Image(systemName: isCurrent ? "folder.fill" : "folder")
-                .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
+                .foregroundStyle(isCurrent ? J4I.brand : Color.secondary)
             Text(node.entry.name)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -293,15 +279,19 @@ struct ExplorerView: View {
             }
         }
         .padding(.leading, CGFloat(row.depth) * 12)
-        .padding(.vertical, 2)
+        .padding(.vertical, 3)
         .padding(.horizontal, 6)
         .background(
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(isCurrent ? Color.accentColor.opacity(0.30) : Color.clear)
+            RoundedRectangle(cornerRadius: J4I.Radius.small, style: .continuous)
+                .fill(isCurrent ? J4I.brandSoft : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: J4I.Radius.small, style: .continuous)
+                .strokeBorder(isCurrent ? J4I.brand.opacity(0.35) : Color.clear)
         )
         .contentShape(Rectangle())
         .onTapGesture { model.navigateToNode(node) }
-        .hoverHighlight(intensity: 0.05)
+        .hoverHighlight(cornerRadius: J4I.Radius.small, intensity: 0.05)
         .contextMenu {
             Button("Abrir") { model.navigateToNode(node) }
             Button("Mostrar en Finder") { model.reveal(node.entry) }
@@ -311,11 +301,7 @@ struct ExplorerView: View {
 
     private var filePane: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Label(filesHeaderLabel, systemImage: "doc.text")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
+            SectionHeader(title: filesHeaderLabel, systemImage: "doc.text") {
                 Picker("", selection: $model.fileSortKey) {
                     ForEach(ExplorerViewModel.FileSortKey.allCases) { key in
                         Text(key.label).tag(key)
@@ -326,13 +312,26 @@ struct ExplorerView: View {
                 .frame(width: 104)
                 .help("Orden de los ficheros de esta carpeta")
             }
+            HStack(spacing: 6) {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                TextField("Filtrar por nombre…", text: $model.filterText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: J4I.Radius.small, style: .continuous)
+                    .fill(J4I.well)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: J4I.Radius.small, style: .continuous)
+                    .strokeBorder(J4I.hairline.opacity(0.6))
+            )
             .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            TextField("Filtrar por nombre…", text: $model.filterText)
-                .textFieldStyle(.roundedBorder)
-                .controlSize(.small)
-                .padding(.horizontal, 10)
-                .padding(.bottom, 6)
+            .padding(.bottom, 6)
             if model.files.isEmpty {
                 Spacer()
                 Text(model.emptyFilesMessage)
@@ -347,7 +346,7 @@ struct ExplorerView: View {
                     ForEach(model.files) { file in
                         HStack(spacing: 8) {
                             Image(systemName: iconName(for: file))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(model.selectedFileIDs.contains(file.id) ? J4I.brand : Color.secondary)
                             Text(file.name)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
@@ -366,13 +365,13 @@ struct ExplorerView: View {
                         .padding(.vertical, 2)
                         .padding(.horizontal, 6)
                         .background(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .fill(model.selectedFileIDs.contains(file.id) ? Color.accentColor.opacity(0.30) : Color.clear)
+                            RoundedRectangle(cornerRadius: J4I.Radius.small, style: .continuous)
+                                .fill(model.selectedFileIDs.contains(file.id) ? J4I.brandSoft : Color.clear)
                         )
                         .contentShape(Rectangle())
                         .onTapGesture(count: 2) { model.open(file) }
                         .onTapGesture { model.handleFileClick(file) }
-                        .hoverHighlight(intensity: 0.05)
+                        .hoverHighlight(cornerRadius: J4I.Radius.small, intensity: 0.05)
                         .contextMenu {
                             Button("Abrir") { model.open(file) }
                             Button("Mostrar en Finder") { model.reveal(file) }
@@ -403,33 +402,40 @@ struct ExplorerView: View {
     // MARK: - Propiedades
 
     private var propertiesPane: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Propiedades", systemImage: "info.circle")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            if model.selectedFiles.count > 1 {
-                selectionProperties
-            } else if let file = model.selectedFile {
-                fileProperties(file)
-            } else {
-                folderProperties(title: model.currentFolderName ?? "Esta carpeta", stats: model.currentStats)
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeader("Propiedades", systemImage: "info.circle")
+            J4ICard(padding: 10) {
+                if model.selectedFiles.count > 1 {
+                    selectionProperties
+                } else if let file = model.selectedFile {
+                    fileProperties(file)
+                } else {
+                    folderProperties(title: model.currentFolderName ?? "Esta carpeta", stats: model.currentStats)
+                }
             }
-            Spacer()
+            .padding(.horizontal, 10)
+            Spacer(minLength: 0)
         }
-        .padding(12)
         .frame(minWidth: 200, idealWidth: 220, maxWidth: 260, alignment: .topLeading)
     }
 
     @ViewBuilder
     private func folderProperties(title: String, stats: DirectoryStats?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label(title, systemImage: "folder.fill")
-                .font(.callout.weight(.semibold))
-                .lineLimit(1)
-                .truncationMode(.middle)
+            HStack(spacing: 6) {
+                Image(systemName: "folder.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(J4I.brand)
+                Text(title)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
             Text("Carpeta actual")
-                .font(.caption2)
+                .font(.system(size: 10.5))
                 .foregroundStyle(.tertiary)
+            Divider()
+                .padding(.vertical, 1)
             propertyRow("Ficheros", "\(stats?.fileCount ?? 0)")
             propertyRow("Subcarpetas", "\(stats?.directoryCount ?? 0)")
             propertyRow("Tamaño total", ByteCountFormatter.string(fromByteCount: stats?.totalSizeBytes ?? 0, countStyle: .file))
@@ -439,9 +445,16 @@ struct ExplorerView: View {
     @ViewBuilder
     private func fileProperties(_ file: IndexEntry) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label(file.name, systemImage: iconName(for: file))
-                .font(.callout.weight(.semibold))
-                .lineLimit(2)
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: iconName(for: file))
+                    .font(.system(size: 12))
+                    .foregroundStyle(J4I.brand)
+                Text(file.name)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .lineLimit(3)
+            }
+            Divider()
+                .padding(.vertical, 1)
             propertyRow("Tipo", file.ext.isEmpty ? "—" : ".\(file.ext)")
             propertyRow("Tamaño", ByteCountFormatter.string(fromByteCount: file.sizeBytes, countStyle: .file))
             if let modified = file.modifiedAt {
@@ -469,7 +482,7 @@ struct ExplorerView: View {
     private var selectionProperties: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label("\(model.selectedFiles.count) ficheros", systemImage: "square.stack.3d.up")
-                .font(.callout.weight(.semibold))
+                .font(.system(size: 12.5, weight: .semibold))
             propertyRow("Tamaño total", ByteCountFormatter.string(fromByteCount: model.selectedFiles.reduce(0) { $0 + $1.sizeBytes }, countStyle: .file))
             Button {
                 let count = model.selectedFiles.count
@@ -489,33 +502,37 @@ struct ExplorerView: View {
     private func propertyRow(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(label)
-                .font(.caption2)
+                .font(.system(size: 10.5, weight: .medium))
                 .foregroundStyle(.tertiary)
             Text(value)
-                .font(.caption)
+                .font(.system(size: 12))
                 .lineLimit(3)
                 .textSelection(.enabled)
         }
     }
 
     private var statusBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: J4I.Space.s) {
             Text("\(model.folders.count) carpeta(s) · \(model.files.count) fichero(s)")
+                .font(.system(size: 11, weight: .medium))
+                .monospacedDigit()
             if let action = model.actionMessage {
                 Text("·")
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.quaternary)
                 Text(action)
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
             Spacer()
             Text(model.rootDisplay)
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, J4I.Space.m)
+        .padding(.vertical, 7)
     }
 
     private func iconName(for entry: IndexEntry) -> String {

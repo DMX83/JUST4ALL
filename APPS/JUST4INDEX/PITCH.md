@@ -34,6 +34,7 @@ traders, creadores… y cualquiera que quiera «Todo + casa ordenada» **sin sub
 | **Criterio fino, no genérico** | Carpetas como unidad (no rompe apps portables), la IA decide **entera vs desglosar** cajones, vocabulario en español, extensiones técnicas (`.rsc` → Redes) |
 | **Transparencia total** | Cada decisión trazada (fuente `ai`/`rules`/`knowledge`, confianza, motivo) en registro en vivo (⌘L) y en la UI |
 | **Rendimiento sólido** | Índice 100k: crawl ~7 s; búsquedas 0,3–38 ms; pipeline con concurrencia acotada |
+| **Interfaz que se vende** | Sistema de diseño propio (marca, chips, tarjetas, estados vacíos) cuidado en claro y oscuro; títulos limpios, sin jerga de build |
 | **Control de coste** | Reutilización sin coste (caché + conocimiento), cap configurable, tokens medidos por llamada |
 
 ## Limitaciones (honestas)
