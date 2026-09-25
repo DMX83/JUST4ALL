@@ -137,6 +137,12 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
    Cada tarjeta: *explicación + vista previa + [Aplicar] [Ahora no] [Nunca más]*.
    Aceptar = opera con journal + undo (y enseña al conocimiento local).
 
+> **Implementado (25-sep, G2 v1)**: tarjeta «Sugerencias» en «Inicio» (ancho completo) con los
+> tres detectores de v1 — duplicados por tamaño+hash→Papelera (validado en vivo: 4 ficheros),
+> capturas sueltas→`13_Multimedia/Capturas` con journal/undo, y grandes/olvidados→Revelar.
+> «Ahora no» (7 días) / «Nunca más» persistentes. Pendientes de fases siguientes: cajones
+> mezclados ejecutables y archivo en frío (G6).
+
 3. **Reglas visibles y portables** *(reusa: LocalKnowledgeStore, FilingSkill)*
    Pantalla de primera clase «Reglas»: las aprendidas (extensión/token → categoría, con confianza
    y muestras), editables, creables a mano, borrables, y **exportables/importables** (portabilidad
@@ -166,7 +172,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 | Fase | Qué | Por qué primero | Esfuerzo |
 |------|-----|------------------|----------|
 | **G1** ✅ | **Inicio / Centro de control** + omnibox (⌘K) + buscador como vista/overlay | Cambia la historia del producto sin añadir motores nuevos (todo existe ya) | Medio |
-| **G2** | **Sugerencias proactivas v1**: duplicados (hash), capturas/Escritorio, grandes y olvidados | «Resultados que se pagan» (+ GB) con riesgo cero (undo) | Medio |
+| **G2** ✅ | **Sugerencias proactivas v1**: duplicados (hash), capturas/Escritorio, grandes y olvidados | «Resultados que se pagan» (+ GB) con riesgo cero (undo) | Medio |
 | **G3** | **Reglas visibles** (pantalla + export/import) | Confianza y control; explota lo ya aprendido (27 reglas reales ya) | Bajo-Medio |
 | **G4** | **N5: menú de barra + atajo global + Quick Action Finder** | La app pasa de «ventana» a «presencia» (lo pide el mercado) | Bajo-Medio |
 | **G5** | **Espacios/colecciones** (+ etiquetas Finder opcionales) | «Organizar sin mover»; encaja con Inicio y omnibox | Medio-Alto |

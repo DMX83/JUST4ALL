@@ -206,6 +206,57 @@ public actor SearchIndex {
         }
     }
 
+    // MARK: - Consultas para sugerencias proactivas (G2)
+
+    /// Tamaños de fichero distintos presentes en el índice (≥ `minBytes`).
+    ///
+    /// Detector barato de posibles duplicados: dos copias idénticas del mismo contenido
+    /// **siempre** comparten tamaño; el hash se verifica solo para los candidatos.
+    public func indexedFileSizes(minBytes: Int64 = 0) throws -> Set<Int64> {
+        try openIfNeeded()
+        let sql = "SELECT DISTINCT size_bytes FROM entries WHERE is_dir = 0 AND size_bytes >= ?;"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar la consulta de tamaños.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        try bind(stmt, [.int(minBytes)])
+        var sizes = Set<Int64>()
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            sizes.insert(sqlite3_column_int64(stmt, 0))
+        }
+        return sizes
+    }
+
+    /// Ficheros grandes del índice (≥ `minBytes`), opcionalmente sin cambios desde `olderThan`,
+    /// de mayor a menor tamaño (límite `limit`). Alimenta el detector «grandes y olvidados» (G2).
+    public func largeFiles(minBytes: Int64, olderThan: Date? = nil, limit: Int = 25) throws -> [IndexEntry] {
+        try openIfNeeded()
+        var sql = """
+        SELECT id, root_id, path, name, ext, is_dir, size_bytes, modified_ts
+        FROM entries
+        WHERE is_dir = 0 AND size_bytes >= ?
+        """
+        var binds: [SQLBind] = [.int(minBytes)]
+        if let olderThan {
+            sql += " AND modified_ts IS NOT NULL AND modified_ts <= ?"
+            binds.append(.double(olderThan.timeIntervalSince1970))
+        }
+        sql += " ORDER BY size_bytes DESC LIMIT ?;"
+        binds.append(.int(Int64(max(1, limit))))
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar la consulta de ficheros grandes.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        try bind(stmt, binds)
+        var rows: [IndexEntry] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            rows.append(makeEntry(from: stmt))
+        }
+        return rows
+    }
+
     // MARK: - Texto de documentos (búsqueda por contenido)
 
     public func setDocumentText(entryID: Int64, text: String) throws {

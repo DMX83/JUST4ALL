@@ -575,6 +575,17 @@
   accidental) — «Entradas indexadas» ya no lo suma; (d) `JUST4INDEX.entitlements` →
   `JUST4DESK.entitlements` (el script de DMG ya esperaba el nombre nuevo); (e) hub JUST4ALL sin
   «cuarentena» y sin «(antes JUST4INDEX)»; (f) log rotado (`just4desk.log.pre-rename-20260925`).
+- G2 (25-sep, noche): **sugerencias proactivas v1** — tarjeta «Sugerencias» a ancho completo en
+  «Inicio» con tres detectores baratos (re-escaneo ≤1/min; nada se ejecuta sin confirmar):
+  (a) **duplicados** que siguen en las entradas por coincidencia de tamaño
+  (`SearchIndex.indexedFileSizes`) + verificación por hash al aplicar → Papelera (reversible;
+  **validado por el usuario en vivo: 4 duplicados, 25,1 MB**);
+  (b) **capturas sueltas** (entradas + Escritorio) → [Archivar] vía pipeline real con journal/undo
+  (sin simulación: acción manual) + destino nuevo `13_Multimedia/Capturas` (taxonomía + regla);
+  (c) **grandes y olvidados** (≥1 GB, 180 días, `SearchIndex.largeFiles`) → [Revelar] (archivo en
+  frío = G6). Silencios: «Ahora no» (7 d) / «Nunca más» persistentes (`SuggestionDismissals`,
+  `just4desk.suggestions.*`). Motor `ProactiveSuggestionScanner` (J4IFiling). Suite 157 (156 + 1
+  skip; +10 tests). Capturas en `docs/design/G2/`.
 
 ## Lecciones y trampas
 

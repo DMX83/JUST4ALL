@@ -118,6 +118,7 @@ public enum RulesFilingClassifier {
         Rule(keywords: ["serie", "temporada"], category: "13_Multimedia/Series", confidence: 0.75),
         Rule(keywords: ["película", "pelicula"], category: "13_Multimedia/Peliculas", confidence: 0.75),
         Rule(keywords: ["música", "musica", "music"], category: "13_Multimedia/Musica", confidence: 0.65),
+        Rule(keywords: ["captura de pantalla", "capturas de pantalla", "screenshot", "screen shot", "capture d'écran"], category: "13_Multimedia/Capturas", confidence: 0.7),
         Rule(keywords: ["curso", "tutorial", "clase "], category: "06_Educacion/Cursos", confidence: 0.65),
         Rule(keywords: ["libro", "ebook"], category: "15_Libros", confidence: 0.65),
         Rule(keywords: ["portable"], category: "12_Software/Herramientas", confidence: 0.6),

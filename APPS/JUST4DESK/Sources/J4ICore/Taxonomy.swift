@@ -85,6 +85,7 @@ public enum DefaultTaxonomy {
             ]),
             TaxonomyNode(name: "13_Multimedia", children: [
                 TaxonomyNode(name: "Fotos"),
+                TaxonomyNode(name: "Capturas"),
                 TaxonomyNode(name: "Videos"),
                 TaxonomyNode(name: "Peliculas"),
                 TaxonomyNode(name: "Series"),

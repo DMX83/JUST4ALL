@@ -505,3 +505,20 @@ Convención por version + build stamp:
 - Hub JUST4ALL: textos de la tarjeta reescritos (sin «cuarentena», sin «(antes JUST4INDEX)»).
 - Log rotado a `just4desk.log.pre-rename-20260925` para arrancar con trazas limpias (el histórico
   se conserva en disco).
+
+### Added — G2 (sugerencias proactivas v1) (25-sep, noche)
+
+- Tarjeta **«Sugerencias»** en «Inicio» (a ancho completo, sobre la rejilla del centro de control):
+  detectores baratos y explicables que se re-escanean al cargar (máx. 1/min), con
+  «Aplicar» + «Ahora no» (7 días) + «Nunca más» (persistente en `just4desk.suggestions.*`).
+- **Duplicados**: ficheros que siguen en las entradas y coinciden en tamaño con el archivo
+  (`SearchIndex.indexedFileSizes`, ≥1 MB); al aplicar se verifica el hash (misma semántica que la
+  ingesta) y solo los duplicados reales van a la **Papelera** (reversible). Validado en vivo:
+  4 duplicados (25,1 MB) limpiados desde la tarjeta.
+- **Capturas sueltas**: nombre tipo «Captura de pantalla…/Screenshot…» en entradas + Escritorio;
+  [Archivar] las pasa por el pipeline real (journal + undo; sin simulación: acción manual) y
+  estrena el destino **`13_Multimedia/Capturas`** (nuevo en la taxonomía + regla local).
+- **Grandes y olvidados**: ≥1 GB sin cambios desde hace 180 días (`SearchIndex.largeFiles`);
+  por ahora solo [Revelar] (el archivo en frío llega en G6).
+- Motor: `ProactiveSuggestionScanner` (J4IFiling) + 2 consultas nuevas del índice; suite 157
+  (156 + 1 skip; +10 tests).

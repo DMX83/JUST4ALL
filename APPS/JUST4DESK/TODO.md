@@ -305,7 +305,9 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
 - [x] Omnibox ⌘K con resultados inmediatos (Enter abre el primero; «Ver todos» → ventana Buscar).
 - [x] Ventana «Buscar» (⌘F) con la búsqueda completa; `SearchViewModel` compartido e idempotente.
 - [x] Validación visual (Inicio/omnibox/Buscar) y suite 144 (143 + 1 skip).
-- [ ] G2: sugerencias proactivas (duplicados por hash, capturas sueltas, grandes/olvidados).
+- [x] G2 (v1): sugerencias proactivas — duplicados (tamaño→hash→Papelera), capturas sueltas
+  (→ `13_Multimedia/Capturas`, con undo) y grandes/olvidados (revelar); «Ahora no»/«Nunca más».
+  Validado en vivo (el usuario limpió 4 duplicados desde la tarjeta). Suite 157.
 - [ ] G3: reglas visibles y portables (pantalla + export/import).
 
 ## Referencias

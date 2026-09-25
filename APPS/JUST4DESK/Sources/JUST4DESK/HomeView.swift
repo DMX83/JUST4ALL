@@ -18,6 +18,7 @@ struct HomeView: View {
     @Environment(\.openSettings) private var openSettings
 
     @State private var showLogViewer = false
+    @State private var pendingSuggestion: ProactiveSuggestion?
     @FocusState private var omniFocused: Bool
 
     private var columns: [GridItem] {
@@ -29,11 +30,16 @@ struct HomeView: View {
             header
             Divider()
             ScrollView {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: J4I.Space.m) {
-                    inboxCard
-                    activityCard
-                    statusCard
-                    shortcutsCard
+                VStack(alignment: .leading, spacing: J4I.Space.m) {
+                    // G2: las sugerencias (bandeja de propuestas) van a ancho completo para no
+                    // descompensar la rejilla 2×2 del centro de control.
+                    suggestionsCard
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: J4I.Space.m) {
+                        inboxCard
+                        activityCard
+                        statusCard
+                        shortcutsCard
+                    }
                 }
                 .padding(J4I.Space.l)
             }
@@ -63,6 +69,22 @@ struct HomeView: View {
                 Text(viewModel.lastErrorMessage ?? "")
             }
         )
+        .confirmationDialog(
+            pendingSuggestion?.title ?? "",
+            isPresented: Binding(
+                get: { pendingSuggestion != nil },
+                set: { if !$0 { pendingSuggestion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingSuggestion
+        ) { suggestion in
+            Button(confirmButtonLabel(suggestion.kind)) {
+                viewModel.applySuggestion(suggestion)
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: { suggestion in
+            Text(confirmMessage(for: suggestion))
+        }
         .sheet(isPresented: $viewModel.showInitialSetup) {
             InitialSetupSheet(
                 initialPath: viewModel.filingRootPath ?? FilingConfiguration.suggestedRootPath,
@@ -298,6 +320,134 @@ struct HomeView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Sugerencias (G2)
+
+    @ViewBuilder
+    private var suggestionsCard: some View {
+        if !viewModel.suggestions.isEmpty || viewModel.suggestionsBusy != nil {
+            J4ICard {
+                VStack(alignment: .leading, spacing: J4I.Space.m) {
+                    HStack(spacing: 6) {
+                        cardHeader("Sugerencias", "sparkles")
+                        Spacer()
+                        if let busy = viewModel.suggestionsBusy {
+                            HStack(spacing: 6) {
+                                ProgressView()
+                                    .controlSize(.mini)
+                                Text(busy)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    ForEach(viewModel.suggestions) { suggestion in
+                        suggestionRow(suggestion)
+                    }
+                }
+            }
+        }
+    }
+
+    private func suggestionRow(_ suggestion: ProactiveSuggestion) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: suggestion.kind.symbolName)
+                .font(.system(size: 15))
+                .foregroundStyle(suggestionTint(suggestion.kind))
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(suggestion.title)
+                    .font(.system(size: 12.5, weight: .medium))
+                Text("\(suggestion.items.count) elemento(s) · \(ByteCountFormatter.string(fromByteCount: suggestion.totalBytes, countStyle: .file))")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Text(suggestion.detail)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 680, alignment: .leading)
+                VStack(alignment: .leading, spacing: 1) {
+                    ForEach(suggestion.items.prefix(3)) { item in
+                        Text("· \(item.name)")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    if suggestion.items.count > 3 {
+                        Text("y \(suggestion.items.count - 3) más…")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                HStack(spacing: 8) {
+                    Button(primaryLabel(suggestion.kind)) {
+                        primaryAction(suggestion)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    Button("Ahora no") {
+                        viewModel.snoozeSuggestion(suggestion.kind, forever: false)
+                    }
+                    .controlSize(.small)
+                    .help("Ocultar esta sugerencia durante 7 días")
+                    Button("Nunca más") {
+                        viewModel.snoozeSuggestion(suggestion.kind, forever: true)
+                    }
+                    .controlSize(.small)
+                    .foregroundStyle(.secondary)
+                    .help("No volver a proponer esto")
+                }
+                .padding(.top, 3)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func suggestionTint(_ kind: ProactiveSuggestionKind) -> Color {
+        switch kind {
+        case .duplicates: return J4I.brand
+        case .screenshots: return J4I.warning
+        case .largeForgotten: return .secondary
+        }
+    }
+
+    private func primaryLabel(_ kind: ProactiveSuggestionKind) -> String {
+        switch kind {
+        case .duplicates: return "Verificar y limpiar"
+        case .screenshots: return "Archivar"
+        case .largeForgotten: return "Revelar"
+        }
+    }
+
+    /// Duplicados y capturas piden confirmación; «grandes y olvidados» solo revela en Finder.
+    private func primaryAction(_ suggestion: ProactiveSuggestion) {
+        switch suggestion.kind {
+        case .duplicates, .screenshots:
+            pendingSuggestion = suggestion
+        case .largeForgotten:
+            viewModel.revealSuggestionItems(suggestion)
+        }
+    }
+
+    private func confirmButtonLabel(_ kind: ProactiveSuggestionKind) -> String {
+        switch kind {
+        case .duplicates: return "Verificar y enviar a la Papelera"
+        case .screenshots: return "Archivar capturas"
+        case .largeForgotten: return "Revelar"
+        }
+    }
+
+    private func confirmMessage(for suggestion: ProactiveSuggestion) -> String {
+        switch suggestion.kind {
+        case .duplicates:
+            return "Se calculará el hash de \(suggestion.items.count) fichero(s). Solo los duplicados reales de lo ya archivado se moverán a la Papelera (reversible desde el Finder); el resto se deja."
+        case .screenshots:
+            return "Se archivarán \(suggestion.items.count) captura(s) (\(ByteCountFormatter.string(fromByteCount: suggestion.totalBytes, countStyle: .file))) con deshacer. Lo dudoso quedará en «sin clasificar»."
+        case .largeForgotten:
+            return "Se revelarán los primeros 10 elementos en el Finder."
         }
     }
 

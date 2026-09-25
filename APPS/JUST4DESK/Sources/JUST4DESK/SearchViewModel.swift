@@ -129,6 +129,11 @@ final class SearchViewModel: ObservableObject {
     @Published private(set) var organizedTodayCount = 0
     /// Elementos pendientes en la sin clasificar (para la bandeja de «Inicio», G1).
     @Published private(set) var quarantineCount = 0
+    /// G2 — sugerencias proactivas (tarjeta de «Inicio»): detectores baratos sobre el índice y
+    /// las carpetas de entrada. Nada se ejecuta sin confirmación.
+    @Published private(set) var suggestions: [ProactiveSuggestion] = []
+    /// Progreso mientras se aplica una sugerencia («Verificando duplicados… 3/12»).
+    @Published private(set) var suggestionsBusy: String?
     @Published var lastOutcomeMessage: String?
     @Published var showInitialSetup = false
     @Published var accessIssue: AccessIssue?
@@ -174,6 +179,9 @@ final class SearchViewModel: ObservableObject {
     private var coordinator: FilingCoordinator?
     private var pipeline: FilingPipeline?
     private var notificationObservers: [NSObjectProtocol] = []
+    private let suggestionDismissals = SuggestionDismissals()
+    private var suggestionsScanning = false
+    private var lastSuggestionScan = Date.distantPast
 
     init() {
         crawler = IndexCrawler(index: SearchIndex.shared)
@@ -536,6 +544,7 @@ final class SearchViewModel: ObservableObject {
         let startOfDay = Calendar.current.startOfDay(for: Date())
         organizedTodayCount = activityEntries.filter { $0.action == "move" && $0.timestamp >= startOfDay }.count
         await refreshQuarantineCount()
+        await refreshSuggestions()
     }
 
     /// Cuenta los elementos de la sin clasificar (listado plano y barato) para la bandeja de «Inicio».
@@ -551,6 +560,161 @@ final class SearchViewModel: ObservableObject {
             QuarantineListing.itemURLs(rootURL: rootURL).count
         }.value
         quarantineCount = count
+    }
+
+    // MARK: - Sugerencias proactivas (G2)
+
+    /// Re-escanea las sugerencias proactivas: listados de primer nivel de las carpetas de entrada
+    /// (más el Escritorio) y dos consultas al índice. Sin hash aquí (eso ocurre al aplicar
+    /// duplicados). Limitado a un escaneo cada 60 s salvo que se fuerce (al aplicar incluido).
+    func refreshSuggestions(force: Bool = false) async {
+        guard !suggestionsScanning else { return }
+        guard force || Date().timeIntervalSince(lastSuggestionScan) > 60 else { return }
+        guard filingRootPath != nil else {
+            suggestions = []
+            return
+        }
+        suggestionsScanning = true
+        defer {
+            suggestionsScanning = false
+            lastSuggestionScan = Date()
+        }
+
+        let sourceURLs = sourceFolderPaths.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        let sourceLabels = sourceFolderPaths.map { ($0 as NSString).abbreviatingWithTildeInPath }
+        var built: [ProactiveSuggestion] = []
+
+        // 1) Posibles duplicados que siguen en las entradas (coinciden en tamaño con el archivo).
+        let knownSizes = (try? await index.indexedFileSizes(minBytes: ProactiveSuggestionScanner.duplicateMinBytes)) ?? []
+        if let duplicates = ProactiveSuggestionScanner.duplicateSuggestion(folders: sourceURLs, labels: sourceLabels, knownSizes: knownSizes) {
+            built.append(duplicates)
+        }
+
+        // 2) Capturas sueltas en las entradas y en el Escritorio (donde suelen quedarse).
+        var shotFolders = sourceURLs
+        var shotLabels = sourceLabels
+        let desktop = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop", isDirectory: true)
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: desktop.path, isDirectory: &isDirectory), isDirectory.boolValue {
+            shotFolders.append(desktop)
+            shotLabels.append("Escritorio")
+        }
+        if let screenshots = ProactiveSuggestionScanner.screenshotSuggestion(folders: shotFolders, labels: shotLabels) {
+            built.append(screenshots)
+        }
+
+        // 3) Grandes y olvidados (≥1 GB sin cambios desde hace 180 días), desde el índice.
+        let cutoff = Calendar.current.date(byAdding: .day, value: -ProactiveSuggestionScanner.largeForgottenDays, to: Date()) ?? Date()
+        let largeEntries = (try? await index.largeFiles(minBytes: ProactiveSuggestionScanner.largeMinBytes, olderThan: cutoff, limit: 60)) ?? []
+        if let large = ProactiveSuggestionScanner.largeForgottenSuggestion(entries: largeEntries) {
+            built.append(large)
+        }
+
+        let now = Date()
+        suggestions = built.filter { !suggestionDismissals.isDismissed($0.kind, now: now) }
+        J4Log.debug(.app, "Sugerencias: \(suggestions.count) activa(s) [\(suggestions.map(\.kind.rawValue).joined(separator: ", "))]")
+    }
+
+    /// «Ahora no» (7 días) o «Nunca más»: silencia la sugerencia y la quita de la tarjeta.
+    func snoozeSuggestion(_ kind: ProactiveSuggestionKind, forever: Bool) {
+        suggestionDismissals.snooze(kind, forever: forever, now: Date())
+        J4Log.info(.app, forever
+            ? "Sugerencia «\(kind.rawValue)» silenciada para siempre."
+            : "Sugerencia «\(kind.rawValue)» pospuesta 7 días.")
+        suggestions.removeAll { $0.kind == kind }
+    }
+
+    /// Revela en el Finder los primeros elementos de una sugerencia (p. ej. grandes y olvidados).
+    func revealSuggestionItems(_ suggestion: ProactiveSuggestion) {
+        let urls = suggestion.items.prefix(10).map { URL(fileURLWithPath: $0.path) }
+        guard !urls.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting(urls)
+    }
+
+    /// Aplica una sugerencia (la confirmación la da la UI antes):
+    /// - duplicados → verificación por hash + Papelera (reversible);
+    /// - capturas → archivado real con journal/undo, aunque la simulación esté activa
+    ///   (acción manual y explícita, igual que «Por revisar»);
+    /// - grandes y olvidados → solo revela en Finder (el archivo en frío llega en una fase futura).
+    func applySuggestion(_ suggestion: ProactiveSuggestion) {
+        switch suggestion.kind {
+        case .duplicates:
+            Task { await cleanDuplicates(suggestion) }
+        case .screenshots:
+            Task { await fileScreenshots(suggestion) }
+        case .largeForgotten:
+            revealSuggestionItems(suggestion)
+        }
+    }
+
+    private func cleanDuplicates(_ suggestion: ProactiveSuggestion) async {
+        suggestionsBusy = "Verificando duplicados…"
+        var trashed = 0
+        var freedBytes: Int64 = 0
+        var skipped = 0
+        var failed = 0
+        for (position, item) in suggestion.items.enumerated() {
+            suggestionsBusy = "Verificando duplicados… \(position + 1)/\(suggestion.items.count)"
+            let url = URL(fileURLWithPath: item.path)
+            let hash = await Task.detached(priority: .utility) { DocumentAnalyzer.sha256Hex(of: url) }.value
+            guard let hash else {
+                failed += 1
+                continue
+            }
+            let cached = try? await index.loadCachedAnalysis(hash: hash)
+            if let filedPath = cached?.filedPath, !filedPath.isEmpty, FileManager.default.fileExists(atPath: filedPath) {
+                do {
+                    try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                    trashed += 1
+                    freedBytes += item.sizeBytes
+                    J4Log.info(.filing, "Duplicado ya archivado en «\((filedPath as NSString).abbreviatingWithTildeInPath)»: «\(item.name)» a la Papelera.")
+                } catch {
+                    failed += 1
+                    J4Log.warn(.filing, "No se pudo mover a la Papelera «\(item.name)»: \(error.localizedDescription)")
+                }
+            } else {
+                skipped += 1
+            }
+        }
+        var message = "Duplicados: \(trashed) a la Papelera (\(ByteCountFormatter.string(fromByteCount: freedBytes, countStyle: .file)))"
+        if skipped > 0 { message += " · \(skipped) ya no eran duplicados" }
+        if failed > 0 { message += " · \(failed) con error" }
+        lastOutcomeMessage = message
+        J4Log.info(.app, message)
+        suggestionsBusy = nil
+        await refreshActivity()
+        await refreshSuggestions(force: true)
+    }
+
+    private func fileScreenshots(_ suggestion: ProactiveSuggestion) async {
+        guard let rootPath = filingRootPath else { return }
+        suggestionsBusy = "Archivando capturas…"
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: URL(fileURLWithPath: rootPath, isDirectory: true),
+            simulationMode: false,
+            advisor: DeepSeekFilingAdvisor()
+        )
+        var moved = 0
+        var quarantined = 0
+        var skipped = 0
+        for (position, item) in suggestion.items.enumerated() {
+            suggestionsBusy = "Archivando capturas… \(position + 1)/\(suggestion.items.count)"
+            let outcome = await coordinator.processItem(at: URL(fileURLWithPath: item.path))
+            switch outcome.action {
+            case "move": moved += 1
+            case "quarantine": quarantined += 1
+            default: skipped += 1
+            }
+        }
+        var message = "Capturas: \(moved) archivada(s)"
+        if quarantined > 0 { message += " · \(quarantined) por revisar" }
+        if skipped > 0 { message += " · \(skipped) omitida(s)" }
+        lastOutcomeMessage = message
+        J4Log.info(.filing, message)
+        suggestionsBusy = nil
+        await refreshActivity()
+        await refreshSuggestions(force: true)
     }
 
     func undo(entry: JournalEntry) {
