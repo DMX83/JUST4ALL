@@ -47,6 +47,10 @@ struct Just4DeskApp: App {
                     NotificationCenter.default.post(name: .j4iShowLogViewer, object: nil)
                 }
                 .keyboardShortcut("l", modifiers: .command)
+                Button("Reglas aprendidas") {
+                    NotificationCenter.default.post(name: .j4iOpenRules, object: nil)
+                }
+                .keyboardShortcut("g", modifiers: .command)
                 Button("Ajustes de IA") {
                     SettingsTabRouter.pendingTab = "ai"
                     NotificationCenter.default.post(name: .j4iOpenAISettings, object: nil)
@@ -84,6 +88,12 @@ struct Just4DeskApp: App {
                 .tint(J4I.brand)
         }
         .defaultSize(width: 820, height: 560)
+
+        Window("Reglas", id: "rules") {
+            RulesView()
+                .tint(J4I.brand)
+        }
+        .defaultSize(width: 760, height: 560)
 
         Settings {
             SettingsView()

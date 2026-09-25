@@ -308,7 +308,9 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
 - [x] G2 (v1): sugerencias proactivas — duplicados (tamaño→hash→Papelera), capturas sueltas
   (→ `13_Multimedia/Capturas`, con undo) y grandes/olvidados (revelar); «Ahora no»/«Nunca más».
   Validado en vivo (el usuario limpió 4 duplicados desde la tarjeta). Suite 157.
-- [ ] G3: reglas visibles y portables (pantalla + export/import).
+- [x] G3: reglas visibles y portables — ventana «Reglas» (⌘G): listar con confianza/muestras,
+  editar destino, borrar, crear a mano, export/import JSON con fusión por muestras. Suite 164.
+- [ ] G4: menú de barra + atajo global + Quick Action de Finder.
 
 ## Referencias
 

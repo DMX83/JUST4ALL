@@ -42,6 +42,13 @@ public final class LocalKnowledgeStore: @unchecked Sendable {
         public let learnedEntries: Int
         public let appliedToday: Int
         public let appliedTotal: Int
+
+        public init(promotedCount: Int, learnedEntries: Int, appliedToday: Int, appliedTotal: Int) {
+            self.promotedCount = promotedCount
+            self.learnedEntries = learnedEntries
+            self.appliedToday = appliedToday
+            self.appliedTotal = appliedTotal
+        }
     }
 
     // Criterios de promoción (conservadores, en línea con la filosofía de la skill).
@@ -167,6 +174,158 @@ public final class LocalKnowledgeStore: @unchecked Sendable {
             appliedToday: appliedToday,
             appliedTotal: appliedTotal
         )
+    }
+
+    // MARK: - Gestión y portabilidad (pantalla «Reglas», G3)
+
+    /// Instantánea de una característica observada (promovida o aún en observación), para la
+    /// pantalla «Reglas».
+    public struct RuleInfo: Sendable, Equatable, Identifiable {
+        public let kind: FeatureKind
+        public let value: String
+        public let categoryPath: String
+        public let positives: Int
+        public let total: Int
+        public let averageConfidence: Double
+        public let lastSeen: Date
+        public let isPromoted: Bool
+
+        public var id: String { "\(kind.rawValue)|\(value)" }
+        public var share: Double { total > 0 ? Double(positives) / Double(total) : 0 }
+        /// Valor legible (`.rsc` para extensiones, `trading` para palabras de carpeta).
+        public var displayValue: String { kind == .fileExtension ? ".\(value)" : value }
+    }
+
+    /// Todas las características observadas, promovidas primero (y dentro de cada grupo, por
+    /// número de muestras). La pantalla «Reglas» la pinta tal cual.
+    public func rules() -> [RuleInfo] {
+        lock.lock()
+        let snapshot = entries
+        lock.unlock()
+        return snapshot.values
+            .map {
+                RuleInfo(
+                    kind: $0.kind,
+                    value: $0.value,
+                    categoryPath: $0.categoryPath,
+                    positives: $0.positives,
+                    total: $0.total,
+                    averageConfidence: $0.averageConfidence,
+                    lastSeen: $0.lastSeen,
+                    isPromoted: Self.isPromoted($0)
+                )
+            }
+            .sorted {
+                if $0.isPromoted != $1.isPromoted { return $0.isPromoted }
+                if $0.positives != $1.positives { return $0.positives > $1.positives }
+                if $0.kind != $1.kind { return $0.kind.rawValue < $1.kind.rawValue }
+                return $0.value < $1.value
+            }
+    }
+
+    /// Cambia el destino de una regla (acción explícita del usuario: reescribe y promueve ya).
+    public func setDestination(_ categoryPath: String, kind: FeatureKind, value: String) {
+        record(kind: kind, value: value, categoryPath: categoryPath, confidence: 1.0, fromUser: true)
+    }
+
+    /// Borra una regla/observación (la IA volverá a decidir para esa característica).
+    @discardableResult
+    public func removeRule(kind: FeatureKind, value: String) -> Bool {
+        let normalized = Self.normalize(value)
+        guard !normalized.isEmpty else { return false }
+        lock.lock()
+        let existed = entries.removeValue(forKey: Self.key(kind: kind, value: normalized)) != nil
+        let snapshot = payload()
+        lock.unlock()
+        if existed {
+            Self.save(snapshot, to: fileURL)
+        }
+        return existed
+    }
+
+    /// Crea una regla a mano (queda promovida al momento, con la máxima confianza).
+    public func addManualRule(kind: FeatureKind, value: String, categoryPath: String) {
+        record(kind: kind, value: value, categoryPath: categoryPath, confidence: 1.0, fromUser: true)
+    }
+
+    /// Formato portable de exportación (v1): reglas + observaciones. Los contadores de uso
+    /// (aplicadas hoy/total) son locales y no se exportan.
+    public struct PortableFile: Codable, Sendable {
+        public let version: Int
+        public let exportedAt: Date
+        public let entries: [String: Entry]
+
+        public init(version: Int, exportedAt: Date, entries: [String: Entry]) {
+            self.version = version
+            self.exportedAt = exportedAt
+            self.entries = entries
+        }
+    }
+
+    /// Resultado de importar un archivo portable.
+    public struct ImportReport: Sendable, Equatable {
+        public let added: Int
+        public let replaced: Int
+        public let kept: Int
+        public let skipped: Int
+
+        public var summary: String {
+            var text = "Reglas importadas: \(added) nueva(s) · \(replaced) actualizada(s) · \(kept) sin cambios"
+            if skipped > 0 { text += " · \(skipped) descartada(s)" }
+            return text
+        }
+    }
+
+    /// Exporta reglas y observaciones como JSON portable (v1).
+    public func exportData() -> Data? {
+        lock.lock()
+        let snapshot = entries
+        lock.unlock()
+        let portable = PortableFile(version: 1, exportedAt: Date(), entries: snapshot)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return try? encoder.encode(portable)
+    }
+
+    /// Importa un archivo portable y **fusiona** por característica: gana la entrada con más
+    /// observaciones (una importación más pobre nunca pisará lo aprendido aquí).
+    /// Devuelve `nil` si el archivo no es un export válido.
+    @discardableResult
+    public func importData(_ data: Data) -> ImportReport? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let portable = try? decoder.decode(PortableFile.self, from: data), portable.version == 1 else {
+            return nil
+        }
+        var added = 0
+        var replaced = 0
+        var kept = 0
+        var skipped = 0
+        lock.lock()
+        for imported in portable.entries.values {
+            let normalized = Self.normalize(imported.value)
+            guard !normalized.isEmpty, !imported.categoryPath.isEmpty else {
+                skipped += 1
+                continue
+            }
+            let key = Self.key(kind: imported.kind, value: normalized)
+            if let local = entries[key] {
+                if imported.total > local.total {
+                    entries[key] = imported
+                    replaced += 1
+                } else {
+                    kept += 1
+                }
+            } else {
+                entries[key] = imported
+                added += 1
+            }
+        }
+        let snapshot = payload()
+        lock.unlock()
+        Self.save(snapshot, to: fileURL)
+        return ImportReport(added: added, replaced: replaced, kept: kept, skipped: skipped)
     }
 
     // MARK: - Privados

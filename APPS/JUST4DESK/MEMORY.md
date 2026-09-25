@@ -586,6 +586,14 @@
   frío = G6). Silencios: «Ahora no» (7 d) / «Nunca más» persistentes (`SuggestionDismissals`,
   `just4desk.suggestions.*`). Motor `ProactiveSuggestionScanner` (J4IFiling). Suite 157 (156 + 1
   skip; +10 tests). Capturas en `docs/design/G2/`.
+- G3 (25-sep, noche): **pantalla «Reglas» (⌘G)** — el conocimiento local a la vista: lista las 27
+  reglas reales (promovidas) + características en observación con confianza/muestras; destino
+  editable con el buscador de categorías (reescribe y promueve al momento), borrado, reglas
+  manuales y **export/import JSON portable v1 con fusión por muestras** (gana quien tenga más
+  observaciones; lo local nunca se pierde). API nueva en `LocalKnowledgeStore` (`rules()`,
+  `setDestination`, `removeRule`, `addManualRule`, `exportData`/`importData`, `Stats` con init
+  público). Validado con captura (27 reglas · aplicadas hoy 10). Suite 164 (163 + 1 skip; +7
+  tests). Siguiente: G4 (menú de barra + atajo global + Quick Action de Finder).
 
 ## Lecciones y trampas
 

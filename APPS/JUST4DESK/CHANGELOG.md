@@ -522,3 +522,16 @@ Convención por version + build stamp:
   por ahora solo [Revelar] (el archivo en frío llega en G6).
 - Motor: `ProactiveSuggestionScanner` (J4IFiling) + 2 consultas nuevas del índice; suite 157
   (156 + 1 skip; +10 tests).
+
+### Added — G3 (reglas visibles y portables) (25-sep, noche)
+
+- Ventana **«Reglas»** (⌘G; también en «Accesos» de Inicio): lista las características observadas
+  (palabras de carpeta y extensiones) con confianza, muestras y última vez vista; estado
+  **PROMOVIDA** u **OBSERVANDO** — el aprendizaje deja de ser una caja negra.
+- Gestión completa: **cambiar el destino** (buscador de categorías; reescribe y promueve al
+  momento), **borrar** (la IA vuelve a decidir), **crear reglas a mano**.
+- **Portabilidad**: exportar a JSON portable (v1) e **importar con fusión por muestras** (gana la
+  entrada con más observaciones; lo local no se pierde con importaciones más pobres), con informe
+  de importación (nuevas/actualizadas/sin cambios).
+- Store: `rules()`, `setDestination`, `removeRule`, `addManualRule`, `exportData`/`importData`
+  (+ `Stats` con init público); suite 164 (163 + 1 skip; +7 tests). Capturas en `docs/design/G3/`.

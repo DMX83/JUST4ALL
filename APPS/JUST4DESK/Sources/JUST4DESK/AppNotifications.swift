@@ -13,6 +13,8 @@ extension Notification.Name {
     static let j4iFocusOmnibox = Notification.Name("j4i.focusOmnibox")
     /// Mostrar el visor de registro (comando de menú ⌘L).
     static let j4iShowLogViewer = Notification.Name("j4i.showLogViewer")
+    /// Abrir la ventana «Reglas» (comando de menú ⌘G).
+    static let j4iOpenRules = Notification.Name("j4i.openRules")
     /// La configuración de archivado ha cambiado (la emite `SearchViewModel`; la escuchan Ajustes/explorador).
     static let j4iFilingConfigChanged = Notification.Name("j4i.filingConfigChanged")
     /// Ajustes → activar/desactivar modo simulación (object: Bool).

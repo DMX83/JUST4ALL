@@ -149,6 +149,11 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
    entre Macs). Esto convierte el aprendizaje invisible en **confianza vendible** («tu app aprende
    y tú lo ves»). Es el «Hazel sin escribir reglas» + el control del usuario.
 
+> **Implementado (25-sep, G3)**: ventana «Reglas» (⌘G): las 27 reglas reales a la vista con
+> confianza/muestras y estado PROMOVIDA/OBSERVANDO; destino editable con el buscador de
+> categorías, borrado, reglas manuales y **export/import JSON portable v1** (fusión: gana quien
+> tenga más observaciones). La app sigue resolviendo lo aprendido sin llamar a la IA.
+
 4. **Espacios y colecciones** *(reusa: índice FTS; añade etiquetas)*
    Organizar **sin mover**: colecciones guardadas («Trading», «Fiscal 2026», «Trabajo») definidas
    por reglas/búsquedas/etiquetas. Enriquecimiento con **etiquetas Finder nativas** (opcional)
@@ -173,7 +178,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 |------|-----|------------------|----------|
 | **G1** ✅ | **Inicio / Centro de control** + omnibox (⌘K) + buscador como vista/overlay | Cambia la historia del producto sin añadir motores nuevos (todo existe ya) | Medio |
 | **G2** ✅ | **Sugerencias proactivas v1**: duplicados (hash), capturas/Escritorio, grandes y olvidados | «Resultados que se pagan» (+ GB) con riesgo cero (undo) | Medio |
-| **G3** | **Reglas visibles** (pantalla + export/import) | Confianza y control; explota lo ya aprendido (27 reglas reales ya) | Bajo-Medio |
+| **G3** ✅ | **Reglas visibles** (pantalla + export/import) | Confianza y control; explota lo ya aprendido (27 reglas reales ya) | Bajo-Medio |
 | **G4** | **N5: menú de barra + atajo global + Quick Action Finder** | La app pasa de «ventana» a «presencia» (lo pide el mercado) | Bajo-Medio |
 | **G5** | **Espacios/colecciones** (+ etiquetas Finder opcionales) | «Organizar sin mover»; encaja con Inicio y omnibox | Medio-Alto |
 | **G6** | **Archivo en frío + informe semanal** | Consolida «mantenimiento continuo» del entorno | Bajo |

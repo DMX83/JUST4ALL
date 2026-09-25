@@ -108,6 +108,9 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: .j4iOpenReview)) { _ in
             openWindow(id: "review")
         }
+        .onReceive(NotificationCenter.default.publisher(for: .j4iOpenRules)) { _ in
+            openWindow(id: "rules")
+        }
         .onReceive(NotificationCenter.default.publisher(for: .j4iOpenSearch)) { _ in
             openWindow(id: "search")
         }
@@ -705,6 +708,9 @@ struct HomeView: View {
                     }
                     shortcutButton("Sin clasificar", icon: "questionmark.folder", keys: nil) {
                         viewModel.revealQuarantine()
+                    }
+                    shortcutButton("Reglas", icon: "text.badge.checkmark", keys: "⌘G") {
+                        openWindow(id: "rules")
                     }
                 }
             }
