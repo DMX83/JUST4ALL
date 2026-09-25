@@ -535,3 +535,18 @@ Convención por version + build stamp:
   de importación (nuevas/actualizadas/sin cambios).
 - Store: `rules()`, `setDestination`, `removeRule`, `addManualRule`, `exportData`/`importData`
   (+ `Stats` con init público); suite 164 (163 + 1 skip; +7 tests). Capturas en `docs/design/G3/`.
+
+### Added — G4 (presencia en el sistema) (25-sep, noche)
+
+- **Menú de barra** (`MenuBarExtra`): estado del día (archivados y por revisar), accesos
+  (Inicio/⌘R/Buscar/Reglas), toggles de **pausa** y **simulación**, Ajustes y Salir; se refresca
+  al abrirse.
+- **Atajo global ⌥Espacio** (Carbon `RegisterEventHotKey`, sin permisos extra) → **buscador
+  flotante** sobre cualquier app: resultados al instante contra el índice (↵ abre el primero,
+  ⌘↵ pasa a la ventana Buscar con la consulta, Esc cierra); panel sin marco que se ajusta al
+  contenido.
+- **«Enviar a JUST4DESK»**: arrastrar ficheros al icono del Dock (`application(_:open:)`) o
+  soltarlos sobre «Inicio» → pasan por el pipeline real (journal + undo; acción manual: no la
+  frena la pausa, respeta la simulación).
+- Validado en vivo: ⌥Espacio abierto desde el Finder con resultados reales; menú de barra con
+  estado. Suite 167 (166 + 1 skip; +3 tests). Capturas en `docs/design/G4/`.

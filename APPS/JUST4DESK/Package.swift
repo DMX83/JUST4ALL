@@ -74,7 +74,7 @@ let package = Package(
         ),
         .testTarget(
             name: "JUST4DESKTests",
-            dependencies: ["JUST4DESK"]
+            dependencies: ["JUST4DESK", "J4IIndex"]
         )
     ]
 )

@@ -47,6 +47,12 @@ struct HomeView: View {
             footer
         }
         .frame(minWidth: 780, minHeight: 540)
+        .dropDestination(for: URL.self) { urls, _ in
+            let files = urls.filter(\.isFileURL)
+            guard !files.isEmpty else { return false }
+            viewModel.ingestSentFiles(files)
+            return true
+        }
         .task {
             await viewModel.start()
             await viewModel.refreshActivity()
@@ -111,7 +117,10 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: .j4iOpenRules)) { _ in
             openWindow(id: "rules")
         }
-        .onReceive(NotificationCenter.default.publisher(for: .j4iOpenSearch)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .j4iOpenSearch)) { note in
+            if let query = note.object as? String, !query.isEmpty {
+                viewModel.query = query
+            }
             openWindow(id: "search")
         }
         .onReceive(NotificationCenter.default.publisher(for: .j4iFocusOmnibox)) { _ in
@@ -775,7 +784,7 @@ struct HomeView: View {
                     .truncationMode(.middle)
             }
             Spacer(minLength: J4I.Space.s)
-            Text("⌘K buscar · ⌘F ventana de búsqueda")
+            Text("⌘K buscar · ⌥Espacio desde cualquier app")
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
         }

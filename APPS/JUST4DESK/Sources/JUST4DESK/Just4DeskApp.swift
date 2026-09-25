@@ -8,7 +8,7 @@ struct Just4DeskApp: App {
     @StateObject private var engine = SearchViewModel()
 
     var body: some Scene {
-        WindowGroup("JUST4DESK") {
+        WindowGroup("JUST4DESK", id: "home") {
             HomeView()
                 .environmentObject(engine)
                 .tint(J4I.brand)
@@ -94,6 +94,14 @@ struct Just4DeskApp: App {
                 .tint(J4I.brand)
         }
         .defaultSize(width: 760, height: 560)
+
+        MenuBarExtra {
+            MenuBarContent()
+                .environmentObject(engine)
+        } label: {
+            Image(systemName: "desktopcomputer")
+        }
+        .menuBarExtraStyle(.menu)
 
         Settings {
             SettingsView()

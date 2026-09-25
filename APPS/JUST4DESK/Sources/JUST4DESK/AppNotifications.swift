@@ -15,6 +15,8 @@ extension Notification.Name {
     static let j4iShowLogViewer = Notification.Name("j4i.showLogViewer")
     /// Abrir la ventana «Reglas» (comando de menú ⌘G).
     static let j4iOpenRules = Notification.Name("j4i.openRules")
+    /// Ficheros «enviados a JUST4DESK» desde el Finder (drop en el icono del Dock; object: [URL]).
+    static let j4iIngestFiles = Notification.Name("j4i.ingestFiles")
     /// La configuración de archivado ha cambiado (la emite `SearchViewModel`; la escuchan Ajustes/explorador).
     static let j4iFilingConfigChanged = Notification.Name("j4i.filingConfigChanged")
     /// Ajustes → activar/desactivar modo simulación (object: Bool).

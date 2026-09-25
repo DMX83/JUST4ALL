@@ -323,6 +323,12 @@ final class SearchViewModel: ObservableObject {
                 self.removeRoot(row)
             }
         }
+        observe(.j4iIngestFiles) { [weak self] note in
+            guard let files = note.object as? [URL], !files.isEmpty else { return }
+            Task { @MainActor [weak self] in
+                self?.ingestSentFiles(files)
+            }
+        }
     }
 
     private func postFilingConfigChanged() {
@@ -715,6 +721,42 @@ final class SearchViewModel: ObservableObject {
         suggestionsBusy = nil
         await refreshActivity()
         await refreshSuggestions(force: true)
+    }
+
+    // MARK: - Envío desde Finder (G4)
+
+    /// «Enviar a JUST4DESK» (drop en el icono del Dock o soltar en Inicio): procesa cada elemento
+    /// por el pipeline (journal + undo). Es una acción manual: no la frena la pausa, pero respeta
+    /// el modo simulación configurado.
+    func ingestSentFiles(_ urls: [URL]) {
+        Task { await performSentIngest(urls) }
+    }
+
+    private func performSentIngest(_ urls: [URL]) async {
+        guard let pipeline else {
+            lastErrorMessage = "La organización no está configurada todavía."
+            return
+        }
+        var moved = 0
+        var quarantined = 0
+        var skipped = 0
+        var failed = 0
+        for url in urls where url.isFileURL {
+            let outcome = await pipeline.processItem(url)
+            switch outcome.action {
+            case "move": moved += 1
+            case "quarantine": quarantined += 1
+            case "error": failed += 1
+            default: skipped += 1
+            }
+        }
+        var message = "Enviados: \(moved) archivado(s)"
+        if quarantined > 0 { message += " · \(quarantined) por revisar" }
+        if skipped > 0 { message += " · \(skipped) omitido(s)" }
+        if failed > 0 { message += " · \(failed) con error" }
+        lastOutcomeMessage = message
+        J4Log.info(.app, message)
+        await refreshActivity()
     }
 
     func undo(entry: JournalEntry) {

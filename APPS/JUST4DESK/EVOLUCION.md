@@ -170,6 +170,12 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 - **Informe semanal** (local, exportable): archivados, GB ordenados, reglas aprendidas, tokens
   ahorrados por conocimiento local. Refuerza valor percibido y da temas de conversación (marketing).
 
+> **Implementado (25-sep, G4 v1)**: menú de barra (estado, contador, pausa, simulación, accesos),
+> atajo global **⌥Espacio** con buscador flotante (resultados al instante desde cualquier app:
+> ↵ abre, ⌘↵ pasa a la ventana Buscar, Esc cierra) y **«Enviar a JUST4DESK»** (arrastrar al icono
+> del Dock o soltar en Inicio → pipeline con journal/undo). La Quick Action de Finder y la
+> notificación de lote quedan para el empaquetado DMG (NSServices del bundle).
+
 ---
 
 ## 4. Roadmap propuesto (fases G — incrementales, sin romper lo actual)
@@ -179,7 +185,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 | **G1** ✅ | **Inicio / Centro de control** + omnibox (⌘K) + buscador como vista/overlay | Cambia la historia del producto sin añadir motores nuevos (todo existe ya) | Medio |
 | **G2** ✅ | **Sugerencias proactivas v1**: duplicados (hash), capturas/Escritorio, grandes y olvidados | «Resultados que se pagan» (+ GB) con riesgo cero (undo) | Medio |
 | **G3** ✅ | **Reglas visibles** (pantalla + export/import) | Confianza y control; explota lo ya aprendido (27 reglas reales ya) | Bajo-Medio |
-| **G4** | **N5: menú de barra + atajo global + Quick Action Finder** | La app pasa de «ventana» a «presencia» (lo pide el mercado) | Bajo-Medio |
+| **G4** ✅ | **N5: menú de barra + atajo global + Quick Action Finder** (v1: menú + ⌥Espacio; la Quick Action llega con el DMG) | La app pasa de «ventana» a «presencia» (lo pide el mercado) | Bajo-Medio |
 | **G5** | **Espacios/colecciones** (+ etiquetas Finder opcionales) | «Organizar sin mover»; encaja con Inicio y omnibox | Medio-Alto |
 | **G6** | **Archivo en frío + informe semanal** | Consolida «mantenimiento continuo» del entorno | Bajo |
 | **G7** | **Búsqueda semántica local + chat del archivo (MCP para agentes)** | Diferencial avanzado (DEVONthink 4/Eagle ya lo venden) | Alto |

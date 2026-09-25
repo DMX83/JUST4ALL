@@ -594,6 +594,18 @@
   `setDestination`, `removeRule`, `addManualRule`, `exportData`/`importData`, `Stats` con init
   público). Validado con captura (27 reglas · aplicadas hoy 10). Suite 164 (163 + 1 skip; +7
   tests). Siguiente: G4 (menú de barra + atajo global + Quick Action de Finder).
+- G4 (25-sep, noche): **presencia en el sistema** — (a) **menú de barra** (`MenuBarExtra`):
+  estado («Hoy: N archivados · M por revisar»), accesos, toggles pausa/simulación, Ajustes,
+  Salir; se refresca al abrir. (b) **⌥Espacio global** (Carbon `RegisterEventHotKey` en
+  `J4IAppDelegate`) → **buscador flotante** (`QuickSearchPanelController` + `KeyablePanel` +
+  `QuickSearchModel`/`QuickSearchView`; alto ajustado con `NSHostingView.fittingSize`; ↵ abre,
+  ⌘↵ → ventana Buscar con la consulta (notif. `j4iOpenSearch` con objeto), Esc/desenfoque
+  cierra). (c) **«Enviar a JUST4DESK»**: `application(_:open:)` (drop en el Dock) + notif.
+  `j4iIngestFiles` → `SearchViewModel.ingestSentFiles` (pipeline real, sin pausa; respeta
+  simulación) + `dropDestination` en Inicio. `WindowGroup` con id `home`. Validado en vivo:
+  panel abierto desde el Finder con 6 resultados reales («factura»); menú de barra con estado.
+  La Quick Action de Finder queda para el DMG (NSServices del bundle). Suite 167 (166 + 1 skip;
+  +3 tests). Capturas `docs/design/G4/`.
 
 ## Lecciones y trampas
 

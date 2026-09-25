@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import Foundation
 import J4ICore
 
@@ -12,6 +13,8 @@ import J4ICore
 /// Los comandos del menú Ver siguen existiendo para que los atajos se vean.
 final class J4IAppDelegate: NSObject, NSApplicationDelegate {
     private var keyMonitor: Any?
+    private var quickSearch: QuickSearchPanelController?
+    private var quickSearchHotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
@@ -56,6 +59,27 @@ final class J4IAppDelegate: NSObject, NSApplicationDelegate {
                 return event
             }
         }
+
+        // G4 — presencia: buscador rápido global (⌥Espacio) disponible desde cualquier app.
+        let panelController = QuickSearchPanelController()
+        quickSearch = panelController
+        quickSearchHotKey = GlobalHotKey(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey)) { [weak panelController] in
+            Task { @MainActor in panelController?.toggle() }
+        }
+        if quickSearchHotKey == nil {
+            J4Log.warn(.app, "No se pudo registrar el atajo global ⌥Espacio (¿conflicto con otra app?)")
+        } else {
+            J4Log.info(.app, "Atajo global ⌥Espacio activo (buscador rápido).")
+        }
+    }
+
+    /// G4 — «Enviar a JUST4DESK» desde el Finder (arrastrar al icono del Dock): los ficheros van
+    /// al pipeline de archivado como si los soltaran en la carpeta de entrada (journal + undo).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        let files = urls.filter(\.isFileURL)
+        guard !files.isEmpty else { return }
+        J4Log.info(.app, "Enviados desde el Finder: \(files.count) elemento(s).")
+        NotificationCenter.default.post(name: .j4iIngestFiles, object: files)
     }
 
     /// Abre la ventana de Ajustes con varias rutas (en ejecución directa, sin bundle `.app`, los

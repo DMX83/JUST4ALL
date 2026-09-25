@@ -310,7 +310,9 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
   Validado en vivo (el usuario limpió 4 duplicados desde la tarjeta). Suite 157.
 - [x] G3: reglas visibles y portables — ventana «Reglas» (⌘G): listar con confianza/muestras,
   editar destino, borrar, crear a mano, export/import JSON con fusión por muestras. Suite 164.
-- [ ] G4: menú de barra + atajo global + Quick Action de Finder.
+- [x] G4 (v1): menú de barra + atajo global ⌥Espacio (buscador flotante) + «Enviar a JUST4DESK»
+  (Dock/Inicio). Validado en vivo. Suite 167. (Quick Action de Finder: con el empaquetado.)
+- [ ] G5: espacios/colecciones (+ etiquetas Finder opcionales).
 
 ## Referencias
 
