@@ -9,7 +9,7 @@ import Foundation
 /// buscadores de destino, en la UI y en las categorías permitidas de la IA.
 public enum TaxonomyInventory {
     /// Nodos de categoría (validación del planificador + categorías permitidas de la IA):
-    /// taxonomía por defecto ∪ carpetas existentes hasta `maxDepth` niveles. La cuarentena se
+    /// taxonomía por defecto ∪ carpetas existentes hasta `maxDepth` niveles. La sin clasificar se
     /// conserva tal cual (sin hijos: su contenido son unidades pendientes de revisar, no destinos).
     public static func categories(rootURL: URL, maxDepth: Int = 2, fileManager: FileManager = .default) -> [TaxonomyNode] {
         let defaults = DefaultTaxonomy.categories()
@@ -45,7 +45,7 @@ public enum TaxonomyInventory {
         return nodes
     }
 
-    /// Rutas relativas para los buscadores de destino (sin cuarentena).
+    /// Rutas relativas para los buscadores de destino (sin sin clasificar).
     public static func availableDestinations(rootURL: URL, maxDepth: Int = 2, fileManager: FileManager = .default) -> [String] {
         categories(rootURL: rootURL, maxDepth: maxDepth, fileManager: fileManager)
             .flatMap { $0.allRelativePaths }

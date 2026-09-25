@@ -5,7 +5,7 @@ import J4ICore
 import J4IFiling
 import J4IIndex
 
-/// Cola de revisión de la cuarentena (F7.6): lista los ficheros de `99_SinClasificar`,
+/// Cola de revisión de «sin clasificar» (F7.6): lista los ficheros de `99_SinClasificar`,
 /// propone un destino (reglas locales) y los mueve a su categoría en un clic.
 ///
 /// - Orden por extensión (con secciones), nombre, fecha o tamaño; selección múltiple para
@@ -74,7 +74,7 @@ struct ReviewView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("La carpeta se procesa elemento a elemento (cada fichero a su categoría; sin señal → cuarentena) y la cáscara vacía queda en origen. Deshacible desde Actividad.")
+            Text("La carpeta se procesa elemento a elemento (cada fichero a su categoría; sin señal → sin clasificar) y la cáscara vacía queda en origen. Deshacible desde Actividad.")
         }
     }
 
@@ -135,7 +135,7 @@ struct ReviewView: View {
                 }
                 .disabled(model.selection.isEmpty)
                 Divider()
-                Button("Abrir cuarentena en Finder") {
+                Button("Abrir «Sin clasificar» en Finder") {
                     model.revealQuarantine()
                 }
                 Button("Actualizar lista") {
@@ -354,7 +354,7 @@ struct ReviewView: View {
         J4IEmptyState(
             systemImage: "checkmark.seal",
             title: "Nada por revisar",
-            message: "La cuarentena está vacía. Aquí aparecerán los documentos que el archivado automático no pudo clasificar, con una sugerencia de destino para reubicarlos en un clic.",
+            message: "Aquí aparecerán los documentos que el archivado automático no pudo clasificar, con una sugerencia de destino para reubicarlos en un clic.",
             tint: J4I.success
         )
     }
@@ -377,7 +377,7 @@ struct ReviewView: View {
                 Text(status)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Cuarentena: \(model.quarantineDisplay)")
+                Text("Sin clasificar: \(model.quarantineDisplay)")
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -390,7 +390,7 @@ struct ReviewView: View {
     }
 }
 
-/// Estado de la cola de revisión: lectura de la cuarentena + sugerencias + mover con journal.
+/// Estado de la cola de revisión: lectura de «sin clasificar» + sugerencias + mover con journal.
 @MainActor
 final class ReviewViewModel: ObservableObject {
     struct Item: Identifiable, Equatable {
@@ -474,7 +474,7 @@ final class ReviewViewModel: ObservableObject {
         quarantineURL.map { ($0.path as NSString).abbreviatingWithTildeInPath } ?? "—"
     }
 
-    /// Lee la cuarentena del disco (carpeta pequeña y plana): la cola de revisión debe ser
+    /// Lee la sin clasificar del disco (carpeta pequeña y plana): la cola de revisión debe ser
     /// fiable aunque el índice aún no haya visto el último movimiento.
     func load() {
         errorMessage = nil
@@ -648,7 +648,7 @@ final class ReviewViewModel: ObservableObject {
 
     /// Destino efectivo de una fila: la propuesta de la IA tiene prioridad sobre la sugerencia de
     /// reglas y **se conserva al recargar la lista** tras cada movimiento (antes se perdía del
-    /// desplegable y había que rebuscarla). «Sin destino claro» (cuarentena) cae a la sugerencia local.
+    /// desplegable y había que rebuscarla). «Sin destino claro» (sin clasificar) cae a la sugerencia local.
     nonisolated static func effectiveDestination(aiCategory: String?, aiIsQuarantine: Bool, rulesSuggestion: String?) -> String? {
         if let aiCategory, !aiIsQuarantine, !aiCategory.isEmpty {
             return aiCategory
@@ -894,7 +894,7 @@ final class ReviewViewModel: ObservableObject {
     func revealQuarantine() {
         guard let quarantineURL else { return }
         guard FileManager.default.fileExists(atPath: quarantineURL.path) else {
-            errorMessage = "Todavía no existe la carpeta de cuarentena."
+            errorMessage = "Todavía no existe la carpeta sin clasificar."
             return
         }
         NSWorkspace.shared.activateFileViewerSelecting([quarantineURL])

@@ -8,7 +8,7 @@ import J4IIndex
 /// G1 — Pantalla «Inicio»: el centro de control de tu escritorio digital.
 ///
 /// Sustituye al buscador como pantalla principal: resume **lo que necesita una decisión**
-/// (bandeja: cuarentena, deshacer, avisos), **lo que hizo la app** (actividad reciente, siempre
+/// (bandeja: por revisar, deshacer, avisos), **lo que hizo la app** (actividad reciente, siempre
 /// con deshacer), el **estado** (destino, índice, IA, conocimiento local) y los **accesos**
 /// rápidos. El buscador completo sigue disponible en la ventana «Buscar» (⌘F) y el omnibox
 /// (⌘K) busca al instante desde aquí (Enter abre el primer resultado).
@@ -309,12 +309,12 @@ struct HomeView: View {
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 1) {
                 Text(viewModel.quarantineCount > 0
-                     ? "\(viewModel.quarantineCount) elemento(s) en cuarentena"
-                     : "Cuarentena al día")
+                     ? "\(viewModel.quarantineCount) elemento(s) por revisar"
+                     : "Nada por revisar")
                     .font(.system(size: 12.5, weight: .medium))
                 Text(viewModel.quarantineCount > 0
-                     ? "La app no pudo clasificarlos: revísalos y reubícalos"
-                     : "Nada pendiente de revisar")
+                     ? "No se pudieron clasificar solos: asígnales un destino"
+                     : "Todo lo que llegó se clasificó")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -553,7 +553,7 @@ struct HomeView: View {
                             viewModel.revealPath(root)
                         }
                     }
-                    shortcutButton("Cuarentena", icon: "questionmark.folder", keys: nil) {
+                    shortcutButton("Sin clasificar", icon: "questionmark.folder", keys: nil) {
                         viewModel.revealQuarantine()
                     }
                 }

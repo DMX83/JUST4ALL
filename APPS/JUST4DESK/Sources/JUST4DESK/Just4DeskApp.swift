@@ -31,7 +31,7 @@ struct Just4DeskApp: App {
                     NotificationCenter.default.post(name: .j4iOpenExplorer, object: nil)
                 }
                 .keyboardShortcut("e", modifiers: .command)
-                Button("Revisar cuarentena") {
+                Button("Por revisar") {
                     NotificationCenter.default.post(name: .j4iOpenReview, object: nil)
                 }
                 .keyboardShortcut("r", modifiers: .command)

@@ -19,7 +19,7 @@
 - Ya aplicado en F8.3: para **carpetas-unidad** el texto interno NO decide (solo nombre +
   extensión dominante, con desempate vídeo > audio > imagen). Pero las *instrucciones de la IA*
   siguen **en código**: hoy no hay forma de decirle «una película va a Películas», «esto es
-  trabajo/empresa/ocio», «si dudas, cuarentena» sin tocar Swift.
+  trabajo/empresa/ocio», «si dudas, sin clasificar» sin tocar Swift.
 
 ## 2. Dos «skills» distintos (no confundir)
 
@@ -35,7 +35,7 @@
 - **La skill es un artefacto interno del equipo**, versionada con el binario (`FilingSkill.version`);
   el usuario recibe resultados (y el registro), no knobs que configurar.
 - **Antídoto contra malas interpretaciones = capas**, no solo un buen prompt:
-  instrucciones claras + ejemplos reales + validación determinista + dudas → cuarentena.
+  instrucciones claras + ejemplos reales + validación determinista + dudas → sin clasificar.
 - **La IA nunca decide sola en firme**: propone; `FilingPlanner` valida (categoría ∈ taxonomía,
   confianza ≥ umbral) y todo queda en el journal con la **versión de política** usada.
 
@@ -47,7 +47,7 @@ Vive en `Sources/J4ICore/FilingSkill.swift` (código + casos; se revisa por PR c
 |---|---|
 | `version` | Sube al tocar instrucciones o casos; se registra al arrancar («Skill de clasificación vN») |
 | `assistantInstructions` | Criterio curado en español: carpeta≠documento, vocabulario del usuario (audiolibro→Audiolibros; documental→Documentales; película→Peliculas; serie→Series; curso→06_Educacion/Cursos; portable→Herramientas), **familias de extensión** (red: `.rsc`/`.ovpn`/`.pcap`/`.backup`/`.conf`/`.cfg` → `12_Software/Redes`; código: `.py`/`.sh`/`.ps1`/`.sql`/`.js`… → `12_Software/Desarrollo`), **estrategia de carpeta** (`mode`: entera vs desglosar), dudas→99 |
-| `curatedCases[]` | Casos **reales** con destino esperado (`nil` = cuarentena): son a la vez **few-shot** para la IA y **tests de regresión** (`FilingSkillCasesTests`) |
+| `curatedCases[]` | Casos **reales** con destino esperado (`nil` = sin clasificar): son a la vez **few-shot** para la IA y **tests de regresión** (`FilingSkillCasesTests`) |
 | Reglas locales | `RulesFilingClassifier` (nombre → extensión); la skill documenta y fija su comportamiento esperado |
 | Umbral | 0.5 en `FilingPlanner` (fijo; moverlo sería decisión de producto, no del usuario) |
 
@@ -91,7 +91,7 @@ la siguiente versión de la app.
   `Audiolibros`, `Musica`, `06_Educacion/Cursos`, `15_Libros`; skill v2 con 14 casos curados.
   Los contextos trabajo/empresa/ocio quedan para la capa IA (pendiente 2).
 - **F9.3 — Reevaluación asistida — ✅ implementada (2026-09-24, N2)**: «Reevaluar con IA» en ⌘R
-  sobre la cuarentena (ficheros y carpetas).
+  sobre «sin clasificar» (ficheros y carpetas).
 - **F9.4 — Catálogo de extensiones técnicas — ✅ implementada (2026-09-24)**: pregunta del usuario
   («¿puede la IA clasificar por extensión?», caso `.rsc` de MikroTik); skill v4 con familias de
   extensión (red/código) + espejo en reglas locales + 3 casos curados; nueva `12_Software/Redes`.

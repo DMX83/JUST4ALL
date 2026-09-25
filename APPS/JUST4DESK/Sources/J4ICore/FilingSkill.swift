@@ -34,7 +34,7 @@ public enum FilingSkill {
     - Ante duda real, elige 99_SinClasificar con confianza baja: preferimos revisar a archivar mal.
     """
 
-    /// Caso real curado: entrada + destino esperado (nil = sin propuesta local → cuarentena).
+    /// Caso real curado: entrada + destino esperado (nil = sin propuesta local → sin clasificar).
     public struct CuratedCase: Sendable, Equatable {
         public enum Kind: String, Sendable {
             case file
@@ -45,7 +45,7 @@ public enum FilingSkill {
         public let kind: Kind
         /// Extensión dominante (carpetas) o pista adicional (ficheros).
         public let hint: String
-        /// Categoría esperada; `nil` = cuarentena («sin propuesta de clasificación local»).
+        /// Categoría esperada; `nil` = sin clasificar («sin propuesta de clasificación local»).
         public let expected: String?
         /// Por qué este caso existe (contexto del hallazgo).
         public let note: String
@@ -116,14 +116,14 @@ public enum FilingSkill {
             kind: .folder,
             hint: "pdf",
             expected: nil,
-            note: "regresión 2026-09-24: cajón de sastre con PDFs variados → cuarentena (una «nómina» interna no decide el lote)"
+            note: "regresión 2026-09-24: cajón de sastre con PDFs variados → sin clasificar (una «nómina» interna no decide el lote)"
         ),
         CuratedCase(
             name: "alexis 25-09-06",
             kind: .folder,
             hint: "pdf",
             expected: nil,
-            note: "nombre con fecha/código sin señal clara → cuarentena (revisable con ⌘R)"
+            note: "nombre con fecha/código sin señal clara → sin clasificar (revisable con ⌘R)"
         ),
         CuratedCase(
             name: "Factura-Luz-Marzo.txt",
@@ -165,7 +165,7 @@ public enum FilingSkill {
             kind: .file,
             hint: "rsc",
             expected: "12_Software/Redes",
-            note: "regresión 2026-09-24: script RouterOS de MikroTik; antes del catálogo de extensiones técnicas acabó en cuarentena"
+            note: "regresión 2026-09-24: script RouterOS de MikroTik; antes del catálogo de extensiones técnicas acabó en sin clasificar"
         ),
         CuratedCase(
             name: "Scripts MikroTik RouterOS",

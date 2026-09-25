@@ -1,6 +1,6 @@
 ---
 name: just4desk
-description: "Use when working on JUST4DESK (APPS/JUST4DESK): macOS app with a control-room home («Inicio»: inbox, activity, state, omnibox ⌘K) plus instant search (SQLite FTS5 + FSEvents) and intelligent document filing (PDFKit/Vision OCR + optional DeepSeek JSON API). Covers module map, build/test/DMG commands, privacy guardrails, automatic-filing safety (undo journal, quarantine, never-delete) and the mandatory MEMORY.md update cycle. Trigger words: JUST4DESK, Inicio, omnibox, buscador instantáneo, organizador de documentos, taxonomía, archivar documentos, Descargas, FTS5, FSEvents, DeepSeek, FilingPlanner, cuarentena, undo."
+description: "Use when working on JUST4DESK (APPS/JUST4DESK): macOS app with a control-room home («Inicio»: inbox, activity, state, omnibox ⌘K) plus instant search (SQLite FTS5 + FSEvents) and intelligent document filing (PDFKit/Vision OCR + optional DeepSeek JSON API). Covers module map, build/test/DMG commands, privacy guardrails, automatic-filing safety (undo journal, «sin clasificar» review queue, never-delete) and the mandatory MEMORY.md update cycle. Trigger words: JUST4DESK, Inicio, omnibox, buscador instantáneo, organizador de documentos, taxonomía, archivar documentos, Descargas, FTS5, FSEvents, DeepSeek, FilingPlanner, sin clasificar, por revisar, undo."
 ---
 
 # JUST4DESK — desarrollo
@@ -25,7 +25,7 @@ actividad, estado, accesos) + **buscador instantáneo** (omnibox ⌘K en Inicio 
 | `J4IIndex` | `Sources/J4IIndex` | Índice SQLite FTS5, crawler, ingesta FSEvents, query API |
 | `J4IDocs` | `Sources/J4IDocs` | PDFKit, Vision OCR, txt/md/rtf, docx/xlsx, regex de metadatos |
 | `J4IAI` | `Sources/J4IAI` | `DeepSeekClient`, `DeepSeekFilingAdvisor`, cache por hash |
-| `J4IFiling` | `Sources/J4IFiling` | Ejecución mkdirs+move (J4FOps), journal+undo, cuarentena, simulación |
+| `J4IFiling` | `Sources/J4IFiling` | Ejecución mkdirs+move (J4FOps), journal+undo, «sin clasificar», simulación |
 | `JUST4DESK` | `Sources/JUST4DESK` | App SwiftUI: **Inicio** (`HomeView`), ventana «Buscar», explorador, revisión, ajustes |
 
 Dependencia local: `APPS/JUST4FOLDERS` (`.package(path: "../JUST4FOLDERS")`, productos
@@ -57,7 +57,7 @@ QA/benchmarks grandes: env-gated (p. ej. `J4I_RUN_100K_PERF=1`), nunca en el cam
   `.part/.crdownload/.download/.tmp` y ocultos.
 - **Colisiones**: sufijo `-1`, `-2`… nunca overwrite. Nombres saneados según plantilla.
 - **IA no bloquea**: error/JSON vacío → retry corto → reglas locales (nombre → texto → extensión) →
-  cuarentena si hay duda.
+  sin clasificar si hay duda.
 
 ## Convenciones
 

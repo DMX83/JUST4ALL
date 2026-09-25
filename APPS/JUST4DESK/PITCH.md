@@ -13,7 +13,7 @@ Tres capas en una app nativa de macOS:
 2. **Organizador automático inteligente**: vigila **varias** carpetas de entrada (p. ej. `~/Descargas`
    y `~/Downloads`), analiza en local (PDFKit + Vision OCR) y archiva en una taxonomía en español
    (`01_Fiscal`, `13_Multimedia/Peliculas`, `12_Software/Redes`…) con IA opcional (DeepSeek),
-   *journal* + **undo** y **cuarentena** para lo dudoso.
+   *journal* + **undo** y la cola **«sin clasificar»** para lo dudoso.
 3. **Inteligencia local que aprende**: cada decisión de la IA y cada corrección tuya se resumen en
    reglas locales (extensiones y palabras de carpeta). Con el uso, **pregunta cada vez menos** y gasta
    cada vez menos tokens (caché de sugerencias + conocimiento local).
@@ -28,7 +28,7 @@ traders, creadores… y cualquiera que quiera «Todo + casa ordenada» **sin sub
 | Ventaja | Evidencia |
 |---|---|
 | **Resultados desde el día 1** | `~/Descargas` + `~/Downloads`: **28 GB → 15 MB** organizados hacia `~/JUST4DESK` (32 GB), **0 errores** |
-| **Seguridad radical: nunca borra** | Solo mueve; *journal* + undo (por elemento y por lote), cuarentena para dudas, **modo simulación**, duplicados que se quedan en origen |
+| **Seguridad radical: nunca borra** | Solo mueve; *journal* + undo (por elemento y por lote), cola «sin clasificar» para dudas, **modo simulación**, duplicados que se quedan en origen |
 | **Inteligencia que se abarata** | **11 reglas aprendidas en horas** de uso real; las promociones clasifican **sin llamar a la IA**; caché de sugerencias; cap diario + **contador exacto de tokens** |
 | **Privacidad local-first** | OCR/índice 100 % locales; solo una muestra truncada viaja a DeepSeek, y solo si activas la IA; sin extraer texto de scripts (credenciales) |
 | **Criterio fino, no genérico** | Carpetas como unidad (no rompe apps portables), la IA decide **entera vs desglosar** cajones, vocabulario en español, extensiones técnicas (`.rsc` → Redes) |
@@ -44,7 +44,7 @@ traders, creadores… y cualquiera que quiera «Todo + casa ordenada» **sin sub
   sin sandbox.
 - **La IA requiere clave propia de DeepSeek** (coste externo + cap diario; techo orientativo
   ~400k tokens/día) y conexión. Sin ella funciona, con menos aciertos (reglas + conocimiento).
-- **La cuarentena requiere tu ojo**: lotes grandes dejan decenas de dudosos para revisión (⌘R) —
+- **La cola «sin clasificar» requiere tu ojo**: lotes grandes dejan decenas de dudosos para revisión (⌘R) —
   por diseño, la decisión final es tuya.
 - **Cobertura documental incompleta**: docx vía unzip del sistema, **xlsx pendiente**; OCR variable
   en escaneos malos.
@@ -52,7 +52,7 @@ traders, creadores… y cualquiera que quiera «Todo + casa ordenada» **sin sub
   (≥ 3 coincidencias): las primeras veces sigue preguntando.
 - **Reglas aprendidas sin editor aún**: se corrigen volviendo a mover (eso las reescribe al instante).
 - **Pendientes del roadmap**: MenuBar/atajo global, DMG firmado, panel de estadísticas, CI.
-- **Riesgo de mala clasificación existe** — mitigado (umbral, cuarentena, undo), no eliminado.
+- **Riesgo de mala clasificación existe** — mitigado (umbral, cola «sin clasificar», undo), no eliminado.
 
 ## Comparativa
 
@@ -75,11 +75,11 @@ la app más lista para la próxima. Y lo mejor: es tu Mac quien lo hace.»*
 
 - Encuentra cualquier archivo en milisegundos (índice local, subcadena y contenido).
 - Deja que ordene tus descargas solo: clasifica por contenido, decide carpeta entera o desglosada y
-  archiva con undo y cuarentena revisable.
+  archiva con undo y cola «sin clasificar» revisable.
 - Aprende de la IA y de tus correcciones: clasifica sin gastar tokens lo ya aprendido. Todo en tu Mac.
 
 ## Estado (2026-09-25)
 
 - Fases F0–F12.0 completadas; **132 tests** (131 en verde + 1 skip).
-- Run real: `~/Descargas` + `~/Downloads` organizadas (28 GB movidos, 0 errores), cuarentena en
+- Run real: `~/Descargas` + `~/Downloads` organizadas (28 GB movidos, 0 errores), pendientes en
   revisión asistida, 11 reglas aprendidas.

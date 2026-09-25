@@ -553,6 +553,11 @@
   listado plano barato (`refreshQuarantineCount`, refresco junto a `refreshActivity`). Atajos
   nuevos: ⌘F Buscar y ⌘K omnibox (comandos + notificaciones `j4iOpenSearch`/`j4iFocusOmnibox`).
   Suite 144 (143 + 1 skip); capturas validadas (Inicio/omnibox/Buscar).
+- Terminología (25-sep, petición del usuario): **«cuarentena» fuera de la interfaz** («me suena a
+  virus») → **«por revisar»** (cola/acción, coincide con la ventana ⌘R) y **«sin clasificar»**
+  (estado/carpeta, coincide con `99_SinClasificar`). Cambiado en Inicio/Buscar/Por revisar/
+  menús/avisos/log y docs de producto; identificadores internos `quarantine*` y carpeta intactos
+  (sin migración de datos). Las entradas históricas conservan el término antiguo.
 - Fix F12.0 (25-sep): **aislamiento del conocimiento local en tests** (los de archivado no
   inyectaban `knowledge` y contaminaban el almacén real) + `noSignalExtensions` (txt/dat/log/
   tmp/bak/old/md: no se aprende regla de extensión desde datos automáticos; las correcciones

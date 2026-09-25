@@ -5,7 +5,7 @@ import Foundation
 /// Reglas:
 /// - La categoría debe existir en la taxonomía (matching normalizado: sin acentos, sin prefijos
 ///   numéricos como `01_`, insensible a caso). Si solo coincide el último segmento, se resuelve.
-/// - Confianza < 0.5 o categoría desconocida → cuarentena (`99_SinClasificar`).
+/// - Confianza < 0.5 o categoría desconocida → sin clasificar (`99_SinClasificar`).
 /// - El nombre final se construye con `FileNameFactory` y nunca puede contener rutas.
 public enum FilingPlanner {
     public static let minimumConfidence = 0.5

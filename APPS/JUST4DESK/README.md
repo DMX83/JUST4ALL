@@ -8,7 +8,7 @@ App nativa macOS en SwiftUI que une dos herramientas:
 2. **Organizador inteligente de documentos**: vigila carpetas de entrada (por defecto
    `~/Descargas`), extrae el texto localmente (PDFKit + Vision OCR), clasifica cada documento
    (reglas locales + DeepSeek opcional) y lo archiva en una taxonomía `~/JUST4DESK` con undo
-   y cuarentena.
+   y cola «sin clasificar».
 
 ## Estado actual (2026-09-24)
 
@@ -18,7 +18,7 @@ App nativa macOS en SwiftUI que une dos herramientas:
 - **F3.0 — Configuración inicial: completada** (carpeta raíz + carpeta de entrada + taxonomía al primer arranque).
 - **F3 — Ingesta y análisis: completada** (watcher con estabilidad, PDFKit/Vision OCR, metadatos, hash).
 - **F4 — Clasificación IA: completada** (DeepSeek JSON opcional + reglas locales + planner).
-- **F5 — Archivado automático: completada** (taxonomía, journal con undo, cuarentena, simulación).
+- **F5 — Archivado automático: completada** (taxonomía, journal con undo, cola «sin clasificar», simulación).
 - **F6 — Hub + release + QA: completada** (catálogo hub, scripts, workspace, docs).
 - **F6.1 — Registro en vivo: completada** (`J4Log`: archivo rotativo + registro unificado + visor «Registro» con ⌘L).
 - **F7 — Reconocimiento por nombre/extensión + Explorador + concurrencia: completada** (análisis lite,
@@ -29,7 +29,7 @@ App nativa macOS en SwiftUI que une dos herramientas:
   papelera» manual y reversible desde el explorador).
 - **F7.5 — Búsqueda por contenido: completada** (toggle «En contenido» + fragmento resaltado en los
   resultados).
-- **F7.6 — Revisión de cuarentena: completada** (ventana «Por revisar» ⌘R: sugerencia de destino y
+- **F7.6 — Revisión de «sin clasificar»: completada** (ventana «Por revisar» ⌘R: sugerencia de destino y
   mover en un clic, con deshacer desde Actividad).
 - **F7.7/F7.8 — «Por revisar» 2.0: completada** (orden por extensión con secciones, selección múltiple
   para mover en lote y papelera para la selección).
@@ -83,7 +83,7 @@ O bien `./scripts/run.sh`: compila si hace falta, relanza la app **desacoplada d
 taxonomía: `01_Fiscal`, `02_Banca`, … `99_SinClasificar`) y **carpeta de entrada** a vigilar
 (sugerencia `~/Descargas`).
 2. A partir de ahí, cada documento que llegue a la carpeta de entrada —ficheros sueltos **y carpetas
-completas**— se analiza y archiva automáticamente (con undo desde el panel de Actividad y cuarentena
+completas**— se analiza y archiva automáticamente (con undo desde el panel de Actividad y cola «sin clasificar»
 para lo dudoso — revísala con **⌘R**, ventana «Por revisar»). La carpeta de organización se indexa
 para el buscador.
 3. Para ver qué está haciendo la app en cada momento: menú **Carpetas → Ver registro…** (⌘L) —visión

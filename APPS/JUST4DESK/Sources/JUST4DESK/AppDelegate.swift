@@ -5,7 +5,7 @@ import J4ICore
 /// Delegate de la app.
 ///
 /// Instala un monitor local de `NSEvent` para los atajos globales (⌘E explorador, ⌘R revisar
-/// cuarentena, ⌘L registro, ⌘I ajustes de IA,
+/// sin clasificar, ⌘L registro, ⌘I ajustes de IA,
 /// ⌘A ajustes — ⌘, también —): los
 /// key equivalents del menú no son fiables cuando el binario se ejecuta directamente
 /// (sin bundle `.app`), así que la captura se hace a nivel de eventos de la app.
@@ -35,7 +35,7 @@ final class J4IAppDelegate: NSObject, NSApplicationDelegate {
                 NotificationCenter.default.post(name: .j4iOpenExplorer, object: nil)
                 return nil
             case "r":
-                J4Log.debug(.app, "Atajo ⌘R: revisar cuarentena.")
+                J4Log.debug(.app, "Atajo ⌘R: por revisar.")
                 NotificationCenter.default.post(name: .j4iOpenReview, object: nil)
                 return nil
             case "l":

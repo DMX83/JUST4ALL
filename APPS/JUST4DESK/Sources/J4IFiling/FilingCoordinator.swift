@@ -10,7 +10,7 @@ import J4IIndex
 /// - Nunca borra: solo mueve (con undo por journal).
 /// - Cache por hash: no se re-analiza ni re-clasifica un documento ya visto.
 /// - Duplicados (mismo hash ya archivado y presente): se dejan en origen (acción `skipped-duplicate`).
-/// - IA no bloquea: si falla o no hay clave, caen las reglas locales; si tampoco hay match → cuarentena.
+/// - IA no bloquea: si falla o no hay clave, caen las reglas locales; si tampoco hay match → sin clasificar.
 public final class FilingCoordinator: @unchecked Sendable {
     public struct Outcome: Sendable, Equatable {
         public let sourcePath: String
@@ -131,7 +131,7 @@ public final class FilingCoordinator: @unchecked Sendable {
                     J4Log.info(.filing, "Por extensión → «\(byExtension.categoryPath)» (\(byExtension.reason))")
                 }
                 if proposal == nil {
-                    J4Log.warn(.filing, "Sin coincidencias para «\(displayName)»: se enviará a cuarentena.")
+                    J4Log.warn(.filing, "Sin coincidencias para «\(displayName)»: se enviará a «sin clasificar».")
                 }
             }
 
@@ -167,7 +167,7 @@ public final class FilingCoordinator: @unchecked Sendable {
                 J4Log.info(.filing, "Colisión de nombre: «\(plan.fileName)» → «\(result.destinationURL.lastPathComponent)».")
             }
             if plan.isQuarantine {
-                J4Log.warn(.filing, "Cuarentena: «\(displayName)» → «\(result.categoryRelativePath)» (\(plan.reason))")
+                J4Log.warn(.filing, "Sin clasificar: «\(displayName)» → «\(result.categoryRelativePath)» (\(plan.reason))")
             } else {
                 J4Log.info(.filing, "Archivado: «\(displayName)» → «\(result.categoryRelativePath)/\(result.destinationURL.lastPathComponent)» (\(plan.source.rawValue), confianza \(String(format: "%.2f", plan.confidence))).")
             }
@@ -207,7 +207,7 @@ public final class FilingCoordinator: @unchecked Sendable {
     }
 
     /// Propuesta de destino SIN mover nada (para «Por revisar» y el Explorador): mismo criterio y
-    /// salvaguardas que el archivado (IA → reglas → extensión dominante; umbral → cuarentena) y
+    /// salvaguardas que el archivado (IA → reglas → extensión dominante; umbral → sin clasificar) y
     /// respetando el control de IA (interruptor + cap diario). Consulta fresca: no usa caché.
     public struct Suggestion: Sendable, Equatable {
         public let sourcePath: String
@@ -325,7 +325,7 @@ public final class FilingCoordinator: @unchecked Sendable {
     /// a la categoría, conservando su nombre y su estructura originales.
     ///
     /// Salvaguardas: no se renombra la carpeta, no se descompone su contenido y jamás se borra
-    /// (mover + journal + undo, igual que los ficheros). Sin coincidencia → cuarentena.
+    /// (mover + journal + undo, igual que los ficheros). Sin coincidencia → sin clasificar.
     public func processFolder(at url: URL, splitDepth: Int = 0, batchID: String? = nil) async -> Outcome {
         let standardized = url.standardizedFileURL
         let displayName = standardized.lastPathComponent
@@ -405,7 +405,7 @@ public final class FilingCoordinator: @unchecked Sendable {
             }
         }
         if proposal == nil {
-            J4Log.warn(.filing, "Sin coincidencias para la carpeta «\(displayName)»: se enviará a cuarentena.")
+            J4Log.warn(.filing, "Sin coincidencias para la carpeta «\(displayName)»: se enviará a «sin clasificar».")
         }
 
         let base = FilingPlanner.resolve(proposal: proposal, originalFileName: displayName, categories: TaxonomyInventory.categories(rootURL: rootURL))
@@ -447,7 +447,7 @@ public final class FilingCoordinator: @unchecked Sendable {
                 J4Log.info(.filing, "Colisión de nombre: «\(displayName)» → «\(result.destinationURL.lastPathComponent)».")
             }
             if plan.isQuarantine {
-                J4Log.warn(.filing, "Cuarentena (carpeta): «\(displayName)» → «\(result.categoryRelativePath)» (\(plan.reason))")
+                J4Log.warn(.filing, "Sin clasificar (carpeta): «\(displayName)» → «\(result.categoryRelativePath)» (\(plan.reason))")
             } else {
                 J4Log.info(.filing, "Archivada carpeta: «\(displayName)» → «\(result.categoryRelativePath)/\(result.destinationURL.lastPathComponent)» (\(plan.source.rawValue), confianza \(String(format: "%.2f", plan.confidence))).")
             }
@@ -535,14 +535,14 @@ public final class FilingCoordinator: @unchecked Sendable {
             }
         }
 
-        var reason = "Desglosada: \(moved) archivado(s), \(quarantined) a cuarentena"
+        var reason = "Desglosada: \(moved) archivado(s), \(quarantined) sin clasificar"
         if skipped > 0 { reason += ", \(skipped) omitido(s)" }
         if failures > 0 { reason += ", \(failures) con error" }
         reason += "."
         if let detail { reason += " Ej.: \(detail)" }
         J4Log.info(.filing, "Desglose de «\(displayName)» → \(reason)")
         if quarantined > 0 {
-            J4Log.warn(.filing, "Desglose de «\(displayName)»: \(quarantined) elemento(s) sin destino quedaron en la cuarentena para revisar.")
+            J4Log.warn(.filing, "Desglose de «\(displayName)»: \(quarantined) elemento(s) sin destino quedaron sin clasificar (por revisar).")
         }
         return Outcome(sourcePath: standardized.path, destinationPath: "", categoryPath: "", action: "split", reason: reason)
     }
@@ -565,7 +565,7 @@ public final class FilingCoordinator: @unchecked Sendable {
         }
     }
 
-    /// Reclasifica manualmente un fichero (p. ej. desde la cuarentena) hacia una categoría del árbol.
+    /// Reclasifica manualmente un fichero (p. ej. desde la sin clasificar) hacia una categoría del árbol.
     ///
     /// Acción manual y explícita del usuario: no pasa por el modo simulación. Mantiene las garantías
     /// del archivado (mkdirs, colisión `-1`/`-2`, nunca sobreescribe) y queda en el journal (undo).
@@ -604,13 +604,13 @@ public final class FilingCoordinator: @unchecked Sendable {
             } else {
                 recordKnowledge(kind: .fileExtension, value: KnowledgeFeatures.fileExtension(ofName: displayName), categoryPath: result.categoryRelativePath, confidence: 1.0, fromUser: true)
             }
-            J4Log.info(.filing, "Revisión: «\(displayName)» → «\(result.categoryRelativePath)/\(result.destinationURL.lastPathComponent)» (manual, desde cuarentena).")
+            J4Log.info(.filing, "Revisión: «\(displayName)» → «\(result.categoryRelativePath)/\(result.destinationURL.lastPathComponent)» (manual, desde «sin clasificar»).")
             return Outcome(
                 sourcePath: standardized.path,
                 destinationPath: result.destinationURL.path,
                 categoryPath: result.categoryRelativePath,
                 action: "move",
-                reason: "Reclasificación manual desde la revisión de cuarentena."
+                reason: "Reclasificación manual desde «sin clasificar»."
             )
         } catch {
             J4Log.error(.filing, "Error al reclasificar «\(displayName)»: \(error.localizedDescription)")
@@ -645,7 +645,7 @@ public final class FilingCoordinator: @unchecked Sendable {
     }
 
     /// Asegura que el documento archivado queda en el índice (entrada + texto para búsqueda por contenido).
-    /// `cachedText` permite reutilizar el texto ya extraído (p. ej. al reclasificar desde cuarentena)
+    /// `cachedText` permite reutilizar el texto ya extraído (p. ej. al reclasificar desde sin clasificar)
     /// y evitar una re-extracción/OCR.
     private func indexFiledDocument(at url: URL, cachedText: String? = nil) async {
         let rootInfo = try? await index.rootID(containing: url.path)

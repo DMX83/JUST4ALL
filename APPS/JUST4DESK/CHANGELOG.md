@@ -474,3 +474,14 @@ Convención por version + build stamp:
 - Detalles: rejilla adaptativa 2×2, ventana principal 1120×720, pie con píldora de organización y
   última operación; «Inicio» aloja el asistente inicial, la actividad y el visor de registro.
 - Validación: capturas de Inicio, omnibox con resultados y ventana «Buscar»; suite 144 (143 + 1).
+
+### Changed — Terminología: «cuarentena» → «por revisar» / «sin clasificar» (25-sep)
+
+- La palabra «cuarentena» desaparece de **toda la interfaz** (petición del usuario: «me suena a
+  virus») y se sustituye por **«por revisar»** (la cola/acción; coincide con la ventana ⌘R) y
+  **«sin clasificar»** (estado/carpeta; coincide con `99_SinClasificar`). Incluye Inicio, ventana
+  «Buscar», «Por revisar», menús (⌘R), avisos de error, registro en vivo y documentación de
+  producto (PITCH/README/SKILL_IA/skill del agente).
+- Sin migración de datos: la carpeta `99_SinClasificar` y los identificadores internos
+  (`quarantine*`) se conservan. Las entradas históricas de CHANGELOG/MEMORY/TODO mantienen el
+  término antiguo a propósito.

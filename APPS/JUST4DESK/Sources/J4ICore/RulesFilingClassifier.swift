@@ -37,7 +37,7 @@ public enum RulesFilingClassifier {
     /// scripts y configuraciones técnicas…).
     ///
     /// Se usa cuando ni la IA ni las reglas por nombre/texto han propuesto nada: garantiza que
-    /// un `.exe`, un `.mp4` o un `.rar` acaben en una categoría razonable en vez de cuarentena.
+    /// un `.exe`, un `.mp4` o un `.rar` acaben en una categoría razonable en vez de sin clasificar.
     public static func classifyByExtension(fileName: String) -> FilingProposal? {
         let ext = (fileName as NSString).pathExtension.lowercased()
         guard !ext.isEmpty else { return nil }
@@ -53,7 +53,7 @@ public enum RulesFilingClassifier {
         )
     }
 
-    /// Sugerencia de destino para la cola de revisión de cuarentena (solo reglas locales:
+    /// Sugerencia de destino para la cola de revisión de pendientes (solo reglas locales:
     /// nombre → extensión; sin IA ni redes).
     public static func suggestDestination(fileName: String) -> FilingProposal? {
         classify(fileName: fileName, textSample: "") ?? classifyByExtension(fileName: fileName)

@@ -5,7 +5,7 @@ import Foundation
 extension Notification.Name {
     /// Abrir el explorador (comando de menú ⌘E).
     static let j4iOpenExplorer = Notification.Name("j4i.openExplorer")
-    /// Abrir la cola de revisión de cuarentena (comando de menú ⌘R).
+    /// Abrir la cola de revisión de pendientes (comando de menú ⌘R).
     static let j4iOpenReview = Notification.Name("j4i.openReview")
     /// Abrir la ventana «Buscar» (comando de menú ⌘F).
     static let j4iOpenSearch = Notification.Name("j4i.openSearch")

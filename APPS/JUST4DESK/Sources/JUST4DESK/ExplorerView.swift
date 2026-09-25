@@ -81,7 +81,7 @@ struct ExplorerView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Sugerencias de la IA", systemImage: "sparkles")
                 .font(.headline)
-            Text("Se moverán a su destino propuesto los elementos con sugerencia; los que apunten a cuarentena se omiten (puedes revisarlos con ⌘R).")
+            Text("Se moverán a su destino propuesto los elementos con sugerencia; los que apunten a «sin clasificar» se omiten (puedes revisarlos con ⌘R).")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             List(model.aiSuggestionSheet ?? []) { row in
@@ -997,13 +997,13 @@ final class ExplorerViewModel: ObservableObject {
     }
 
     /// Aplica las sugerencias de la hoja: mueve cada fichero a su categoría propuesta
-    /// (journal/undo/colisiones vía `reclassify`); los que apuntan a cuarentena se omiten.
+    /// (journal/undo/colisiones vía `reclassify`); los que apuntan a sin clasificar se omiten.
     func applyAISuggestions() {
         guard let rootPath, let rows = aiSuggestionSheet else { return }
         aiSuggestionSheet = nil
         let applicable = rows.filter { !$0.isQuarantine }
         guard !applicable.isEmpty else {
-            actionMessage = "La IA no propone destino para la selección (todo apunta a cuarentena)."
+            actionMessage = "La IA no propone destino para la selección (todo apunta a «sin clasificar»)."
             return
         }
         Task {

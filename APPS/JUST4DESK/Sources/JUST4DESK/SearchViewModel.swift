@@ -127,7 +127,7 @@ final class SearchViewModel: ObservableObject {
     @Published var showActivity = false
     @Published private(set) var activityEntries: [JournalEntry] = []
     @Published private(set) var organizedTodayCount = 0
-    /// Elementos pendientes en la cuarentena (para la bandeja de «Inicio», G1).
+    /// Elementos pendientes en la sin clasificar (para la bandeja de «Inicio», G1).
     @Published private(set) var quarantineCount = 0
     @Published var lastOutcomeMessage: String?
     @Published var showInitialSetup = false
@@ -502,7 +502,7 @@ final class SearchViewModel: ObservableObject {
         case "move":
             return "Archivado: \(name) → \(outcome.categoryPath)"
         case "quarantine":
-            return "Cuarentena: \(name) (revisar)"
+            return "Por revisar: \(name)"
         case "simulate":
             return "Simulación: \(name) → \(outcome.categoryPath)"
         case "skipped-duplicate":
@@ -538,7 +538,7 @@ final class SearchViewModel: ObservableObject {
         await refreshQuarantineCount()
     }
 
-    /// Cuenta los elementos de la cuarentena (listado plano y barato) para la bandeja de «Inicio».
+    /// Cuenta los elementos de la sin clasificar (listado plano y barato) para la bandeja de «Inicio».
     func refreshQuarantineCount() async {
         guard let rootPath = filingRootPath else {
             quarantineCount = 0
@@ -574,7 +574,7 @@ final class SearchViewModel: ObservableObject {
         let quarantine = URL(fileURLWithPath: rootPath, isDirectory: true)
             .appendingPathComponent(DefaultTaxonomy.quarantineRelativePath, isDirectory: true)
         guard FileManager.default.fileExists(atPath: quarantine.path) else {
-            lastErrorMessage = "Todavía no existe la carpeta de cuarentena."
+            lastErrorMessage = "Todavía no existe la carpeta sin clasificar."
             return
         }
         NSWorkspace.shared.activateFileViewerSelecting([quarantine])

@@ -373,10 +373,10 @@ struct ContentView: View {
                         viewModel.toggleOrganizationPaused()
                     }
                     Toggle("Modo simulación", isOn: $viewModel.simulationMode)
-                    Button("Abrir cuarentena") {
+                    Button("Abrir carpeta sin clasificar") {
                         viewModel.revealQuarantine()
                     }
-                    Button("Revisar cuarentena… (⌘R)") {
+                    Button("Por revisar… (⌘R)") {
                         openWindow(id: "review")
                     }
                     Button("Deshacer el último archivado") {

@@ -32,7 +32,7 @@ public struct FilingExecutor: Sendable {
         )
     }
 
-    /// Mueve un fichero ya existente a una categoría del árbol (uso manual: revisión de cuarentena).
+    /// Mueve un fichero ya existente a una categoría del árbol (uso manual: revisión de pendientes).
     /// Mismas garantías que el archivado: mkdirs, colisión resuelta (`-1`, `-2`…) y sin sobreescribir.
     public func move(sourceURL: URL, to categoryRelativePath: String) throws -> ExecutionResult {
         let fileManager = FileManager.default

@@ -270,7 +270,7 @@ private struct MonospacedIf: ViewModifier {
 
 // MARK: - Estado
 
-/// Píldora de estado con icono (organización activa/pausada, cuarentena…).
+/// Píldora de estado con icono (organización activa/pausada, sin clasificar…).
 struct StatusPill: View {
     let systemImage: String
     let title: String

@@ -14,7 +14,7 @@ Tres capacidades ya construidas y funcionando con datos reales:
 
 1. **Índice local** (FTS5 + FSEvents): nombre, ruta, subcadena y contenido. Rápido (< 40 ms típico).
 2. **Archivado inteligente**: watchers multi-carpeta, análisis local (PDFKit/OCR), IA opcional
-   (DeepSeek) con reglas y taxonomía en español, **journal + undo**, cuarentena, modo simulación.
+   (DeepSeek) con reglas y taxonomía en español, **journal + undo**, «sin clasificar», modo simulación.
 3. **Aprendizaje local**: reglas promovidas por observación (≥3 muestras), caché de sugerencias,
    control de tokens/coste.
 
@@ -67,7 +67,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 - **Débil** (nuestra oportunidad):
   - Son **operaciones puntuales**: no hay índice persistente, ni búsqueda posterior, ni una
     taxonomía que evolucione contigo; ni memoria entre sesiones.
-  - El undo es básico (un paso); no hay **journal completo** ni **cuarentena** ni «nunca borrar».
+  - El undo es básico (un paso); no hay **journal completo** ni **«sin clasificar»** ni «nunca borrar».
   - No hay **bandeja de revisión** con aprendizaje; no hay reglas que se promocionan solas.
   - Un solo idioma de taxonomía fija (o descripciones de carpetas manuales).
 - **Lección**: el mercado está validando «organización con IA local y revisable» **a 20 $**.
@@ -82,7 +82,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 ### G. Limpieza / espacio — CleanMyMac, Gemini, DaisyDisk, czkawka
 - **Lección**: «liberar X GB» y «eliminar duplicados» son **resultados que se pagan** y son
   perfectos como *sugerencias proactivas* (con reversibilidad absoluta: nosotros nunca borramos,
-  movemos a cuarentena o a una papelera propia con undo).
+  movemos a «sin clasificar» o a una papelera propia con undo).
 
 ---
 
@@ -96,7 +96,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 ├───────────────────────────────┬──────────────────────────────────────────┤
 │  BANDEJA (lo que necesita     │  SUGERENCIAS (el mayordomo)              │
 │  una decisión tuya)           │                                          │
-│  • 7 en cuarentena   Revisar  │  • 34 capturas sueltas en el Escritorio  │
+│  • 7 en «sin clasificar»   Revisar  │  • 34 capturas sueltas en el Escritorio  │
 │  • 12 duplicados (8,2 GB)     │    → 13_Multimedia/Capturas  [Aplicar]   │
 │    Revisar/Reclamar           │  • «trading-2024» sin tocar desde enero  │
 │  • 3 conflictos de nombre     │    → Proponer archivo en frío [Ver]      │
@@ -109,7 +109,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 ```
 
 - El **omnibox (⌘K)** sustituye al «campo gigante»: busca *y* ofrece acciones («Archivar…»,
-  «Mover a…», «Etiquetar», «Ver actividad», «Abrir cuarentena»). El buscador «de verdad» (la vista
+  «Mover a…», «Etiquetar», «Ver actividad», «Abrir «sin clasificar»»). El buscador «de verdad» (la vista
   actual con filtros y contenido) sigue existiendo: se abre desde el omnibox o con un atajo.
 - La app **arranca mostrando estado y decisiones**, no un cursor vacío. En 5 segundos se entiende
   qué hace JUST4INDEX aunque nunca lo hayas usado.
@@ -121,14 +121,14 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 
 ### 3.2 Las cuatro capas nuevas (y por qué encajan con lo ya construido)
 
-1. **Bandeja de decisiones** *(reusa: cuarentena ⌘R, journal, reclassify)*
+1. **Bandeja de decisiones** *(reusa: «sin clasificar» ⌘R, journal, reclassify)*
    Todo lo que pide intervención humana en un solo sitio: revisar, aceptar sugerencias en bloque,
    resolver conflictos. Es el corazón del modelo «apruebo → la app ejecuta → queda deshacible».
 
 2. **Sugerencias proactivas** *(nuevo motor; reusa: SHA-256, perfilador, índice, journal)*
    Detectores baratos y explicables que se ejecutan en segundo plano (de madrugada o al cargar):
    - **Duplicados reales** por hash (ya calculamos SHA-256 al archivar) → agrupar y proponer quedarse
-     con uno; mover el resto a cuarentena/papelera propia (nunca borrar).
+     con uno; mover el resto a «sin clasificar»/papelera propia (nunca borrar).
    - **Escritorio/Descargas sucios**: capturas, PDFs sueltos, instaladores ya usados.
    - **Candidatos a archivo «en frío»**: proyectos/carpetas sin tocar en N meses → proponer
      `90_Archivo/…` conservando estructura.
@@ -185,7 +185,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
   **«el sistema operativo de tus archivos: ordena, recuerda y nunca borra»** — 39–49 € pago único
   (o 29 € lanzamiento), con la seguridad y el aprendizaje como ejes del mensaje.
 - Diferenciadores que la competencia **no** tiene juntos:
-  1. **Journal + undo real + cuarentena** («nunca borra», reversible por lote).
+  1. **Journal + undo real + «sin clasificar»** («nunca borra», reversible por lote).
   2. **Aprendizaje persistente y visible** (reglas que se promocionan solas).
   3. **Multi-entrada** (varias carpetas vigiladas, un solo destino organizado).
   4. **Buscador por contenido** integrado (no solo organiza: encuentras después).

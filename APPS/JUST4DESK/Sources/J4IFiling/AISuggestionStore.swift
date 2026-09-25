@@ -5,7 +5,7 @@ import J4ICore
 ///
 /// Petición del usuario (2026-09-24): «que haya lugar para guardar las sugerencias de la IA, porque
 /// si no hay que gastar tokens de nuevo haciendo la misma pregunta». Cada entrada guarda la propuesta
-/// (categoría, confianza, motivo, cuarentena) junto a la **huella del archivo** (tamaño + fecha de
+/// (categoría, confianza, motivo, sin clasificar) junto a la **huella del archivo** (tamaño + fecha de
 /// modificación) y la **versión de la skill**: si el archivo cambia o la skill sube de versión, la
 /// propuesta se considera obsoleta y se volverá a consultar. Reutilizar una entrada **no** consume
 /// el cap diario de IA (no hay llamada al modelo).

@@ -12,7 +12,7 @@ public struct FolderContentSummary: Sendable, Equatable {
     public let textSample: String
 
     /// Cáscara vacía: sin ficheros en todo el árbol (aunque contenga subcarpetas vacías).
-    /// No hay nada que archivar → el pipeline la deja en origen (`skipped-empty`), no en cuarentena.
+    /// No hay nada que archivar → el pipeline la deja en origen (`skipped-empty`), no en sin clasificar.
     public var isEmpty: Bool { fileCount == 0 }
 }
 
