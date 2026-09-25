@@ -165,25 +165,25 @@ enum SubAppsCatalog {
             ]
         ),
         SubApp(
-            name: "JUST4INDEX",
-            subtitle: "Buscador instantaneo y organizador inteligente de documentos",
-            bundleId: "com.dmx83.just4index",
-            assetPrefix: "JUST4INDEX",
-            accent: Color(red: 0.20, green: 0.55, blue: 0.72),
-            systemIcon: "magnifyingglass.circle",
-            description: "Encuentra cualquier archivo en milisegundos y deja que ordene tus descargas solo: clasifica por contenido con IA opcional, aprende de tus correcciones y archiva con undo y cuarentena. Todo en tu Mac.",
+            name: "JUST4DESK",
+            subtitle: "Tu escritorio inteligente: ordena, encuentra y protege tu documentación",
+            bundleId: "com.dmx83.just4desk",
+            assetPrefix: "JUST4DESK",
+            accent: Color(red: 0.35, green: 0.34, blue: 0.84),
+            systemIcon: "desktopcomputer",
+            description: "Tu escritorio inteligente para Mac: encuentra cualquier archivo en milisegundos y deja que ordene tus carpetas solo — clasifica por contenido con IA opcional, aprende de tus correcciones y archiva con undo y cuarentena. Nunca borra: solo mueve. Todo en tu Mac.",
             requirements: ["macOS 14+", "Instalado como .app"],
             links: [],
             version: pinnedVersion,
             changelog: [
+                "Nuevo nombre y marca (antes JUST4INDEX): tu escritorio inteligente de documentos",
                 "Buscador instantaneo con indice local (FTS5 + FSEvents; subcadena y contenido)",
-                "Organizador automatico con taxonomia fina (peliculas, series, libros, redes) y cuarentena revisable",
-                "Aprende de la IA y de tus correcciones: clasifica sin gastar tokens (conocimiento local)"
+                "Organizador automatico con taxonomia fina y cuarentena revisable; aprende de tus correcciones"
             ],
-            logoName: "Assets/JUST4INDEX/logo.png",
+            logoName: "Assets/JUST4DESK/logo.png",
             screenshots: [
-                "Assets/JUST4INDEX/screen-1.png",
-                "Assets/JUST4INDEX/screen-2.png"
+                "Assets/JUST4DESK/screen-1.png",
+                "Assets/JUST4DESK/screen-2.png"
             ]
         )
     ]

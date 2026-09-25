@@ -15,7 +15,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - APPS/JUST4CONVERT: App nativa macOS en SwiftUI para conversion multimedia.
 - APPS/JUST4FOLDERS: App nativa macOS en SwiftUI para organizar archivos por carpetas.
 - APPS/JUST4PICT: App nativa macOS en SwiftUI para mejoramiento automatico de imagenes.
-- APPS/JUST4INDEX: App nativa macOS en SwiftUI para busqueda instantanea y organizacion automatica de documentos.
+- APPS/JUST4DESK: App nativa macOS en SwiftUI para busqueda instantanea y organizacion automatica de documentos.
 - App principal (este repo): JUST4ALL en Swift (Sources/ y Resources/).
 
 ## Documentacion rapida
@@ -25,7 +25,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - JUST4CONVERT: `APPS/JUST4CONVERT/README.md`
 - JUST4FOLDERS: `APPS/JUST4FOLDERS/README.md` y `APPS/JUST4FOLDERS/TODO.md`
 - JUST4PICT: `APPS/JUST4PICT/README.md`, `APPS/JUST4PICT/TODO.md`, `APPS/JUST4PICT/ENHANCE_ARCHITECTURE.md`, `APPS/JUST4PICT/QA_BATCH_LOCAL.md`
-- JUST4INDEX: `APPS/JUST4INDEX/README.md`, `APPS/JUST4INDEX/TODO.md`, `APPS/JUST4INDEX/MEMORY.md` (memoria maestra)
+- JUST4DESK: `APPS/JUST4DESK/README.md`, `APPS/JUST4DESK/TODO.md`, `APPS/JUST4DESK/MEMORY.md` (memoria maestra)
 
 ## Submodulos
 
@@ -33,7 +33,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - JUST4CONVERT: App nativa macOS para conversion de audio, video e imagenes con cola de trabajos.
 - JUST4FOLDERS: App nativa macOS para analizar y organizar archivos por categoria.
 - JUST4PICT: App nativa macOS para mejorar imagenes por lotes con presets automaticos.
-- JUST4INDEX: App nativa macOS para buscar al instante y archivar automaticamente documentos en una taxonomia ordenada.
+- JUST4DESK: App nativa macOS para buscar al instante y archivar automaticamente documentos en una taxonomia ordenada.
 - JUST4ALL: Hub macOS para lanzar subapps con vista de detalles.
 
 ## Principios del proyecto
@@ -50,7 +50,7 @@ El repositorio contiene al menos los siguientes submodulos:
 - JUST4CONVERT (SwiftUI)
 - JUST4FOLDERS (SwiftUI)
 - JUST4PICT (SwiftUI)
-- JUST4INDEX (SwiftUI)
+- JUST4DESK (SwiftUI)
 
 ### Estado funcional resumido
 
@@ -83,7 +83,7 @@ El repositorio contiene al menos los siguientes submodulos:
   - Pipeline de mejora con Core Image (auto-ajuste, color, denoise, sharpen).
   - Export en JPG/PNG/HEIC/WEBP/TIFF con colisiones resueltas.
   - Baseline MVP cerrada: QA local 100/1000, DMG validado y release unsigned publicada.
-- JUST4INDEX:
+- JUST4DESK:
   - Buscador instantaneo con indice local (SQLite FTS5 + FSEvents); bench 100k: crawl ~7 s, queries tipicas <40 ms.
   - Organizador automatico: watcher de carpeta de entrada con estabilidad de fichero, extraccion local
     (PDFKit/Vision OCR), clasificacion con reglas + DeepSeek opcional y taxonomia con undo/cuarentena.
@@ -113,12 +113,12 @@ El repositorio contiene al menos los siguientes submodulos:
 - Incluye procesamiento por lotes, presets, export multi-formato y QA local reproducible.
 - Ver detalles en `APPS/JUST4PICT/README.md`.
 
-### JUST4INDEX
+### JUST4DESK
 
 - App nativa macOS en SwiftUI: buscador instantaneo (FTS5 + FSEvents) y organizador automatico de documentos.
-- Ejecutar: `swift run` en `APPS/JUST4INDEX`; build DMG con `./scripts/build_dmg.sh`.
+- Ejecutar: `swift run` en `APPS/JUST4DESK`; build DMG con `./scripts/build_dmg.sh`.
 - Configuracion IA opcional: `DEEPSEEK_API_KEY` (entorno o `.env.secrets`); sin clave funciona solo con reglas locales.
-- Ver detalles en `APPS/JUST4INDEX/README.md`.
+- Ver detalles en `APPS/JUST4DESK/README.md`.
 
 ### JUST4ALL
 
