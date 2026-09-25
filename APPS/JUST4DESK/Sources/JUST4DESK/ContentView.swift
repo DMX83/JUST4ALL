@@ -12,6 +12,7 @@ struct ContentView: View {
     @EnvironmentObject private var viewModel: SearchViewModel
     @State private var showLogViewer = false
     @State private var showRootMenu = false
+    @State private var saveCollection = false
     @Environment(\.openWindow) private var openWindow
     @FocusState private var searchFocused: Bool
 
@@ -31,6 +32,11 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showLogViewer) {
             LogViewerSheet()
+        }
+        .sheet(isPresented: $saveCollection) {
+            CollectionEditorSheet(defaultQuery: viewModel.trimmedQuery) { name, query in
+                viewModel.addCollection(name: name, query: query)
+            }
         }
     }
 
@@ -62,6 +68,14 @@ struct ContentView: View {
                         }
                         .buttonStyle(.plain)
                         .help("Limpiar búsqueda")
+                        Button {
+                            saveCollection = true
+                        } label: {
+                            Image(systemName: "bookmark")
+                                .foregroundStyle(J4I.brand)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Guardar esta búsqueda como colección…")
                     }
                 }
                 .padding(.horizontal, 12)

@@ -550,3 +550,15 @@ Convención por version + build stamp:
   frena la pausa, respeta la simulación).
 - Validado en vivo: ⌥Espacio abierto desde el Finder con resultados reales; menú de barra con
   estado. Suite 167 (166 + 1 skip; +3 tests). Capturas en `docs/design/G4/`.
+
+### Added — G5 (colecciones: organizar sin mover) (25-sep, noche)
+
+- **Colecciones guardadas**: una búsqueda con nombre («Trading», «Fiscal 2026»…) que se abre con
+  un clic — sin mover ni tocar ningún fichero. Persisten en `collections.json` (versionado) con
+  nombre/consulta saneados y tolerancia a archivos ilegibles.
+- **Inicio**: tarjeta «Colecciones» con **contador vivo** (consulta real al índice; «1000+» a
+  partir del tope), «Nueva», editar y borrar; y **fila de colección en el omnibox** cuando el
+  nombre encaja con lo escrito («fisc» → Colección «Fiscal 2026»).
+- **Ventana «Buscar»**: marcador junto al campo → «Guardar esta búsqueda como colección…».
+- Store `CollectionStore` (J4ICore) + 5 tests; suite 172 (171 + 1 skip). Capturas en
+  `docs/design/G5/`. Pendiente G5.1: **etiquetas Finder nativas** (decisión abierta §7.3).

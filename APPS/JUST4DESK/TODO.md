@@ -312,7 +312,10 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
   editar destino, borrar, crear a mano, export/import JSON con fusión por muestras. Suite 164.
 - [x] G4 (v1): menú de barra + atajo global ⌥Espacio (buscador flotante) + «Enviar a JUST4DESK»
   (Dock/Inicio). Validado en vivo. Suite 167. (Quick Action de Finder: con el empaquetado.)
-- [ ] G5: espacios/colecciones (+ etiquetas Finder opcionales).
+- [x] G5 (v1): colecciones («organizar sin mover») — búsquedas guardadas con contador vivo en
+  Inicio, fila en el omnibox y marcador en «Buscar». Validado en vivo. Suite 172.
+- [ ] G5.1: etiquetas Finder nativas (opcional; decisión del usuario, EVOLUCION §7.3).
+- [ ] G6: archivo en frío ejecutable + informe semanal.
 
 ## Referencias
 

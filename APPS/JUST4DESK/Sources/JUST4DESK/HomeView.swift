@@ -19,6 +19,8 @@ struct HomeView: View {
 
     @State private var showLogViewer = false
     @State private var pendingSuggestion: ProactiveSuggestion?
+    @State private var showNewCollection = false
+    @State private var editingCollection: SavedCollection?
     @FocusState private var omniFocused: Bool
 
     private var columns: [GridItem] {
@@ -39,6 +41,7 @@ struct HomeView: View {
                         activityCard
                         statusCard
                         shortcutsCard
+                        collectionsCard
                     }
                 }
                 .padding(J4I.Space.l)
@@ -104,6 +107,16 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showLogViewer) {
             LogViewerSheet()
+        }
+        .sheet(isPresented: $showNewCollection) {
+            CollectionEditorSheet(defaultQuery: viewModel.trimmedQuery) { name, query in
+                viewModel.addCollection(name: name, query: query)
+            }
+        }
+        .sheet(item: $editingCollection) { collection in
+            CollectionEditorSheet(editing: collection) { name, query in
+                viewModel.updateCollection(collection.id, name: name, query: query)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .j4iShowLogViewer)) { _ in
             showLogViewer = true
@@ -231,7 +244,12 @@ struct HomeView: View {
     /// Resultados inmediatos bajo el omnibox (los 7 primeros + «ver todos»).
     @ViewBuilder
     private var omniResults: some View {
-        if omniFocused, !viewModel.trimmedQuery.isEmpty, !viewModel.hits.isEmpty {
+        if omniFocused, !viewModel.trimmedQuery.isEmpty,
+           (!viewModel.hits.isEmpty || !matchingCollections.isEmpty) {
+            if let match = matchingCollections.first {
+                collectionOmniRow(match)
+            }
+            if !viewModel.hits.isEmpty {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(viewModel.hits.prefix(7), id: \.entry.id) { hit in
                     Button {
@@ -292,6 +310,7 @@ struct HomeView: View {
                     .strokeBorder(J4I.hairline.opacity(0.6))
             )
             .padding(.leading, 40)
+            }
         }
     }
 
@@ -724,6 +743,117 @@ struct HomeView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Colecciones (G5)
+
+    private var matchingCollections: [SavedCollection] {
+        viewModel.matchingCollections(for: viewModel.trimmedQuery)
+    }
+
+    private var collectionsCard: some View {
+        J4ICard {
+            VStack(alignment: .leading, spacing: J4I.Space.m) {
+                HStack(spacing: 6) {
+                    cardHeader("Colecciones", "square.stack.3d.up")
+                    Spacer()
+                    Button("Nueva") {
+                        showNewCollection = true
+                    }
+                    .controlSize(.small)
+                    .help("Guarda una búsqueda con nombre: organiza sin mover nada")
+                }
+                if viewModel.collections.isEmpty {
+                    Text("Guarda una búsqueda como colección («Trading», «Fiscal 2026»…) y ábrela con un clic — sin mover nada. También desde «Buscar», con el marcador.")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(viewModel.collections) { collection in
+                            collectionRow(collection)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func collectionRow(_ collection: SavedCollection) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "square.stack.3d.up.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(J4I.brand)
+                .frame(width: 14)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(collection.name)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .lineLimit(1)
+                Text(collection.query)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer(minLength: 8)
+            Text(collectionCountLabel(collection))
+                .font(.system(size: 11, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .help("Resultados actuales de la búsqueda guardada")
+            Button("Abrir") {
+                openCollection(collection)
+            }
+            .controlSize(.small)
+        }
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button("Abrir") { openCollection(collection) }
+            Button("Editar…") { editingCollection = collection }
+            Divider()
+            Button("Borrar colección", role: .destructive) {
+                viewModel.removeCollection(collection)
+            }
+        }
+    }
+
+    private func collectionCountLabel(_ collection: SavedCollection) -> String {
+        guard let count = viewModel.collectionCounts[collection.id] else { return "…" }
+        return count >= SearchViewModel.collectionCountLimit ? "\(SearchViewModel.collectionCountLimit)+" : "\(count)"
+    }
+
+    private func openCollection(_ collection: SavedCollection) {
+        viewModel.query = collection.query
+        openWindow(id: "search")
+        J4Log.debug(.app, "Colección «\(collection.name)» → búsqueda «\(collection.query)».")
+    }
+
+    private func collectionOmniRow(_ collection: SavedCollection) -> some View {
+        Button {
+            openCollection(collection)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "square.stack.3d.up.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(J4I.brand)
+                Text("Colección «\(collection.name)»")
+                    .font(.system(size: 12.5, weight: .medium))
+                Spacer(minLength: 8)
+                Text("abrir")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.vertical, 5)
+            .padding(.horizontal, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: J4I.Radius.small, style: .continuous)
+                .fill(J4I.brand.opacity(0.10))
+        )
+        .padding(.leading, 40)
+        .hoverHighlight(cornerRadius: J4I.Radius.small, intensity: 0.06)
     }
 
     private func shortcutButton(_ title: String, icon: String, keys: String?, action: @escaping () -> Void) -> some View {

@@ -134,6 +134,9 @@ final class SearchViewModel: ObservableObject {
     @Published private(set) var suggestions: [ProactiveSuggestion] = []
     /// Progreso mientras se aplica una sugerencia («Verificando duplicados… 3/12»).
     @Published private(set) var suggestionsBusy: String?
+    /// G5 — colecciones guardadas (organizar sin mover) y nº de resultados de cada una.
+    @Published private(set) var collections: [SavedCollection] = []
+    @Published private(set) var collectionCounts: [String: Int] = [:]
     @Published var lastOutcomeMessage: String?
     @Published var showInitialSetup = false
     @Published var accessIssue: AccessIssue?
@@ -182,6 +185,8 @@ final class SearchViewModel: ObservableObject {
     private let suggestionDismissals = SuggestionDismissals()
     private var suggestionsScanning = false
     private var lastSuggestionScan = Date.distantPast
+    private let collectionStore = CollectionStore.shared
+    private var lastCollectionsScan = Date.distantPast
 
     init() {
         crawler = IndexCrawler(index: SearchIndex.shared)
@@ -551,6 +556,7 @@ final class SearchViewModel: ObservableObject {
         organizedTodayCount = activityEntries.filter { $0.action == "move" && $0.timestamp >= startOfDay }.count
         await refreshQuarantineCount()
         await refreshSuggestions()
+        await refreshCollections()
     }
 
     /// Cuenta los elementos de la sin clasificar (listado plano y barato) para la bandeja de «Inicio».
@@ -757,6 +763,71 @@ final class SearchViewModel: ObservableObject {
         lastOutcomeMessage = message
         J4Log.info(.app, message)
         await refreshActivity()
+    }
+
+    // MARK: - Colecciones (G5)
+
+    /// Tope de resultados contados por colección (el contador muestra «1000+» a partir de ahí).
+    static let collectionCountLimit = 1000
+
+    /// Recarga las colecciones guardadas y sus contadores (consulta barata al índice por cada
+    /// una). Limitado a un refresco cada 30 s salvo que se fuerce (tras crear/editar/borrar).
+    func refreshCollections(force: Bool = false) async {
+        guard force || Date().timeIntervalSince(lastCollectionsScan) > 30 else { return }
+        lastCollectionsScan = Date()
+        collections = collectionStore.all()
+        var counts: [String: Int] = [:]
+        for collection in collections {
+            let request = IndexSearchRequest(
+                query: collection.query,
+                filters: IndexSearchFilters(),
+                limit: Self.collectionCountLimit,
+                includeContent: false
+            )
+            let hits = (try? await index.search(request)) ?? []
+            counts[collection.id] = hits.count
+        }
+        collectionCounts = counts
+    }
+
+    /// Crea una colección (nombre + búsqueda). `false` si nombre o consulta quedan vacíos.
+    @discardableResult
+    func addCollection(name: String, query: String) -> Bool {
+        guard let added = collectionStore.add(name: name, query: query) else { return false }
+        J4Log.info(.app, "Colección creada: «\(added.name)» → «\(added.query)».")
+        Task { await refreshCollections(force: true) }
+        return true
+    }
+
+    func updateCollection(_ id: String, name: String, query: String) {
+        if collectionStore.update(id: id, name: name, query: query) {
+            J4Log.info(.app, "Colección actualizada: «\(name)» → «\(query)».")
+            Task { await refreshCollections(force: true) }
+        }
+    }
+
+    func removeCollection(_ collection: SavedCollection) {
+        if collectionStore.remove(id: collection.id) {
+            J4Log.info(.app, "Colección borrada: «\(collection.name)».")
+            Task { await refreshCollections(force: true) }
+        }
+    }
+
+    /// Colecciones cuyo nombre encaja con lo que se está escribiendo (fila extra del omnibox).
+    func matchingCollections(for input: String) -> [SavedCollection] {
+        let folded = Self.fold(input)
+        guard !folded.isEmpty else { return [] }
+        return collections.filter {
+            let name = Self.fold($0.name)
+            return name.contains(folded) || folded.contains(name)
+        }
+    }
+
+    private static func fold(_ value: String) -> String {
+        value
+            .folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: Locale(identifier: "es_ES"))
+            .lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func undo(entry: JournalEntry) {

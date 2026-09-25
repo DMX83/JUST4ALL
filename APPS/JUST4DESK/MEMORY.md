@@ -606,6 +606,16 @@
   panel abierto desde el Finder con 6 resultados reales («factura»); menú de barra con estado.
   La Quick Action de Finder queda para el DMG (NSServices del bundle). Suite 167 (166 + 1 skip;
   +3 tests). Capturas `docs/design/G4/`.
+- G5 (25-sep, noche): **colecciones — organizar sin mover** — `SavedCollection` + `CollectionStore`
+  (J4ICore; `collections.json` v1 con fechas ISO8601, nombre ≤60/consulta ≤200 saneados,
+  corrupción tolerada). Inicio: tarjeta «Colecciones» con **contador vivo**
+  (`refreshCollections`, tope 1000 → «1000+», throttle 30 s) y `CollectionEditorSheet`
+  (Nueva/Editar/Borrar); **fila en el omnibox** (`matchingCollections` → «fisc» abre «Fiscal
+  2026»). Ventana «Buscar»: marcador para guardar la búsqueda actual. Validado en vivo: Trading
+  (45) · Fiscal 2026 (41); omnibox con la fila de colección sobre 41 resultados. (Semilla demo
+  sembrada a mano en `collections.json` para la captura — borrable desde la UI.) Suite 172
+  (171 + 1 skip; +5 tests). Capturas `docs/design/G5/`. Pendiente G5.1: etiquetas Finder
+  nativas (decisión §7.3).
 
 ## Lecciones y trampas
 
