@@ -2,9 +2,10 @@ import XCTest
 import J4ICore
 
 final class TaxonomyTests: XCTestCase {
-    func testSeedContainsSixteenTopLevelCategories() {
+    func testSeedContainsTopLevelCategories() {
         let categories = DefaultTaxonomy.categories()
-        XCTAssertEqual(categories.count, 16)
+        XCTAssertEqual(categories.count, 17)
+        XCTAssertTrue(categories.contains { $0.name == DefaultTaxonomy.coldArchiveRelativePath })
         XCTAssertEqual(categories.first?.name, "01_Fiscal")
         XCTAssertEqual(categories.last?.name, DefaultTaxonomy.quarantineRelativePath)
         XCTAssertTrue(categories.contains { $0.name == "12_Software" })

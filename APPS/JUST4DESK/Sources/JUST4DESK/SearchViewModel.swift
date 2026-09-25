@@ -615,9 +615,14 @@ final class SearchViewModel: ObservableObject {
             built.append(screenshots)
         }
 
-        // 3) Grandes y olvidados (≥1 GB sin cambios desde hace 180 días), desde el índice.
+        // 3) Grandes y olvidados (≥1 GB sin cambios desde hace 180 días), desde el índice. Se
+        //    excluyen los ya archivados en frío y los pendientes de revisión (no se re-sugieren).
         let cutoff = Calendar.current.date(byAdding: .day, value: -ProactiveSuggestionScanner.largeForgottenDays, to: Date()) ?? Date()
-        let largeEntries = (try? await index.largeFiles(minBytes: ProactiveSuggestionScanner.largeMinBytes, olderThan: cutoff, limit: 60)) ?? []
+        let largeEntries = ((try? await index.largeFiles(minBytes: ProactiveSuggestionScanner.largeMinBytes, olderThan: cutoff, limit: 60)) ?? [])
+            .filter {
+                !$0.path.contains("/\(DefaultTaxonomy.coldArchiveRelativePath)/")
+                    && !$0.path.contains("/\(DefaultTaxonomy.quarantineRelativePath)/")
+            }
         if let large = ProactiveSuggestionScanner.largeForgottenSuggestion(entries: largeEntries) {
             built.append(large)
         }
@@ -647,7 +652,7 @@ final class SearchViewModel: ObservableObject {
     /// - duplicados → verificación por hash + Papelera (reversible);
     /// - capturas → archivado real con journal/undo, aunque la simulación esté activa
     ///   (acción manual y explícita, igual que «Por revisar»);
-    /// - grandes y olvidados → solo revela en Finder (el archivo en frío llega en una fase futura).
+    /// - grandes y olvidados → archivo en frío `90_Archivo/…` con journal/undo (G6).
     func applySuggestion(_ suggestion: ProactiveSuggestion) {
         switch suggestion.kind {
         case .duplicates:
@@ -655,7 +660,7 @@ final class SearchViewModel: ObservableObject {
         case .screenshots:
             Task { await fileScreenshots(suggestion) }
         case .largeForgotten:
-            revealSuggestionItems(suggestion)
+            Task { await archiveCold(suggestion) }
         }
     }
 
@@ -727,6 +732,52 @@ final class SearchViewModel: ObservableObject {
         suggestionsBusy = nil
         await refreshActivity()
         await refreshSuggestions(force: true)
+    }
+
+    /// G6 — mueve a `90_Archivo/…` los «grandes y olvidados» (ruta relativa intacta, journal/undo).
+    private func archiveCold(_ suggestion: ProactiveSuggestion) async {
+        guard let rootPath = filingRootPath else { return }
+        suggestionsBusy = "Moviendo a archivo en frío…"
+        let coordinator = FilingCoordinator(
+            index: index,
+            rootURL: URL(fileURLWithPath: rootPath, isDirectory: true),
+            simulationMode: false
+        )
+        var moved = 0
+        var failed = 0
+        var movedBytes: Int64 = 0
+        for (position, item) in suggestion.items.enumerated() {
+            suggestionsBusy = "Moviendo a archivo en frío… \(position + 1)/\(suggestion.items.count)"
+            let outcome = await coordinator.archiveCold(at: URL(fileURLWithPath: item.path))
+            if outcome.action == "cold" {
+                moved += 1
+                movedBytes += item.sizeBytes
+            } else {
+                failed += 1
+            }
+        }
+        var message = "Archivo en frío: \(moved) movido(s) (\(ByteCountFormatter.string(fromByteCount: movedBytes, countStyle: .file)))"
+        if failed > 0 { message += " · \(failed) con error" }
+        lastOutcomeMessage = message
+        J4Log.info(.app, message)
+        suggestionsBusy = nil
+        await refreshActivity()
+        await refreshSuggestions(force: true)
+    }
+
+    // MARK: - Informe semanal (G6)
+
+    /// Construye el informe semanal (journal + conocimiento + IA) para la hoja «Informe».
+    func buildWeeklyReport() async -> WeeklyReport? {
+        guard let rootPath = filingRootPath else { return nil }
+        let usage = AIControlCenter.shared.usage()
+        return await WeeklyReport.build(
+            index: index,
+            rootURL: URL(fileURLWithPath: rootPath, isDirectory: true),
+            knowledge: LocalKnowledgeStore.shared,
+            aiCallsTotal: usage.callsTotal,
+            aiTokensTotal: usage.tokensTotal
+        )
     }
 
     // MARK: - Envío desde Finder (G4)

@@ -557,6 +557,16 @@ public actor SearchIndex {
         )
     }
 
+    /// Repunta una entrada de caché de archivo al mover un documento (p. ej. archivo en frío, G6)
+    /// sin recalcular el hash: la detección de duplicados sigue apuntando al sitio correcto.
+    public func repointCachedFiledPath(from oldPath: String, to newPath: String) throws {
+        try openIfNeeded()
+        try exec(
+            "UPDATE analysis_cache SET filed_path = ?, updated_ts = ? WHERE filed_path = ?;",
+            [.text(newPath), .double(Date().timeIntervalSince1970), .text(oldPath)]
+        )
+    }
+
     // MARK: - Journal de operaciones
 
     @discardableResult
@@ -596,6 +606,23 @@ public actor SearchIndex {
         }
         defer { sqlite3_finalize(stmt) }
         sqlite3_bind_int64(stmt, 1, Int64(max(1, min(limit, 1000))))
+        var entries: [JournalEntry] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            entries.append(makeJournalEntry(from: stmt))
+        }
+        return entries
+    }
+
+    /// Entradas del journal dentro de un rango temporal (informe semanal, G6).
+    public func journalEntries(since: Date, until: Date = Date(), limit: Int = 5000) throws -> [JournalEntry] {
+        try openIfNeeded()
+        let sql = "SELECT id, ts, batch_id, src_path, dst_path, category_path, action, state, undone_ts FROM ops_journal WHERE ts >= ? AND ts <= ? ORDER BY id DESC LIMIT ?;"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar la consulta del journal por rango.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        try bind(stmt, [.double(since.timeIntervalSince1970), .double(until.timeIntervalSince1970), .int(Int64(max(1, limit)))])
         var entries: [JournalEntry] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
             entries.append(makeJournalEntry(from: stmt))

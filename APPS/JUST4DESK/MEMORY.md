@@ -616,6 +616,20 @@
   sembrada a mano en `collections.json` para la captura — borrable desde la UI.) Suite 172
   (171 + 1 skip; +5 tests). Capturas `docs/design/G5/`. Pendiente G5.1: etiquetas Finder
   nativas (decisión §7.3).
+- G6 (25-sep, noche): **archivo en frío + informe semanal** — (a) `FilingCoordinator.archiveCold`
+  mueve a `90_Archivo/<ruta relativa>` conservando estructura (validación «dentro del root»,
+  ejecutor con colisiones, journal `action=cold` deshacible, caché reapuntada
+  `repointCachedFiledPath`, texto de búsqueda reciclado con `cachedText`); el detector «Grandes
+  y sin cambios» pasa de [Revelar] a **[Archivar en frío]** con diálogo de confirmación
+  («…conservando su ruta. Deshacible desde Actividad.»); `largeEntries` excluye rutas de
+  `90_Archivo`/`99_SinClasificar`; `isUndoable` incluye `cold`. (b) **Informe semanal**
+  (`WeeklyReport.build`, J4IFiling): ventana de 7 días, archivados/GB/deshechos/por revisar,
+  top categorías (prefix 5), reglas promovidas, ahorro estimado de tokens
+  (`knowledgeAppliedTotal × aiTokensTotal/aiCallsTotal`); hoja en Inicio (Actividad →
+  [Informe]) con **Copiar** y **Exportar…** Markdown. Validado en vivo: hoja con datos reales
+  (466 archivados · 17,62 GB · 27 reglas · ~4.825 tokens), diálogo probado y **ciclo
+  aplicar→Deshacer verificado** con un instalador real (journal cold: applied → undone,
+  archivo restaurado). Suite 177 (176 + 1 skip; +5 tests). Capturas `docs/design/G6/`.
 
 ## Lecciones y trampas
 
@@ -651,6 +665,15 @@
   (hash, caché, IA vs reglas, plan) no dejaban rastro. Sin registro es imposible explicar por qué un
   archivo acabó en cuarentena o por qué solo parte de un backlog se procesó (la estabilidad se evalúa
   por ticks y un backlog grande tarda en estabilizarse). `J4Log` cubre ahora todo el pipeline.
+- QA/automatización UI (26-sep): los botones SwiftUI del binario SPM **no exponen `title`** a
+  System Events; su etiqueta real viaja en **`help` (AXDescription)** — para pulsar un botón:
+  `entire contents of window 1` + filtrar por `help` y `click` (probado con «Informe semanal…»).
+  Los clics sintéticos por coordenadas fallan si la ventana se mueve: medir **fracciones** del
+  rect de `CGWindowList` o usar AX. La captura de ventanas con `screencapture` es 2× (Retina): al
+  medir sobre la imagen, usar fracciones, no píxeles absolutos. **Ojo con QA en sesión viva:** dos
+  diálogos abiertos por automatización fueron confirmados ~3 s después por el usuario que estaba
+  delante del Mac (en Chrome) — los «applies fantasma» eran humanos en el bucle, no un bug. Antes
+  de cazar fantasmas: comprobar quién más usa la máquina.
 
 ## Convenciones activas
 

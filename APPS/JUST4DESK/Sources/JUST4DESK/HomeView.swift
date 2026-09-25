@@ -21,6 +21,7 @@ struct HomeView: View {
     @State private var pendingSuggestion: ProactiveSuggestion?
     @State private var showNewCollection = false
     @State private var editingCollection: SavedCollection?
+    @State private var showWeeklyReport = false
     @FocusState private var omniFocused: Bool
 
     private var columns: [GridItem] {
@@ -117,6 +118,9 @@ struct HomeView: View {
             CollectionEditorSheet(editing: collection) { name, query in
                 viewModel.updateCollection(collection.id, name: name, query: query)
             }
+        }
+        .sheet(isPresented: $showWeeklyReport) {
+            WeeklyReportSheet(viewModel: viewModel)
         }
         .onReceive(NotificationCenter.default.publisher(for: .j4iShowLogViewer)) { _ in
             showLogViewer = true
@@ -449,25 +453,20 @@ struct HomeView: View {
         switch kind {
         case .duplicates: return "Verificar y limpiar"
         case .screenshots: return "Archivar"
-        case .largeForgotten: return "Revelar"
+        case .largeForgotten: return "Archivar en frío"
         }
     }
 
-    /// Duplicados y capturas piden confirmación; «grandes y olvidados» solo revela en Finder.
+    /// Todas las acciones que mueven algo piden confirmación previa.
     private func primaryAction(_ suggestion: ProactiveSuggestion) {
-        switch suggestion.kind {
-        case .duplicates, .screenshots:
-            pendingSuggestion = suggestion
-        case .largeForgotten:
-            viewModel.revealSuggestionItems(suggestion)
-        }
+        pendingSuggestion = suggestion
     }
 
     private func confirmButtonLabel(_ kind: ProactiveSuggestionKind) -> String {
         switch kind {
         case .duplicates: return "Verificar y enviar a la Papelera"
         case .screenshots: return "Archivar capturas"
-        case .largeForgotten: return "Revelar"
+        case .largeForgotten: return "Mover a 90_Archivo"
         }
     }
 
@@ -478,7 +477,7 @@ struct HomeView: View {
         case .screenshots:
             return "Se archivarán \(suggestion.items.count) captura(s) (\(ByteCountFormatter.string(fromByteCount: suggestion.totalBytes, countStyle: .file))) con deshacer. Lo dudoso quedará en «sin clasificar»."
         case .largeForgotten:
-            return "Se revelarán los primeros 10 elementos en el Finder."
+            return "Se moverán \(suggestion.items.count) elemento(s) (\(ByteCountFormatter.string(fromByteCount: suggestion.totalBytes, countStyle: .file))) a «90_Archivo/…» conservando su ruta. Deshacible desde Actividad."
         }
     }
 
@@ -571,6 +570,11 @@ struct HomeView: View {
                 HStack(spacing: 6) {
                     cardHeader("Actividad", "clock.arrow.circlepath")
                     Spacer()
+                    Button("Informe") {
+                        showWeeklyReport = true
+                    }
+                    .controlSize(.small)
+                    .help("Informe semanal (local, copiable y exportable en Markdown)")
                     Button("Ver todo") {
                         viewModel.showActivity = true
                     }
@@ -628,6 +632,7 @@ struct HomeView: View {
         switch entry.action {
         case "move": return "tray.and.arrow.down"
         case "quarantine": return "questionmark.folder"
+        case "cold": return "archivebox"
         case "simulate": return "eye"
         case "skipped-duplicate": return "doc.on.doc"
         default: return "exclamationmark.triangle"

@@ -635,6 +635,73 @@ public final class FilingCoordinator: @unchecked Sendable {
         }
     }
 
+    // MARK: - Archivo en frío (G6)
+
+    /// Mueve un elemento del archivo a `90_Archivo/…` **conservando su ruta relativa** dentro de
+    /// la raíz (p. ej. `13_Multimedia/Videos/x.mp4` → `90_Archivo/13_Multimedia/Videos/x.mp4`).
+    /// Journal + undo como cualquier archivado; pensado para los «grandes y olvidados» de G6.
+    public func archiveCold(at url: URL) async -> Outcome {
+        let standardized = url.standardizedFileURL
+        let displayName = standardized.lastPathComponent
+        let rootPath = rootURL.standardizedFileURL.path
+        let path = standardized.path
+        guard path.hasPrefix(rootPath + "/") else {
+            return Outcome(sourcePath: path, destinationPath: "", categoryPath: "", action: "error", reason: "El elemento no está dentro de la carpeta de organización.")
+        }
+        guard FileManager.default.fileExists(atPath: path) else {
+            return Outcome(sourcePath: path, destinationPath: "", categoryPath: "", action: "error", reason: "El elemento ya no existe.")
+        }
+
+        let relative = String(path.dropFirst(rootPath.count + 1))
+        let relativeDir = (relative as NSString).deletingLastPathComponent
+        let categoryRelativePath = relativeDir.isEmpty
+            ? DefaultTaxonomy.coldArchiveRelativePath
+            : "\(DefaultTaxonomy.coldArchiveRelativePath)/\(relativeDir)"
+        let plan = FilingPlan(
+            categoryRelativePath: categoryRelativePath,
+            fileName: displayName,
+            confidence: 1.0,
+            reason: "archivo en frío: sin cambios desde hace meses",
+            source: .rules
+        )
+        J4Log.info(.filing, "Archivo en frío: «\(displayName)» → «\(categoryRelativePath)/\(displayName)»…")
+        do {
+            let result = try executor.execute(plan: plan, sourceURL: standardized)
+            if result.destinationURL.lastPathComponent != plan.fileName {
+                J4Log.info(.filing, "Colisión de nombre en frío: «\(plan.fileName)» → «\(result.destinationURL.lastPathComponent)».")
+            }
+            _ = try? await index.journalAppend(
+                batchID: UUID().uuidString,
+                sourcePath: path,
+                destinationPath: result.destinationURL.path,
+                categoryPath: result.categoryRelativePath,
+                action: "cold"
+            )
+            // Repunta la caché de duplicados y mueve la entrada del índice al nuevo sitio
+            // (reciclando el texto extraído para no perder la búsqueda por contenido).
+            try? await index.repointCachedFiledPath(from: path, to: result.destinationURL.path)
+            var cachedText: String?
+            if let oldEntryID = try? await index.entryID(path: path) {
+                cachedText = (try? await index.documentText(entryID: oldEntryID)) ?? nil
+            }
+            if let rootInfo = try? await index.rootID(containing: path) {
+                _ = try? await index.removeEntries(rootID: rootInfo.id, paths: [path])
+            }
+            await indexFiledDocument(at: result.destinationURL, cachedText: cachedText)
+            J4Log.info(.filing, "En frío: «\(displayName)» → «\(result.categoryRelativePath)/\(result.destinationURL.lastPathComponent)».")
+            return Outcome(
+                sourcePath: path,
+                destinationPath: result.destinationURL.path,
+                categoryPath: result.categoryRelativePath,
+                action: "cold",
+                reason: plan.reason
+            )
+        } catch {
+            J4Log.error(.filing, "Error moviendo a frío «\(displayName)»: \(error.localizedDescription)")
+            return Outcome(sourcePath: path, destinationPath: "", categoryPath: "", action: "error", reason: error.localizedDescription)
+        }
+    }
+
     // MARK: - Privados
 
     private func storeCache(hash: String, profile: DocumentProfile, proposal: FilingProposal?) async {

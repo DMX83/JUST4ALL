@@ -143,6 +143,13 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 > «Ahora no» (7 días) / «Nunca más» persistentes. Pendientes de fases siguientes: cajones
 > mezclados ejecutables y archivo en frío (G6).
 
+> **Implementado (25-sep, G6)**: el archivo en frío ya es ejecutable — «Grandes y sin cambios
+> en 6+ meses» → **[Archivar en frío]** (confirmación; mueve a `90_Archivo/<ruta relativa>`
+> conservando la estructura, con journal `cold`, undo desde Actividad y búsqueda por contenido
+> preservada). Ciclo completo verificado en vivo con un instalador de 2,74 GB: aplicar →
+> «Deshacer» → archivo restaurado en su sitio. Los detectores excluyen `90_Archivo` y
+> `99_SinClasificar` para no proponer lo ya archivado.
+
 3. **Reglas visibles y portables** *(reusa: LocalKnowledgeStore, FilingSkill)*
    Pantalla de primera clase «Reglas»: las aprendidas (extensión/token → categoría, con confianza
    y muestras), editables, creables a mano, borrables, y **exportables/importables** (portabilidad
@@ -182,6 +189,12 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 > del Dock o soltar en Inicio → pipeline con journal/undo). La Quick Action de Finder y la
 > notificación de lote quedan para el empaquetado DMG (NSServices del bundle).
 
+> **Implementado (25-sep, G6)**: **Informe semanal** — la tarjeta «Actividad» de «Inicio» tiene
+> ahora **[Informe]**: abre una hoja con el informe de los últimos 7 días (archivados, GB
+> ordenados, deshechos, por revisar, top categorías, reglas promovidas y ahorro estimado de
+> tokens por conocimiento local), copiable y exportable a Markdown. Datos reales: 466
+> archivados · 17,62 GB · 27 reglas · ~4.825 tokens ahorrados.
+
 ---
 
 ## 4. Roadmap propuesto (fases G — incrementales, sin romper lo actual)
@@ -193,7 +206,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 | **G3** ✅ | **Reglas visibles** (pantalla + export/import) | Confianza y control; explota lo ya aprendido (27 reglas reales ya) | Bajo-Medio |
 | **G4** ✅ | **N5: menú de barra + atajo global + Quick Action Finder** (v1: menú + ⌥Espacio; la Quick Action llega con el DMG) | La app pasa de «ventana» a «presencia» (lo pide el mercado) | Bajo-Medio |
 | **G5** ✅ | **Espacios/colecciones** (v1: colecciones por búsquedas; etiquetas Finder = G5.1) | «Organizar sin mover»; encaja con Inicio y omnibox | Medio-Alto |
-| **G6** | **Archivo en frío + informe semanal** | Consolida «mantenimiento continuo» del entorno | Bajo |
+| **G6** ✅ | **Archivo en frío + informe semanal** | Consolida «mantenimiento continuo» del entorno | Bajo |
 | **G7** | **Búsqueda semántica local + chat del archivo (MCP para agentes)** | Diferencial avanzado (DEVONthink 4/Eagle ya lo venden) | Alto |
 
 **Recomendación de secuencia**: G1 → G3 → G2 → G4 → G5 → G6 → G7.

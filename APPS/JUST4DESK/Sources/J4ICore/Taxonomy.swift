@@ -24,6 +24,8 @@ public struct TaxonomyNode: Sendable, Equatable {
 /// Taxonomía por defecto de JUST4DESK (categorías en español).
 public enum DefaultTaxonomy {
     public static let quarantineRelativePath = "99_SinClasificar"
+    /// G6 — archivo en frío: lo grande y olvidado se conserva aquí, con su ruta relativa intacta.
+    public static let coldArchiveRelativePath = "90_Archivo"
 
     public static func categories() -> [TaxonomyNode] {
         [
@@ -96,6 +98,7 @@ public enum DefaultTaxonomy {
             ]),
             TaxonomyNode(name: "14_Comprimidos"),
             TaxonomyNode(name: "15_Libros"),
+            TaxonomyNode(name: coldArchiveRelativePath),
             TaxonomyNode(name: quarantineRelativePath)
         ]
     }

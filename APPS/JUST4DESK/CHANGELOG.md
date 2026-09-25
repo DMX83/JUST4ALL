@@ -562,3 +562,21 @@ Convención por version + build stamp:
 - **Ventana «Buscar»**: marcador junto al campo → «Guardar esta búsqueda como colección…».
 - Store `CollectionStore` (J4ICore) + 5 tests; suite 172 (171 + 1 skip). Capturas en
   `docs/design/G5/`. Pendiente G5.1: **etiquetas Finder nativas** (decisión abierta §7.3).
+
+### Added — G6 (archivo en frío + informe semanal) (25-sep, noche)
+
+- **Archivo en frío ejecutable**: en «Sugerencias», los «Grandes y sin cambios en 6+ meses»
+  pasan de [Revelar] a **[Archivar en frío]** con confirmación: mueven a `90_Archivo/<ruta
+  relativa>` (estructura intacta) con journal/undo (`action=cold`, `JournalEntry.isUndoable`
+  incluye `cold`) y la búsqueda por contenido se conserva (el texto extraído viaja con la
+  entrada; la caché se reapunta al destino con `repointCachedFiledPath`). `90_Archivo` entra en
+  la taxonomía estándar; los detectores de duplicados y «grandes» excluyen `90_Archivo` y
+  `99_SinClasificar`. Validado en vivo con un instalador real de 2,74 GB: aplicar → journal
+  `applied`; «Deshacer» → `undone` y archivo restaurado en su sitio.
+- **Informe semanal**: hoja desde «Inicio» (tarjeta Actividad → **[Informe]**): periodo, lo que
+  hizo la app (archivados, GB ordenados, deshechos, por revisar), top categorías, reglas
+  promovidas y tokens ahorrados por conocimiento local; **Copiar** y **Exportar…** a Markdown
+  (`just4desk-informe-YYYY-MM-dd.md`). Datos reales verificados (466 archivados, 17,62 GB, 27
+  reglas, ~4.825 tokens ahorrados).
+- +5 tests (`ColdArchiveTests` ×3, `WeeklyReportTests` ×1 + `TaxonomyTests` ampliado); suite
+  **177** (176 + 1 skip). Capturas en `docs/design/G6/`.

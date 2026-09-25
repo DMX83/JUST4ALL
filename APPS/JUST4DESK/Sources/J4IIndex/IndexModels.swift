@@ -127,7 +127,7 @@ public struct JournalEntry: Sendable, Equatable, Identifiable {
     }
 
     public var isUndoable: Bool {
-        state == "applied" && (action == "move" || action == "quarantine")
+        state == "applied" && (action == "move" || action == "quarantine" || action == "cold")
     }
 }
 

@@ -26,7 +26,7 @@ public enum ProactiveSuggestionKind: String, CaseIterable, Sendable {
         case .screenshots:
             return "Imágenes de captura sin archivar (suelen ser ruido). Al aplicar se archivan con deshacer y quedan buscables."
         case .largeForgotten:
-            return "De 1 GB o más y sin cambios desde hace medio año. Candidatos a mover a un archivo en frío (próxima fase)."
+            return "De 1 GB o más y sin cambios desde hace medio año. Al aplicar se mueven a «90_Archivo/…» conservando su ruta (deshacible desde Actividad)."
         }
     }
 
