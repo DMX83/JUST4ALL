@@ -11,6 +11,7 @@
   - **JUST4CONVERT**: Conversión multimedia (SwiftUI)
   - **JUST4FOLDERS**: Organización de archivos/carpetas (SwiftUI)
   - **JUST4PICT**: Mejoramiento de imágenes por lotes (SwiftUI)
+  - **JUST4INDEX**: Buscador instantáneo + organizador de documentos (SwiftUI)
 - **Sources/JUST4ALL/**: Código fuente del hub principal (Swift)
 - **scripts/**: Scripts de build, empaquetado, release y utilidades.
 - **build/**: Artefactos de compilación.
@@ -55,6 +56,13 @@
 - **Función**: Mejoramiento automático de imágenes por lotes, presets inteligentes, pipeline Core Image, sugerencia IA (OpenAI) para presets/calidad.
 - **Build**: Xcode/SPM, script DMG.
 - **Notas**: Exporta a JPG, PNG, HEIC, WEBP, TIFF. Upscale automático, logging QA, integración IA opcional. Baseline MVP cerrada con QA local 100/1000 y release unsigned.
+
+### 6. JUST4INDEX
+- **Lenguaje**: Swift (SwiftUI, SPM modular: J4ICore, J4IIndex, J4IDocs, J4IAI, J4IFiling).
+- **Función**: Buscador instantáneo tipo Everything (índice SQLite FTS5 + FSEvents) y organizador automático de documentos (watcher de carpeta de entrada, extracción local PDFKit/Vision OCR, clasificación con reglas + DeepSeek JSON opcional, taxonomía en `~/JUST4INDEX`, undo/cuarentena).
+- **Build**: Xcode/SPM, script DMG dedicado; macOS 14+ (depende de módulos de JUST4FOLDERS vía library products).
+- **Distribución**: DMG `JUST4INDEX-<version>.dmg` + SHA256SUMS en GitHub Releases.
+- **Notas**: Privacidad local-first (a DeepSeek solo texto truncado); nunca borra archivos (journal + undo); memoria maestra en `APPS/JUST4INDEX/MEMORY.md`; skill de agente en `.github/skills/just4index/`.
 
 ---
 

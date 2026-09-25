@@ -5,7 +5,12 @@ let package = Package(
     name: "JUST4FOLDERS",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "JUST4FOLDERS", targets: ["JUST4FOLDERS"])
+        .executable(name: "JUST4FOLDERS", targets: ["JUST4FOLDERS"]),
+        // Library products para reuso desde otras subapps del monorepo (p. ej. JUST4INDEX).
+        .library(name: "J4FCore", targets: ["J4FCore"]),
+        .library(name: "J4FFileSystem", targets: ["J4FFileSystem"]),
+        .library(name: "J4FOps", targets: ["J4FOps"]),
+        .library(name: "J4FUI", targets: ["J4FUI"])
     ],
     targets: [
         .target(name: "J4FCore"),

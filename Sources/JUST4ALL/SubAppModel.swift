@@ -163,6 +163,28 @@ enum SubAppsCatalog {
                 "Assets/JUST4PICT/screen-1.png",
                 "Assets/JUST4PICT/screen-2.png"
             ]
+        ),
+        SubApp(
+            name: "JUST4INDEX",
+            subtitle: "Buscador instantaneo y organizador inteligente de documentos",
+            bundleId: "com.dmx83.just4index",
+            assetPrefix: "JUST4INDEX",
+            accent: Color(red: 0.20, green: 0.55, blue: 0.72),
+            systemIcon: "magnifyingglass.circle",
+            description: "Encuentra cualquier archivo en milisegundos y deja que ordene tus descargas solo: clasifica por contenido con IA opcional, aprende de tus correcciones y archiva con undo y cuarentena. Todo en tu Mac.",
+            requirements: ["macOS 14+", "Instalado como .app"],
+            links: [],
+            version: pinnedVersion,
+            changelog: [
+                "Buscador instantaneo con indice local (FTS5 + FSEvents; subcadena y contenido)",
+                "Organizador automatico con taxonomia fina (peliculas, series, libros, redes) y cuarentena revisable",
+                "Aprende de la IA y de tus correcciones: clasifica sin gastar tokens (conocimiento local)"
+            ],
+            logoName: "Assets/JUST4INDEX/logo.png",
+            screenshots: [
+                "Assets/JUST4INDEX/screen-1.png",
+                "Assets/JUST4INDEX/screen-2.png"
+            ]
         )
     ]
 

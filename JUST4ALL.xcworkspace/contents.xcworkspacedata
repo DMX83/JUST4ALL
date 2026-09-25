@@ -6,4 +6,10 @@
   </FileRef>
   <FileRef location="group:APPS/JUST4PDF">
   </FileRef>
+  <FileRef location="group:APPS/JUST4FOLDERS">
+  </FileRef>
+  <FileRef location="group:APPS/JUST4PICT">
+  </FileRef>
+  <FileRef location="group:APPS/JUST4INDEX">
+  </FileRef>
 </Workspace>
