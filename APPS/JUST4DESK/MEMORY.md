@@ -630,6 +630,26 @@
   (466 archivados · 17,62 GB · 27 reglas · ~4.825 tokens), diálogo probado y **ciclo
   aplicar→Deshacer verificado** con un instalador real (journal cold: applied → undone,
   archivo restaurado). Suite 177 (176 + 1 skip; +5 tests). Capturas `docs/design/G6/`.
+- G7 (26-sep): **búsqueda semántica local + chat del archivo** — (a) **expansión de consultas**
+  con `NLEmbedding.wordEmbedding(for: .spanish)` (`QueryExpander`, J4IIndex): sinónimos por
+  término («sueldo» → salario/nómina), extras marcados «por significado» vía `SemanticMerge`
+  (chip «Semántica» en «Buscar», ON por defecto; `matchExpression` pre-construida salta el
+  troceador AND) + **rescate OR** cuando la consulta estricta da 0. (b) **Vectores por documento**
+  (`DocEmbedder` actor: NLContextualEmbedding latin 512d con pooling por token; fallback
+  sentence-es 640d): tabla `embeddings` (schema v4) con modelo/fuente ('name'/'content'),
+  relleno en segundo plano al arrancar + lotes cortos tras búsqueda; `semanticHits(contentOnly:)`
+  puntúa solo vectores de contenido (los de nombre eran ruido ~0.93+ en pruebas reales).
+  (c) **Chat del archivo** (⇧⌘K; ventana `ChatView`/`ChatModel`): recuperación local (OR +
+  sinónimos + vectores) → `DeepSeekClient.completeText` (texto plano nuevo) con citas `[n]`
+  (`ArchiveChatPrompt`: fragmentos ≤700 car./≤4.000 total; parseo de citas) + chips para
+  revelar en Finder; respeta interruptor/cap IA; el contexto **cita solo ficheros** (las carpetas
+  del índice se filtran: petición del usuario tras la primera demo). Validado en vivo: «sueldo»
+  → 10 resultados por
+  significado; chat «¿Qué recibos de luz o gas tengo?» → respuesta con 3 citas (Iberdrola Gas).
+  (d) **Carry-over al reindexar** (`upsertEntries` conserva doc_text + embeddings por path): las
+  entradas se re-crean con id nuevo en cada reindexado — se detectó que **299 doc_text históricos
+  quedaron huérfanos** (búsqueda por contenido degradada desde antes de G7; re-extracción = G7.3).
+  Suite 196 (195 + 1 skip; +19 tests). Capturas `docs/design/G7/`.
 
 ## Lecciones y trampas
 
@@ -674,6 +694,22 @@
   diálogos abiertos por automatización fueron confirmados ~3 s después por el usuario que estaba
   delante del Mac (en Chrome) — los «applies fantasma» eran humanos en el bucle, no un bug. Antes
   de cazar fantasmas: comprobar quién más usa la máquina.
+- Embeddings locales (G7, medido): `NLEmbedding.sentenceEmbedding(es)` y `NLContextualEmbedding`
+  (latin) dan cosenos altos y poco separables en **nombres de fichero** (todo ~0.9+) → los
+  vectores solo puntúan documentos con texto (`contentOnly`); la **expansión con palabras** es el
+  caballo de trabajo: `neighbors(for:maximumCount:)` devuelve (palabra, distancia) con distancia
+  menor = más cerca («sueldo»→salario 0.70, nómina 0.86); corte ≈0.88, tope 3 sinónimos por
+  término; los <3 letras y las muletillas se excluyen también de la recuperación OR del chat.
+- `upsertEntries` recrea las entradas con **id nuevo** en cada reindexado (el path es la clave
+  estable): todo lo colgado por `entry_id` (doc_text, doc_text_fts, embeddings) debe
+  **traspasarse por path** antes de borrar e insertar (carry-over de G7). Sin eso la búsqueda por
+  contenido se degrada en silencio (se detectaron 299 textos huérfanos de reindexados previos).
+- QA/automatización (G7): para teclear en campos SwiftUI por accesibilidad, `keystroke` NO basta
+  si el campo no tiene foco real — `set value of attribute "AXFocused" of e to true` sobre el
+  AXTextField y después `keystroke`. Los comandos de menú ⌘F sí responden sin bundle (la ventana
+  «Buscar» abrió con `keystroke "f" using command down`); ⇧⌘K va por el monitor local
+  (`case "k" where flags.contains(.shift)`). El chat **cita solo ficheros**: las carpetas se
+  filtran del contexto en `chatContext` (petición del usuario, 26-sep).
 
 ## Convenciones activas
 

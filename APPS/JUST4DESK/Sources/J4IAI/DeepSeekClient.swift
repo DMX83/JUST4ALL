@@ -102,14 +102,29 @@ public struct DeepSeekClient: Sendable {
         temperature: Double = 0.1
     ) async throws -> String {
         do {
-            return try await performRequest(system: system, user: user, maxTokens: maxTokens, temperature: temperature)
+            return try await performRequest(system: system, user: user, maxTokens: maxTokens, temperature: temperature, jsonMode: true)
         } catch DeepSeekError.emptyResponse {
             J4Log.warn(.ai, "La IA devolvió una respuesta vacía; reintentando una vez…")
-            return try await performRequest(system: system, user: user, maxTokens: maxTokens, temperature: temperature)
+            return try await performRequest(system: system, user: user, maxTokens: maxTokens, temperature: temperature, jsonMode: true)
         }
     }
 
-    private func performRequest(system: String, user: String, maxTokens: Int, temperature: Double) async throws -> String {
+    /// Chat completion en **texto plano** (sin JSON mode): respuestas del «Chat del archivo» (G7).
+    public func completeText(
+        system: String,
+        user: String,
+        maxTokens: Int = 700,
+        temperature: Double = 0.3
+    ) async throws -> String {
+        do {
+            return try await performRequest(system: system, user: user, maxTokens: maxTokens, temperature: temperature, jsonMode: false)
+        } catch DeepSeekError.emptyResponse {
+            J4Log.warn(.ai, "La IA devolvió una respuesta vacía; reintentando una vez…")
+            return try await performRequest(system: system, user: user, maxTokens: maxTokens, temperature: temperature, jsonMode: false)
+        }
+    }
+
+    private func performRequest(system: String, user: String, maxTokens: Int, temperature: Double, jsonMode: Bool) async throws -> String {
         var request = URLRequest(url: configuration.baseURL.appendingPathComponent("chat/completions"))
         request.httpMethod = "POST"
         request.timeoutInterval = configuration.timeout
@@ -124,7 +139,7 @@ public struct DeepSeekClient: Sendable {
             ],
             temperature: temperature,
             max_tokens: maxTokens,
-            response_format: RequestBody.ResponseFormat(type: "json_object"),
+            response_format: jsonMode ? RequestBody.ResponseFormat(type: "json_object") : nil,
             stream: false
         )
         request.httpBody = try JSONEncoder().encode(body)
@@ -171,7 +186,7 @@ public struct DeepSeekClient: Sendable {
         let messages: [Message]
         let temperature: Double
         let max_tokens: Int
-        let response_format: ResponseFormat
+        let response_format: ResponseFormat?
         let stream: Bool
     }
 

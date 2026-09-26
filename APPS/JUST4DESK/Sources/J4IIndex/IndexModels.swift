@@ -88,12 +88,22 @@ public struct IndexSearchRequest: Sendable {
     public var filters: IndexSearchFilters
     public var limit: Int
     public var includeContent: Bool
+    /// Expresión FTS5 ya construida (p. ej. por `QueryExpander`); si está, se usa tal cual en el
+    /// `MATCH` en lugar de trocear `query`.
+    public var matchExpression: String?
 
-    public init(query: String, filters: IndexSearchFilters = .init(), limit: Int = 200, includeContent: Bool = false) {
+    public init(
+        query: String,
+        filters: IndexSearchFilters = .init(),
+        limit: Int = 200,
+        includeContent: Bool = false,
+        matchExpression: String? = nil
+    ) {
         self.query = query
         self.filters = filters
         self.limit = limit
         self.includeContent = includeContent
+        self.matchExpression = matchExpression
     }
 }
 
@@ -103,6 +113,8 @@ public struct IndexSearchHit: Sendable, Equatable {
     public let matchedContent: Bool
     /// Fragmento del texto del documento con la coincidencia (solo matches por contenido).
     public let contentSnippet: String?
+    /// G7: acierto por similitud semántica (por significado, no por coincidencia literal).
+    public var matchedSemantically: Bool = false
 }
 
 public struct CachedAnalysis: Sendable, Equatable {

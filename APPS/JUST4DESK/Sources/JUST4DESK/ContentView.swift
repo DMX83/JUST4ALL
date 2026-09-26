@@ -162,6 +162,12 @@ struct ContentView: View {
                 isOn: $viewModel.searchInContent,
                 help: "Busca también dentro del texto de los documentos archivados"
             )
+            ToggleChip(
+                title: "Semántica",
+                systemImage: "sparkles",
+                isOn: $viewModel.semanticSearchEnabled,
+                help: viewModel.semanticChipHelp
+            )
             rootMenu
         }
         .padding(.horizontal, J4I.Space.l)

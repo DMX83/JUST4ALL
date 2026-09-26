@@ -580,3 +580,25 @@ Convención por version + build stamp:
   reglas, ~4.825 tokens ahorrados).
 - +5 tests (`ColdArchiveTests` ×3, `WeeklyReportTests` ×1 + `TaxonomyTests` ampliado); suite
   **177** (176 + 1 skip). Capturas en `docs/design/G6/`.
+
+### Added — G7 (búsqueda semántica local + chat del archivo) (26-sep)
+
+- **Expansión semántica de consultas** con embeddings de palabras en español de Apple (local):
+  «sueldo» → «salario/nómina», «alquiler» → «arrendamiento/vivienda», «recibo» → «factura». El
+  chip **Semántica** (activado por defecto) añade esos aciertos como extras marcados «por
+  significado» y, si la consulta estricta no encuentra nada, reintenta con una expresión OR
+  (términos útiles + sinónimos, sin muletillas).
+- **Vectores por documento** (`NLContextualEmbedding` latin, 512d): tabla `embeddings` (esquema
+  v4), rellenado en segundo plano al arrancar (1.261/1.261 en ~15 s) con lotes cortos tras cada
+  búsqueda. Se usan para similitud en documentos **con texto**; en nombres sueltos añaden más
+  ruido que señal (decisión medida y documentada).
+- **Chat del archivo** (⇧⌘K o Accesos → Chat): recuperación 100 % local (léxico + OR + sinónimos
+  + vectores de contenido) → respuesta de DeepSeek con **citas [n]** clicables («busca el fichero
+  en el Finder»). Respeta interruptor/cap de IA y registra tokens. Privacidad: solo fragmentos
+  recortados (≤700 caracteres cada uno, ≤4.000 en total) y nunca ficheros. El contexto **cita
+  solo ficheros**: las carpetas se filtran de la recuperación (evita citar cajones vacíos).
+- **Traspaso al reindexar** (`upsertEntries`): al recrearse una entrada con id nuevo ya no se
+  pierden el texto extraído ni el vector (carry-over). Esto sana la pérdida que degradaba la
+  búsqueda por contenido desde reindexados anteriores.
+- +19 tests (`SemanticIndexTests`, `QueryExpansionTests`, `ArchiveChatTests`); suite **196**
+  (195 + 1 skip). Capturas en `docs/design/G7/`.

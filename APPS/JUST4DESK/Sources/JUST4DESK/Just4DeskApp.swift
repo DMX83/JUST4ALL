@@ -51,6 +51,10 @@ struct Just4DeskApp: App {
                     NotificationCenter.default.post(name: .j4iOpenRules, object: nil)
                 }
                 .keyboardShortcut("g", modifiers: .command)
+                Button("Chat del archivo") {
+                    NotificationCenter.default.post(name: .j4iOpenChat, object: nil)
+                }
+                .keyboardShortcut("k", modifiers: [.command, .shift])
                 Button("Ajustes de IA") {
                     SettingsTabRouter.pendingTab = "ai"
                     NotificationCenter.default.post(name: .j4iOpenAISettings, object: nil)
@@ -94,6 +98,13 @@ struct Just4DeskApp: App {
                 .tint(J4I.brand)
         }
         .defaultSize(width: 760, height: 560)
+
+        Window("Chat del archivo", id: "chat") {
+            ChatView()
+                .environmentObject(engine)
+                .tint(J4I.brand)
+        }
+        .defaultSize(width: 720, height: 560)
 
         MenuBarExtra {
             MenuBarContent()

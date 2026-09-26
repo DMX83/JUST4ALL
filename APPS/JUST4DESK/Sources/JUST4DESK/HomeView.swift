@@ -134,6 +134,9 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: .j4iOpenRules)) { _ in
             openWindow(id: "rules")
         }
+        .onReceive(NotificationCenter.default.publisher(for: .j4iOpenChat)) { _ in
+            openWindow(id: "chat")
+        }
         .onReceive(NotificationCenter.default.publisher(for: .j4iOpenSearch)) { note in
             if let query = note.object as? String, !query.isEmpty {
                 viewModel.query = query
@@ -744,6 +747,9 @@ struct HomeView: View {
                     }
                     shortcutButton("Reglas", icon: "text.badge.checkmark", keys: "⌘G") {
                         openWindow(id: "rules")
+                    }
+                    shortcutButton("Chat", icon: "text.bubble", keys: "⇧⌘K") {
+                        openWindow(id: "chat")
                     }
                 }
             }

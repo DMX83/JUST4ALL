@@ -14,7 +14,7 @@ import SQLite3
 public actor SearchIndex {
     public static let shared = SearchIndex()
 
-    public static let schemaVersion: Int32 = 3
+    public static let schemaVersion: Int32 = 4
 
     private let dbURL: URL
     private var db: OpaquePointer?
@@ -135,7 +135,14 @@ public actor SearchIndex {
         var written = 0
         try inTransaction {
             for entry in entries {
+                // Al reindexar una ruta la entrada se re-crea con un id nuevo: conserva el texto
+                // extraído y el vector semántico de la entrada anterior para no perderlos.
+                let carriedText = try documentTextForPath(entry.path)
+                let carriedEmbedding = try embeddingForPath(entry.path)
                 try deleteFTSRows(paths: [entry.path])
+                try exec("DELETE FROM doc_text_fts WHERE rowid IN (SELECT id FROM entries WHERE path = ?);", [.text(entry.path)])
+                try exec("DELETE FROM doc_text WHERE entry_id IN (SELECT id FROM entries WHERE path = ?);", [.text(entry.path)])
+                try exec("DELETE FROM embeddings WHERE entry_id IN (SELECT id FROM entries WHERE path = ?);", [.text(entry.path)])
                 try exec("DELETE FROM entries WHERE path = ?;", [.text(entry.path)])
                 let parent = (entry.path as NSString).deletingLastPathComponent
                 try exec(
@@ -160,9 +167,30 @@ public actor SearchIndex {
                     "INSERT INTO entries_fts(rowid, path, name) VALUES(?, ?, ?);",
                     [.int(rowID), .text(entry.path), .text(entry.name)]
                 )
+                if let carriedText, !carriedText.isEmpty {
+                    try exec(
+                        "INSERT INTO doc_text(entry_id, text, updated_ts) VALUES(?, ?, ?);",
+                        [.int(rowID), .text(carriedText), .double(Date().timeIntervalSince1970)]
+                    )
+                    try exec("INSERT INTO doc_text_fts(rowid, text) VALUES(?, ?);", [.int(rowID), .text(carriedText)])
+                }
+                if let carriedEmbedding {
+                    try exec(
+                        "INSERT INTO embeddings(entry_id, model, dim, source, vec, updated_ts) VALUES(?, ?, ?, ?, ?, ?);",
+                        [
+                            .int(rowID),
+                            .text(carriedEmbedding.model),
+                            .int(Int64(carriedEmbedding.dim)),
+                            .text(carriedEmbedding.source),
+                            .blob(carriedEmbedding.vec),
+                            .double(Date().timeIntervalSince1970)
+                        ]
+                    )
+                }
                 written += 1
             }
         }
+        embeddingCache = nil
         return written
     }
 
@@ -184,6 +212,10 @@ public actor SearchIndex {
                 )
                 try exec(
                     "DELETE FROM doc_text WHERE entry_id IN (SELECT id FROM entries WHERE root_id = ? AND (path = ? OR (path >= ? AND path < ?)));",
+                    [.int(rootID), .text(std), .text(lo), .text(hi)]
+                )
+                try exec(
+                    "DELETE FROM embeddings WHERE entry_id IN (SELECT id FROM entries WHERE root_id = ? AND (path = ? OR (path >= ? AND path < ?)));",
                     [.int(rootID), .text(std), .text(lo), .text(hi)]
                 )
                 try exec(
@@ -287,11 +319,211 @@ public actor SearchIndex {
         return columnText(stmt, 0)
     }
 
+    // MARK: - Semántica (G7): embeddings locales
+
+    /// Entrada pendiente de (re)vectorizar: sin vector, vectorizada solo por nombre cuando ya hay
+    /// texto del documento, o vectorizada con otro modelo.
+    public struct EmbeddingCandidate: Sendable, Equatable {
+        public let entryID: Int64
+        public let name: String
+        public let documentText: String?
+    }
+
+    private var embeddingCache: (model: String, contentOnly: Bool, count: Int64, rows: [(entryID: Int64, vector: [Float])])?
+
+    /// Candidatos a vectorizar con `model` (tope por lote para el rellenado en segundo plano).
+    public func embeddingCandidates(model: String, limit: Int = 64) throws -> [EmbeddingCandidate] {
+        try openIfNeeded()
+        let sql = """
+        SELECT e.id, e.name, dt.text
+        FROM entries e
+        LEFT JOIN embeddings em ON em.entry_id = e.id AND em.model = ?
+        LEFT JOIN doc_text dt ON dt.entry_id = e.id
+        WHERE e.is_dir = 0
+          AND (em.entry_id IS NULL OR (em.source = 'name' AND dt.text IS NOT NULL))
+        ORDER BY e.id
+        LIMIT ?;
+        """
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar candidatos de embeddings.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, model, -1, SQLITE_TRANSIENT)
+        sqlite3_bind_int64(stmt, 2, Int64(limit))
+        var rows: [EmbeddingCandidate] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            rows.append(
+                EmbeddingCandidate(
+                    entryID: sqlite3_column_int64(stmt, 0),
+                    name: columnText(stmt, 1) ?? "",
+                    documentText: columnText(stmt, 2)
+                )
+            )
+        }
+        return rows
+    }
+
+    /// Guarda (o reemplaza) el vector normalizado de una entrada.
+    public func setEmbedding(entryID: Int64, model: String, source: String, vector: [Float]) throws {
+        try openIfNeeded()
+        try exec(
+            """
+            INSERT INTO embeddings(entry_id, model, dim, source, vec, updated_ts) VALUES(?, ?, ?, ?, ?, ?)
+            ON CONFLICT(entry_id) DO UPDATE SET
+                model = excluded.model, dim = excluded.dim, source = excluded.source,
+                vec = excluded.vec, updated_ts = excluded.updated_ts;
+            """,
+            [
+                .int(entryID),
+                .text(model),
+                .int(Int64(vector.count)),
+                .text(source),
+                .blob(Self.packFloats(vector)),
+                .double(Date().timeIntervalSince1970)
+            ]
+        )
+        embeddingCache = nil
+    }
+
+    /// (vectorizados con `model`, ficheros totales) para el estado que muestra la UI.
+    public func embeddingStats(model: String) throws -> (embedded: Int64, files: Int64) {
+        try openIfNeeded()
+        let embedded = try scalarInt64("SELECT COUNT(*) FROM embeddings WHERE model = ?;", [.text(model)]) ?? 0
+        let files = try scalarInt64("SELECT COUNT(*) FROM entries WHERE is_dir = 0;", []) ?? 0
+        return (embedded, files)
+    }
+
+    /// Mejores aciertos por similitud semántica (producto punto; `queryVector` normalizado).
+    /// Con `contentOnly` solo puntúan los vectores construidos con el texto del documento
+    /// (los de nombre se reservan a otras funciones: en corpus cortos añaden más ruido que señal).
+    public func semanticHits(
+        queryVector: [Float],
+        model: String,
+        limit: Int = 10,
+        filters: IndexSearchFilters = .init(),
+        contentOnly: Bool = false
+    ) throws -> [IndexSearchHit] {
+        try openIfNeeded()
+        let snapshot = try embeddingSnapshot(model: model, contentOnly: contentOnly)
+        guard !snapshot.isEmpty else { return [] }
+        var scored: [(entryID: Int64, score: Double)] = []
+        for row in snapshot where row.vector.count == queryVector.count {
+            var dot: Float = 0
+            for index in queryVector.indices { dot += row.vector[index] * queryVector[index] }
+            scored.append((row.entryID, Double(dot)))
+        }
+        scored.sort { $0.score > $1.score }
+        let top = Array(scored.prefix(max(limit * 3, limit)))
+        let entriesByID = Dictionary(uniqueKeysWithValues: try entries(ids: top.map(\.entryID)).map { ($0.id, $0) })
+        var hits: [IndexSearchHit] = []
+        for row in top {
+            guard hits.count < limit else { break }
+            guard let entry = entriesByID[row.entryID], Self.matches(filters: filters, entry: entry) else { continue }
+            hits.append(
+                IndexSearchHit(
+                    entry: entry,
+                    score: row.score,
+                    matchedContent: false,
+                    contentSnippet: nil,
+                    matchedSemantically: true
+                )
+            )
+        }
+        return hits
+    }
+
+    /// Entradas por id, en el orden pedido (omite ids inexistentes).
+    public func entries(ids: [Int64]) throws -> [IndexEntry] {
+        try openIfNeeded()
+        guard !ids.isEmpty else { return [] }
+        let placeholders = Array(repeating: "?", count: ids.count).joined(separator: ",")
+        let sql = """
+        SELECT e.id, e.root_id, e.path, e.name, e.ext, e.is_dir, e.size_bytes, e.modified_ts
+        FROM entries e WHERE e.id IN (\(placeholders));
+        """
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar la consulta por ids.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        try bind(stmt, ids.map { .int($0) })
+        var byID: [Int64: IndexEntry] = [:]
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            let entry = makeEntry(from: stmt)
+            byID[entry.id] = entry
+        }
+        return ids.compactMap { byID[$0] }
+    }
+
+    /// Snapshot cacheado de vectores (se invalida al escribir embeddings o cambiar el conteo).
+    private func embeddingSnapshot(model: String, contentOnly: Bool = false) throws -> [(entryID: Int64, vector: [Float])] {
+        let sourceClause = contentOnly ? " AND source = 'content'" : ""
+        let count = try scalarInt64("SELECT COUNT(*) FROM embeddings WHERE model = ?\(sourceClause);", [.text(model)]) ?? 0
+        if let cache = embeddingCache, cache.model == model, cache.contentOnly == contentOnly, cache.count == count {
+            return cache.rows
+        }
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT entry_id, dim, vec FROM embeddings WHERE model = ?\(sourceClause);", -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar la lectura de embeddings.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, model, -1, SQLITE_TRANSIENT)
+        var rows: [(entryID: Int64, vector: [Float])] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            let entryID = sqlite3_column_int64(stmt, 0)
+            let dim = Int(sqlite3_column_int64(stmt, 1))
+            guard let data = columnBlob(stmt, 2), let vector = Self.unpackFloats(data, count: dim) else { continue }
+            rows.append((entryID, vector))
+        }
+        embeddingCache = (model, contentOnly, count, rows)
+        return rows
+    }
+
+    private static func matches(filters: IndexSearchFilters, entry: IndexEntry) -> Bool {
+        if let rootID = filters.rootID, entry.rootID != rootID { return false }
+        if let extensions = filters.extensions {
+            guard !entry.isDirectory, extensions.contains(entry.ext) else { return false }
+        }
+        if let directoriesOnly = filters.directoriesOnly, directoriesOnly, !entry.isDirectory { return false }
+        if let minSize = filters.minSizeBytes, entry.sizeBytes < minSize { return false }
+        if let maxSize = filters.maxSizeBytes, entry.sizeBytes > maxSize { return false }
+        if let after = filters.modifiedAfter {
+            guard let modified = entry.modifiedAt, modified >= after else { return false }
+        }
+        if let before = filters.modifiedBefore {
+            guard let modified = entry.modifiedAt, modified <= before else { return false }
+        }
+        if let prefix = filters.pathPrefix, !entry.path.hasPrefix(prefix) { return false }
+        return true
+    }
+
+    static func packFloats(_ floats: [Float]) -> Data {
+        var data = Data(capacity: floats.count * 4)
+        for value in floats {
+            var bits = value.bitPattern.littleEndian
+            withUnsafeBytes(of: &bits) { data.append(contentsOf: $0) }
+        }
+        return data
+    }
+
+    static func unpackFloats(_ data: Data, count: Int) -> [Float]? {
+        guard count > 0, data.count == count * 4 else { return nil }
+        var floats = [Float](repeating: 0, count: count)
+        data.withUnsafeBytes { raw in
+            for index in 0..<count {
+                let bits = raw.loadUnaligned(fromByteOffset: index * 4, as: UInt32.self)
+                floats[index] = Float(bitPattern: UInt32(littleEndian: bits))
+            }
+        }
+        return floats
+    }
+
     // MARK: - Búsqueda
 
     public func search(_ request: IndexSearchRequest) throws -> [IndexSearchHit] {
         try openIfNeeded()
-        guard let match = Self.ftsMatchExpression(from: request.query) else { return [] }
+        guard let match = request.matchExpression ?? Self.ftsMatchExpression(from: request.query) else { return [] }
         let limit = max(1, min(request.limit, 5_000))
 
         var hits: [IndexSearchHit] = []
@@ -311,7 +543,7 @@ public actor SearchIndex {
         }
         // Pasada «contiene» (estilo Everything): si queda hueco en la página, busca la subcadena en
         // el nombre normalizado — «net» también encuentra «dotnet-sdk», «Internet…» o «Planet…».
-        if hits.count < limit, request.query.count >= 2 {
+        if hits.count < limit, request.matchExpression == nil, request.query.count >= 2 {
             for entry in try queryNameContains(request.query, filters: request.filters, limit: limit * 2, excluding: seen) {
                 guard hits.count < limit else { break }
                 seen.insert(entry.id)
@@ -797,6 +1029,9 @@ public actor SearchIndex {
         if version < 3 {
             try applySchemaV3()
         }
+        if version < 4 {
+            try applySchemaV4()
+        }
         if version != Int64(Self.schemaVersion) {
             try exec("PRAGMA user_version = \(Self.schemaVersion);")
         }
@@ -918,6 +1153,26 @@ public actor SearchIndex {
         try exec("CREATE INDEX IF NOT EXISTS idx_journal_ts ON ops_journal(ts);")
     }
 
+    /// v4 (G7): vectores semánticos locales por entrada (`embeddings`). Se guarda el modelo y la
+    /// fuente ('name' o 'content') para poder re-vectorizar cuando llegue el texto del documento
+    /// o cuando cambie el modelo de embeddings.
+    private func applySchemaV4() throws {
+        try exec(
+            """
+            CREATE TABLE IF NOT EXISTS embeddings (
+                entry_id INTEGER PRIMARY KEY,
+                model TEXT NOT NULL,
+                dim INTEGER NOT NULL,
+                source TEXT NOT NULL DEFAULT 'name',
+                vec BLOB NOT NULL,
+                updated_ts REAL NOT NULL
+            );
+            """
+        )
+        // Barrido de vectores huérfanos (entradas que ya no existen; p. ej. de antes del esquema).
+        try exec("DELETE FROM embeddings WHERE entry_id NOT IN (SELECT id FROM entries);")
+    }
+
     // MARK: - Internals: helpers
 
     private func fetchRoot(path: String) throws -> IndexRoot? {
@@ -964,6 +1219,7 @@ public actor SearchIndex {
     private func deleteEntriesSQL(rootID: Int64) throws {
         try exec("DELETE FROM doc_text_fts WHERE rowid IN (SELECT id FROM entries WHERE root_id = ?);", [.int(rootID)])
         try exec("DELETE FROM doc_text WHERE entry_id IN (SELECT id FROM entries WHERE root_id = ?);", [.int(rootID)])
+        try exec("DELETE FROM embeddings WHERE entry_id IN (SELECT id FROM entries WHERE root_id = ?);", [.int(rootID)])
         try exec("DELETE FROM entries_fts WHERE rowid IN (SELECT id FROM entries WHERE root_id = ?);", [.int(rootID)])
         try exec("DELETE FROM entries WHERE root_id = ?;", [.int(rootID)])
     }
@@ -975,6 +1231,33 @@ public actor SearchIndex {
                 [.text(path)]
             )
         }
+    }
+
+    private func documentTextForPath(_ path: String) throws -> String? {
+        let sql = "SELECT dt.text FROM doc_text dt JOIN entries e ON e.id = dt.entry_id WHERE e.path = ? LIMIT 1;"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar la lectura de texto por ruta.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT)
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+        return columnText(stmt, 0)
+    }
+
+    private func embeddingForPath(_ path: String) throws -> (model: String, dim: Int, source: String, vec: Data)? {
+        let sql = "SELECT em.model, em.dim, em.source, em.vec FROM embeddings em JOIN entries e ON e.id = em.entry_id WHERE e.path = ? LIMIT 1;"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar la lectura de embeddings por ruta.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT)
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+        guard let model = columnText(stmt, 0), let source = columnText(stmt, 2), let vec = columnBlob(stmt, 3) else {
+            return nil
+        }
+        return (model, Int(sqlite3_column_int64(stmt, 1)), source, vec)
     }
 
     private func inTransaction(_ body: () throws -> Void) throws {
@@ -1024,6 +1307,10 @@ public actor SearchIndex {
                 sqlite3_bind_int64(stmt, slot, sqlite3_int64(i))
             case .double(let d):
                 sqlite3_bind_double(stmt, slot, d)
+            case .blob(let data):
+                _ = data.withUnsafeBytes { buffer in
+                    sqlite3_bind_blob(stmt, slot, buffer.baseAddress, Int32(data.count), SQLITE_TRANSIENT)
+                }
             case .null:
                 sqlite3_bind_null(stmt, slot)
             }
@@ -1033,6 +1320,13 @@ public actor SearchIndex {
     private func columnText(_ stmt: OpaquePointer?, _ index: Int32) -> String? {
         guard let cString = sqlite3_column_text(stmt, index) else { return nil }
         return String(cString: cString)
+    }
+
+    private func columnBlob(_ stmt: OpaquePointer?, _ index: Int32) -> Data? {
+        guard let pointer = sqlite3_column_blob(stmt, index) else { return nil }
+        let count = Int(sqlite3_column_bytes(stmt, index))
+        guard count > 0 else { return nil }
+        return Data(bytes: pointer, count: count)
     }
 
     private func sqliteError(_ fallback: String) -> IndexError {
@@ -1045,6 +1339,7 @@ enum SQLBind {
     case text(String)
     case int(Int64)
     case double(Double)
+    case blob(Data)
     case null
 }
 

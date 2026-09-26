@@ -173,6 +173,14 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 > (`collections.json`). Las **etiquetas Finder nativas** quedan como G5.1 a la espera de la
 > decisión §7.3.
 
+> **Implementado (26-sep, G7 v1)**: **búsqueda por significado** — chip «Semántica» en «Buscar»
+> (ON por defecto): expansión de la consulta con sinónimos locales («sueldo» → «salario/nómina»,
+> «alquiler» → «arrendamiento/vivienda») + similitud vectorial en documentos con texto; rescate
+> OR cuando no hay aciertos literales. Y **Chat del archivo** (⇧⌘K): preguntas en lenguaje natural
+> con recuperación 100 % local y respuesta de la IA (opcional, con cap) que **cita [n]** los
+> ficheros y los abre en el Finder. Validado en vivo: «sueldo» → 10 resultados por significado;
+> «¿Qué recibos de luz o gas tengo guardados?» → respuesta citando el recibo de Iberdrola Gas.
+
 ### 3.3 Presencia en el sistema (del «todo está en una ventana» al «está donde lo necesitas»)
 
 - **Menú de barra (N5 ya en el mapa)**: estado (archivando/pausado), contador de bandeja, acciones
@@ -207,7 +215,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 | **G4** ✅ | **N5: menú de barra + atajo global + Quick Action Finder** (v1: menú + ⌥Espacio; la Quick Action llega con el DMG) | La app pasa de «ventana» a «presencia» (lo pide el mercado) | Bajo-Medio |
 | **G5** ✅ | **Espacios/colecciones** (v1: colecciones por búsquedas; etiquetas Finder = G5.1) | «Organizar sin mover»; encaja con Inicio y omnibox | Medio-Alto |
 | **G6** ✅ | **Archivo en frío + informe semanal** | Consolida «mantenimiento continuo» del entorno | Bajo |
-| **G7** | **Búsqueda semántica local + chat del archivo (MCP para agentes)** | Diferencial avanzado (DEVONthink 4/Eagle ya lo venden) | Alto |
+| **G7** ✅ | **Búsqueda semántica local + chat del archivo** (v1: expansión + vectores de contenido + chat con citas; MCP = G7.2; re-extracción de texto = G7.3) | Diferencial avanzado (DEVONthink 4/Eagle ya lo venden) | Alto |
 
 **Recomendación de secuencia**: G1 → G3 → G2 → G4 → G5 → G6 → G7.
 (G3 antes que G2 porque es más barato y multiplica la confianza en las sugerencias de G2.)

@@ -318,7 +318,13 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
 - [x] G6 (v1): archivo en frío — «Grandes y sin cambios» → `90_Archivo/<ruta relativa>` con
   journal/undo y confirmación; informe semanal en Inicio → [Informe] con Copiar/Exportar
   Markdown. Suite 177. Capturas `docs/design/G6/`.
-- [ ] G7: búsqueda semántica local + chat del archivo (MCP para agentes).
+- [x] G7 (v1): búsqueda semántica local — expansión de consultas con embeddings de palabras
+  («sueldo» → «nómina»), vectores por documento (`embeddings`, schema v4) y chip «Semántica»;
+  Chat del archivo (⇧⌘K / Accesos) con recuperación local, citas [n] clicables, Copiar/Exportar…
+  y respeto del interruptor/cap de IA; carry-over de texto/vectores al reindexar. Suite 196.
+- [ ] G7.2: MCP para agentes (servidor local que expone búsqueda/lectura del archivo).
+- [ ] G7.3: re-extracción de contenido — sanar los `doc_text` huérfanos de reindexados previos
+  (p. ej. `ContentReindexer` sobre el root, en lotes y con las mismas salvaguardas).
 
 ## Referencias
 

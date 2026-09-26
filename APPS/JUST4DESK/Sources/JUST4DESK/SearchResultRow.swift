@@ -20,6 +20,14 @@ struct SearchResultRow: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 HStack(spacing: 6) {
+                    if hit.matchedSemantically {
+                        Label("por significado", systemImage: "sparkles")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(J4I.brand)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(J4I.brandSoft))
+                    }
                     if hit.matchedContent {
                         Label("contenido", systemImage: "text.magnifyingglass")
                             .font(.system(size: 10, weight: .medium))

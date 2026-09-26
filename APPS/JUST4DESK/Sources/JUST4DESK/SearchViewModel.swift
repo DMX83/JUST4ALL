@@ -16,6 +16,8 @@ import J4IIndex
 final class SearchViewModel: ObservableObject {
     /// Clave de preferencia (UserDefaults): buscar también dentro del contenido.
     private static let contentSearchDefaultsKey = "just4desk.search.inContent"
+    /// Clave de preferencia (UserDefaults): búsqueda semántica local (por significado, G7).
+    private static let semanticDefaultsKey = "just4desk.search.semantic"
 
     // MARK: - Tipos
 
@@ -103,6 +105,21 @@ final class SearchViewModel: ObservableObject {
             scheduleSearch()
         }
     }
+    /// G7 — búsqueda semántica local (por significado): activada por defecto; no sale nada del Mac.
+    @Published var semanticSearchEnabled: Bool = {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: SearchViewModel.semanticDefaultsKey) != nil else { return true }
+        return defaults.bool(forKey: SearchViewModel.semanticDefaultsKey)
+    }() {
+        didSet {
+            UserDefaults.standard.set(semanticSearchEnabled, forKey: SearchViewModel.semanticDefaultsKey)
+            scheduleSearch()
+        }
+    }
+    /// Estado del motor semántico (para la ayuda del chip): documentos vectorizados y total.
+    @Published private(set) var semanticEmbeddedCount: Int64 = 0
+    @Published private(set) var semanticFileCount: Int64 = 0
+    @Published private(set) var semanticModelTag: String?
     @Published var selectedRootID: Int64? {
         didSet { scheduleSearch() }
     }
@@ -185,6 +202,12 @@ final class SearchViewModel: ObservableObject {
     private let suggestionDismissals = SuggestionDismissals()
     private var suggestionsScanning = false
     private var lastSuggestionScan = Date.distantPast
+    /// G7 — motor de embeddings local y rellenado en segundo plano.
+    private var embedder: DocEmbedder?
+    private var embedderInitAttempted = false
+    private var queryExpander: QueryExpander?
+    private var backfillTask: Task<Void, Never>?
+    private var lastBackfillKick = Date.distantPast
     private let collectionStore = CollectionStore.shared
     private var lastCollectionsScan = Date.distantPast
 
@@ -195,6 +218,7 @@ final class SearchViewModel: ObservableObject {
     deinit {
         searchTask?.cancel()
         statusTask?.cancel()
+        backfillTask?.cancel()
         for task in crawlTasks.values {
             task.cancel()
         }
@@ -238,6 +262,8 @@ final class SearchViewModel: ObservableObject {
         presentInitialSetupIfNeeded()
         setupOrganizationIfConfigured()
         await refreshActivity()
+        startSemanticBackfillIfNeeded()
+        await refreshSemanticStatus()
     }
 
     /// Deja en el registro la configuración activa al arrancar.
@@ -958,12 +984,54 @@ final class SearchViewModel: ObservableObject {
         do {
             let results = try await index.search(request)
             guard !Task.isCancelled else { return }
-            hits = results
+            var merged = results
+            var semanticCount = 0
+            if semanticSearchEnabled {
+                var extras: [IndexSearchHit] = []
+                if let embedder = ensureEmbedder(), let vector = await embedder.embedNormalized(term) {
+                    extras += (try? await index.semanticHits(queryVector: vector, model: embedder.modelTag, limit: 8, filters: filters, contentOnly: true)) ?? []
+                }
+                if results.count < 40, let expander = ensureQueryExpander(),
+                   let expanded = await expander.expandedQuery(for: term) {
+                    let expandedRequest = IndexSearchRequest(
+                        query: expanded,
+                        filters: filters,
+                        limit: 40,
+                        includeContent: searchInContent,
+                        matchExpression: expanded
+                    )
+                    extras += (try? await index.search(expandedRequest)) ?? []
+                }
+                if !extras.isEmpty {
+                    merged = SemanticMerge.merge(keyword: results, semantic: extras, semanticLimit: 10)
+                    semanticCount = merged.count - results.count
+                }
+                // Rescate: si la consulta estricta no encontró nada, reintenta con OR + sinónimos.
+                if merged.isEmpty, let expander = ensureQueryExpander(),
+                   let retrieval = await expander.retrievalExpression(for: term) {
+                    let rescue = IndexSearchRequest(
+                        query: term,
+                        filters: filters,
+                        limit: 40,
+                        includeContent: searchInContent,
+                        matchExpression: retrieval
+                    )
+                    let rescueHits = (try? await index.search(rescue)) ?? []
+                    if !rescueHits.isEmpty {
+                        merged = SemanticMerge.merge(keyword: [], semantic: rescueHits, semanticLimit: 40, totalLimit: 40)
+                        semanticCount = merged.count
+                    }
+                }
+            }
+            guard !Task.isCancelled else { return }
+            hits = merged
             let mode = searchInContent ? " (con contenido)" : ""
-            J4Log.debug(.search, "«\(term)»\(mode) → \(results.count) resultado(s) en \(Int(Date().timeIntervalSince(started) * 1000)) ms.")
-            if let current = selection, !results.contains(where: { $0.entry.id == current }) {
+            let semanticNote = semanticCount > 0 ? " +\u{2009}\(semanticCount) por significado" : ""
+            J4Log.debug(.search, "«\(term)»\(mode)\(semanticNote) → \(merged.count) resultado(s) en \(Int(Date().timeIntervalSince(started) * 1000)) ms.")
+            if let current = selection, !merged.contains(where: { $0.entry.id == current }) {
                 selection = nil
             }
+            kickSemanticBackfill()
         } catch {
             guard !Task.isCancelled else { return }
             hits = []
@@ -971,6 +1039,167 @@ final class SearchViewModel: ObservableObject {
             J4Log.error(.search, "La búsqueda «\(term)» falló: \(error.localizedDescription)")
         }
         isSearching = false
+    }
+
+    // MARK: - Semántica local (G7)
+
+    /// Motor de embeddings disponible (se decide una sola vez por sesión).
+    private func ensureEmbedder() -> DocEmbedder? {
+        if let embedder { return embedder }
+        guard !embedderInitAttempted else { return nil }
+        embedderInitAttempted = true
+        let made = DocEmbedder.make()
+        embedder = made
+        semanticModelTag = made?.modelTag
+        if let made {
+            J4Log.info(.index, "Semántica local: motor \(made.modelTag) (\(made.dimension) dim).")
+        } else {
+            J4Log.warn(.index, "Semántica local no disponible en este Mac (sin embeddings del sistema).")
+        }
+        return made
+    }
+
+    /// Re-escanea el contador que muestra la ayuda del chip.
+    private func refreshSemanticStatus() async {
+        guard let tag = semanticModelTag else { return }
+        if let stats = try? await index.embeddingStats(model: tag) {
+            semanticEmbeddedCount = stats.embedded
+            semanticFileCount = stats.files
+        }
+    }
+
+    /// Arranque: rellenado completo en segundo plano (por lotes, baja prioridad).
+    private func startSemanticBackfillIfNeeded() {
+        guard backfillTask == nil, let embedder = ensureEmbedder() else { return }
+        lastBackfillKick = Date()
+        backfillTask = Task { [weak self] in
+            guard let self else { return }
+            await self.runSemanticBackfill(embedder: embedder, maxBatches: Int.max)
+            self.backfillTask = nil
+        }
+    }
+
+    /// Tras una búsqueda: lote pequeño para que los ficheros nuevos entren sin esperar al arranque.
+    private func kickSemanticBackfill() {
+        guard semanticSearchEnabled, backfillTask == nil,
+              Date().timeIntervalSince(lastBackfillKick) > 90 else { return }
+        lastBackfillKick = Date()
+        guard let embedder = ensureEmbedder() else { return }
+        backfillTask = Task { [weak self] in
+            guard let self else { return }
+            await self.runSemanticBackfill(embedder: embedder, maxBatches: 2)
+            self.backfillTask = nil
+        }
+    }
+
+    private func runSemanticBackfill(embedder: DocEmbedder, maxBatches: Int) async {
+        let tag = embedder.modelTag
+        var batches = 0
+        var consecutiveFailures = 0
+        while !Task.isCancelled, batches < maxBatches {
+            let batch: [SearchIndex.EmbeddingCandidate]
+            do {
+                batch = try await index.embeddingCandidates(model: tag, limit: 48)
+            } catch {
+                J4Log.warn(.index, "Semántica: no se pudieron leer candidatos (\(error.localizedDescription)).")
+                break
+            }
+            guard !batch.isEmpty else { break }
+            batches += 1
+            for candidate in batch {
+                if Task.isCancelled { break }
+                var payload = candidate.name
+                if let text = candidate.documentText, !text.isEmpty {
+                    payload += "\n" + String(text.prefix(DocEmbedder.maxTextCharacters))
+                }
+                let source = candidate.documentText == nil ? "name" : "content"
+                if let vector = await embedder.embedNormalized(payload) {
+                    do {
+                        try await index.setEmbedding(entryID: candidate.entryID, model: tag, source: source, vector: vector)
+                        consecutiveFailures = 0
+                    } catch {
+                        consecutiveFailures += 1
+                    }
+                } else {
+                    consecutiveFailures += 1
+                }
+                if consecutiveFailures >= 5 {
+                    J4Log.warn(.index, "Semántica: rellenado detenido tras 5 fallos de vectorización.")
+                    await refreshSemanticStatus()
+                    return
+                }
+            }
+            await refreshSemanticStatus()
+            J4Log.debug(.index, "Semántica: \(semanticEmbeddedCount)/\(semanticFileCount) documentos vectorizados…")
+            await Task.yield()
+        }
+        if !Task.isCancelled, maxBatches == Int.max {
+            J4Log.info(.index, "Semántica lista: \(semanticEmbeddedCount)/\(semanticFileCount) documentos vectorizados (modelo \(tag)).")
+        }
+    }
+
+    /// Expansor de consultas con sinónimos locales (embeddings de palabras en español).
+    private func ensureQueryExpander() -> QueryExpander? {
+        if let queryExpander { return queryExpander }
+        let made = QueryExpander.make()
+        queryExpander = made
+        if made == nil {
+            J4Log.warn(.index, "Expansión semántica no disponible (sin embeddings de palabras en español).")
+        }
+        return made
+    }
+
+    /// Texto de la ayuda del chip «Semántica».
+    var semanticChipHelp: String {
+        guard let tag = semanticModelTag else {
+            return "Búsqueda por significado no disponible en este Mac."
+        }
+        let engine = tag == DocEmbedder.Model.contextualLatin512.rawValue ? "contextual" : "frases (es)"
+        return "Amplía la búsqueda con sinónimos locales («sueldo» → «nómina») y similitud semántica en documentos con texto (\(engine); nada sale del Mac). Vectorizados \(semanticEmbeddedCount) de \(semanticFileCount) ficheros."
+    }
+
+    /// G7 — contexto para el «Chat del archivo»: aciertos léxicos (con fragmento) + semánticos,
+    /// recortados a los topes de `ArchiveChatPrompt` (solo texto truncado viaja a la IA).
+    func chatContext(for question: String) async -> [ArchiveChatDocument] {
+        let term = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !term.isEmpty else { return [] }
+        let strictHits = (try? await index.search(IndexSearchRequest(query: term, limit: 8, includeContent: true))) ?? []
+        var candidates = strictHits
+        // Preguntas naturales: recuperación por OR de términos útiles + sinónimos (bm25 ordena).
+        if let expander = ensureQueryExpander(), let retrieval = await expander.retrievalExpression(for: term) {
+            let request = IndexSearchRequest(query: term, limit: 8, includeContent: true, matchExpression: retrieval)
+            if let expanded = try? await index.search(request), !expanded.isEmpty {
+                candidates = expanded
+            }
+        }
+        // El chat cita ficheros: las carpetas no aportan contexto (y a menudo no tienen texto).
+        candidates = candidates.filter { !$0.entry.isDirectory }
+        if candidates.isEmpty {
+            candidates = strictHits.filter { !$0.entry.isDirectory }
+        }
+        var extras: [IndexSearchHit] = []
+        if let embedder = ensureEmbedder(), let vector = await embedder.embedNormalized(term) {
+            extras += (try? await index.semanticHits(queryVector: vector, model: embedder.modelTag, limit: 6, contentOnly: true)) ?? []
+        }
+        if !extras.isEmpty {
+            candidates = SemanticMerge.merge(keyword: candidates, semantic: extras, semanticLimit: 6, totalLimit: 10)
+        }
+        var documents: [ArchiveChatDocument] = []
+        for hit in candidates.prefix(ArchiveChatPrompt.maxDocuments + 2) {
+            var snippet = hit.contentSnippet
+            if snippet == nil, let text = try? await index.documentText(entryID: hit.entry.id) {
+                snippet = text
+            }
+            let clean = (snippet ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            documents.append(
+                ArchiveChatDocument(
+                    name: hit.entry.name,
+                    path: hit.entry.path,
+                    snippet: clean.isEmpty ? "(sin texto extraído)" : clean
+                )
+            )
+        }
+        return ArchiveChatPrompt.prepare(documents)
     }
 
     // MARK: - Raíces e indexación

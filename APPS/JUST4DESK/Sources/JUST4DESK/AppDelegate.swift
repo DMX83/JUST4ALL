@@ -51,6 +51,10 @@ final class J4IAppDelegate: NSObject, NSApplicationDelegate {
                 NotificationCenter.default.post(name: .j4iOpenAISettings, object: nil)
                 self.openSettings()
                 return nil
+            case "k" where flags.contains(.shift):
+                J4Log.debug(.app, "Atajo ⇧⌘K: chat del archivo.")
+                NotificationCenter.default.post(name: .j4iOpenChat, object: nil)
+                return nil
             case ",":
                 J4Log.debug(.app, "Atajo ⌘,: abrir ajustes.")
                 self.openSettings()
