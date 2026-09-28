@@ -35,6 +35,10 @@
 - [x] Modo de un solo panel (⌘\\ o **botón de la barra de herramientas**): ciclo completo con
   capturas — clic 2→1 y 1→2, solo el activo, Tab alterna izq/der, persistencia confirmada al
   relanzar la app y vuelta a dual con reajuste automatico de columnas.
+- [x] Divisoria entre paneles: arrastre real validado (divisor 659 → 830) y persistencia al
+  relanzar (838 ≈ proporcion × ancho nuevo; escala si cambia la ventana).
+- [x] Hueco inferior cerrado: los paneles ocupan todo el alto disponible (antes ~250 pt muertos
+  a causa del stack de estado estirado).
 - [x] Estilos visuales en vivo: cambio a Oceano reflejado al instante (chip, toggles, sidebar);
   restaurado a Esmeralda.
 - [x] Comprobado en el mismo ciclo: barra de direccion por panel (atras/adelante + edicion),

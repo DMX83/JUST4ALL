@@ -67,6 +67,11 @@ swift run
   herramientas** (el icono refleja el reparto actual), el menu Navegacion, la paleta ⌘K o ⌘\\
   (persistente). En modo simple, Tab cambia cual de los dos paneles se ve; el reparto de
   columnas se reajusta solo al cambiar de modo.
+- **Divisoria entre paneles arrastrable y recordada**: reparte libremente izquierdo/derecho
+  (puedes dejar uno mas ancho que el otro); la proporcion se guarda (`j4f.panelsLeftRatio`) y se
+  mantiene al redimensionar la ventana. El arrastre nativo de NSSplitView resultaba no-op en este
+  contexto (Auto Layout + hosting de SwiftUI): el reparto lo controla `J4FPanelSplitView` con
+  constraints propias y arrastre propio (cursor ↔).
 - **Fix de layout importante**: el campo de edicion de la direccion conservaba constraints de
   autoresizing y envenenaba al solver (20 conflictos; el contenido no llenaba la ventana en
   algunos estados). Ademas: refit de columnas tras asentarse el layout y limpieza de anchos

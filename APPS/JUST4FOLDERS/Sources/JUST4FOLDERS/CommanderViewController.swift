@@ -408,8 +408,6 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
     /// v2.2 — modo de un solo panel: solo se muestra el panel activo (Tab alterna cuál se ve).
     private var singlePanelMode = false
-    private var leftPanelMinWidth: NSLayoutConstraint?
-    private var rightPanelMinWidth: NSLayoutConstraint?
     static let singlePanelModeKey = "j4f.singlePanelMode"
     /// v2.2b — botón de la barra de herramientas que alterna 2 paneles ⇄ 1 panel.
     private weak var panelModeToolbarItem: NSToolbarItem?
@@ -625,15 +623,14 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         panelModeToolbarItem?.toolTip = panelModeTooltip
     }
 
-    /// v2.2 — muestra solo el panel activo. Los mínimos de 220pt del panel oculto se desactivan
-    /// para que el split lo colapse; el visible ocupa todo el ancho.
+    /// v2.2 — muestra solo el panel activo. En modo simple se desactiva el reparto manual del
+    /// split (J4FPanelSplitView) para que el panel oculto colapse y el visible ocupe el ancho.
     private func applyPanelMode() {
         let hideLeft = singlePanelMode && activeSide == .right
         let hideRight = singlePanelMode && activeSide == .left
         leftPanel.view.isHidden = hideLeft
         rightPanel.view.isHidden = hideRight
-        leftPanelMinWidth?.isActive = !hideLeft
-        rightPanelMinWidth?.isActive = !hideRight
+        (panelsSplit as? J4FPanelSplitView)?.setManualWidthsEnabled(!singlePanelMode)
         if !singlePanelMode {
             healSplitLayoutIfNeeded()
         }
@@ -847,31 +844,30 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     /// v2.1 — autocuración del layout de la ventana: si la barra lateral o el preview quedaron
-    /// con anchos absurdos (p. ej. NSSplitView repartió a partes iguales al no haber autosave),
-    /// recoloca las divisorias (250 / paneles / 220). No toca ajustes razonables.
+    /// con anchos inutilizables (p. ej. NSSplitView repartió a partes iguales al no haber
+    /// autosave), recoloca las divisorias (250 / paneles / 220).
+    /// v2.2c — solo se ejecuta al arrancar y al cambiar de modo de paneles: antes corría en cada
+    /// `viewDidLayout` y revertía los arrastres del usuario (divisoria de paneles y del preview).
     private func healSplitLayoutIfNeeded() {
         guard let bodySplit, bodySplit.bounds.width > 700 else { return }
         let sidebarWidth = bodySplit.subviews.first?.frame.width ?? 0
         let previewWidth = bodySplit.subviews.last?.frame.width ?? 0
-        if sidebarWidth < 200 || sidebarWidth > 340 || previewWidth < 180 || previewWidth > 420 {
+        // v2.2c — solo estados degenerados; los anchos elegidos por el usuario se respetan.
+        if sidebarWidth < 160 || previewWidth < 160 {
             bodySplit.setPosition(250, ofDividerAt: 0)
             bodySplit.setPosition(bodySplit.bounds.width - 232, ofDividerAt: 1)
         }
-        // Paneles: si el reparto quedó muy descompensado (p. ej. recuerdos corruptos), 50/50.
+        // Paneles: el usuario reparte libremente (p. ej. 30/70); solo se cura un reparto
+        // degenerado (algún panel por debajo del mínimo usable).
         // En modo de un solo panel no aplica (uno de los dos está colapsado a propósito).
         if !singlePanelMode, let panelsSplit, panelsSplit.bounds.width > 400,
            let first = panelsSplit.subviews.first, let last = panelsSplit.subviews.last,
-           abs(first.frame.width - last.frame.width) > 60 {
+           first.frame.width < 120 || last.frame.width < 120 {
             panelsSplit.setPosition(panelsSplit.bounds.width / 2, ofDividerAt: 0)
         }
         // Tras cualquier ajuste, que los paneles reajusten sus columnas.
         leftPanel.refreshColumnLayout()
         rightPanel.refreshColumnLayout()
-    }
-
-    override func viewDidLayout() {
-        super.viewDidLayout()
-        healSplitLayoutIfNeeded()
     }
 
     deinit {
@@ -911,28 +907,19 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         volumeWarningLabel.isHidden = true
         volumeWarningLabel.setAccessibilityLabel("Advertencia de volumen")
 
-        let panelsSplit = NSSplitView()
+        let panelsSplit = J4FPanelSplitView()
         panelsSplit.translatesAutoresizingMaskIntoConstraints = false
         panelsSplit.isVertical = true
         panelsSplit.dividerStyle = .thin
-        // Diseño (v2.0): los paneles estiran con la ventana y el divisor se recuerda.
-        panelsSplit.setHoldingPriority(.defaultLow, forSubviewAt: 0)
-        panelsSplit.setHoldingPriority(.defaultLow, forSubviewAt: 1)
-        panelsSplit.autosaveName = "j4f.split.panels"
+        // v2.2c — el reparto manual y su persistencia (j4f.panelsLeftRatio) los gestiona
+        // J4FPanelSplitView: el arrastre nativo y setPosition resultaron no-op en este contexto.
         self.panelsSplit = panelsSplit
 
         addChild(leftPanel)
         addChild(rightPanel)
         panelsSplit.addArrangedSubview(leftPanel.view)
         panelsSplit.addArrangedSubview(rightPanel.view)
-        leftPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
-        rightPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
-        // v2.2 — referencias para poder desactivarlas en modo de un solo panel (un panel oculto
-        // con un mínimo requerido de 220pt impediría el colapso del split).
-        leftPanelMinWidth = leftPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220)
-        rightPanelMinWidth = rightPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220)
-        leftPanelMinWidth?.isActive = true
-        rightPanelMinWidth?.isActive = true
+        panelsSplit.installPaneConstraints(left: leftPanel.view, right: rightPanel.view)
 
         let sidebarView = makeSidebarView()
 
@@ -993,6 +980,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         bottomStack.spacing = 6
         bottomStack.alignment = .leading
         bottomStack.translatesAutoresizingMaskIntoConstraints = false
+        // v2.2c — sin esto el stack se estiraba y se comía ~250pt del alto: los paneles
+        // acababan en el aire y dejaban un hueco muerto antes de la barra de estado.
+        bottomStack.setHuggingPriority(.defaultHigh, for: .vertical)
+        bottomStack.heightAnchor.constraint(lessThanOrEqualToConstant: 96).isActive = true
 
         container.addSubview(bodySplit)
         container.addSubview(bottomStack)
@@ -6511,6 +6502,119 @@ private extension Array {
     subscript(safe index: Int) -> Element? {
         guard indices.contains(index) else { return nil }
         return self[index]
+    }
+}
+
+/// v2.2c — split de los dos paneles con reparto propio.
+///
+/// En este contexto (NSSplitView con Auto Layout dentro del hosting de SwiftUI), ni el
+/// arrastre nativo de la divisoria ni `setPosition(_:ofDividerAt:)` mueven los paneles
+/// (verificado: ambas eran no-op mientras que una constraint propia al 999 sí mueve).
+/// El reparto se controla aquí con dos constraints propias (`ancho0 == X` y
+/// `ancho1 == total − X`, prioridad 999, por encima de las internas al 250) que se ajustan
+/// arrastrando la divisoria; la proporción se guarda en `j4f.panelsLeftRatio` y se mantiene
+/// al redimensionar la ventana.
+private final class J4FPanelSplitView: NSSplitView {
+    static let leftRatioKey = "j4f.panelsLeftRatio"
+    private let minPaneWidth: CGFloat = 140
+    private var pane0Width: NSLayoutConstraint?
+    private var pane1Width: NSLayoutConstraint?
+    private var leftRatio: CGFloat = 0.5
+    private var manualWidthsEnabled = false
+    private var isDraggingDivider = false
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        if let stored = UserDefaults.standard.object(forKey: Self.leftRatioKey) as? Double,
+           stored > 0.05, stored < 0.95 {
+            leftRatio = CGFloat(stored)
+        }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) no soportado")
+    }
+
+    /// Crea las constraints de reparto (llamar DESPUÉS de añadir los dos paneles).
+    func installPaneConstraints(left: NSView, right: NSView) {
+        let c0 = left.widthAnchor.constraint(equalToConstant: 283)
+        c0.priority = NSLayoutConstraint.Priority(999)
+        let c1 = right.widthAnchor.constraint(equalToConstant: 283)
+        c1.priority = NSLayoutConstraint.Priority(999)
+        pane0Width = c0
+        pane1Width = c1
+        setManualWidthsEnabled(true)
+    }
+
+    /// Activa/desactiva el reparto manual. En modo de un solo panel se desactiva para que el
+    /// split colapse el panel oculto con sus constraints internas.
+    func setManualWidthsEnabled(_ enabled: Bool) {
+        manualWidthsEnabled = enabled
+        pane0Width?.isActive = enabled
+        pane1Width?.isActive = enabled
+        if enabled {
+            applyRatio()
+            needsLayout = true
+        }
+        window?.invalidateCursorRects(for: self)
+    }
+
+    /// Aplica la proporción guardada (idempotente).
+    private func applyRatio() {
+        guard manualWidthsEnabled, let pane0Width, let pane1Width else { return }
+        // El split reserva 1pt a cada lado de la divisoria: menos ese margen no hay conflictos.
+        let total = bounds.width - dividerThickness - 1
+        guard total > minPaneWidth * 2 else { return }
+        let first = min(max(round(total * leftRatio), minPaneWidth), total - minPaneWidth)
+        guard abs(pane0Width.constant - first) > 0.5 else { return }
+        pane0Width.constant = first
+        pane1Width.constant = total - first
+    }
+
+    override func layout() {
+        super.layout()
+        if !isDraggingDivider {
+            applyRatio()
+        }
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        guard manualWidthsEnabled, let first = subviews.first else { return }
+        let dividerX = first.frame.maxX
+        addCursorRect(
+            NSRect(x: dividerX - 2, y: 0, width: dividerThickness + 4, height: bounds.height),
+            cursor: .resizeLeftRight
+        )
+    }
+
+    private func isPointOnDivider(_ point: NSPoint) -> Bool {
+        guard let first = subviews.first else { return false }
+        return abs(point.x - first.frame.maxX) <= 3
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard manualWidthsEnabled, subviews.count >= 2, isPointOnDivider(point),
+              let pane0 = pane0Width, let pane1 = pane1Width else {
+            super.mouseDown(with: event)
+            return
+        }
+        isDraggingDivider = true
+        NSCursor.resizeLeftRight.set()
+        while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            if next.type == .leftMouseUp { break }
+            let pt = convert(next.locationInWindow, from: nil)
+            let total = bounds.width - dividerThickness - 1
+            let first = min(max(pt.x, minPaneWidth), total - minPaneWidth)
+            leftRatio = first / total
+            pane0.constant = first
+            pane1.constant = total - first
+            layoutSubtreeIfNeeded()
+        }
+        isDraggingDivider = false
+        UserDefaults.standard.set(Double(leftRatio), forKey: Self.leftRatioKey)
+        window?.invalidateCursorRects(for: self)
     }
 }
 

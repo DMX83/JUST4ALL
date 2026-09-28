@@ -15,6 +15,11 @@
 - [x] **Modo de un solo panel** (**botón en la barra de herramientas**, ⌘\\, menú Navegación,
   paleta; persistente): solo se ve el panel activo; Tab alterna izquierdo/derecho; las columnas
   se reajustan al cambiar de modo.
+- [x] **Divisoria de paneles arrastrable** (`J4FPanelSplitView`): reparto libre izq/der con
+  proporción persistente (`j4f.panelsLeftRatio`), aplicada al arrancar y al redimensionar;
+  arrastre propio con cursor ↔ (el arrastre nativo y `setPosition` eran no-op en este contexto).
+- [x] **Fix del hueco inferior**: el stack de estado se estiraba (~250 pt) y los paneles
+  acababan en el aire; ahora el split ocupa todo el alto disponible.
 - [x] **Fixes de layout**: el pathEditField con autoresizing envenenaba el solver (contenido no
   llenaba la ventana); refit de columnas tras asentarse; limpieza de anchos guardados envenenados.
 - [ ] Menor conocido: la última columna («Tipo») puede recortar un carácter si el ancho queda
