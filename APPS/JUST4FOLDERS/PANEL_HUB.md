@@ -62,9 +62,14 @@ Tres zonas apiladas en el panel (~≥220pt de ancho útil):
   pulido F1 (Enter abre el primer resultado, Esc limpia el buscador, menús contextuales en
   resultados y bandeja, foco automático al buscador al cambiar de módulo). PENDIENTE del plan F2:
   reglas favoritas por carpeta y arrastrar un documento de un panel al hub para proponer destino.
-- **F3 — módulos extra**: `PICT` (acciones rápidas sobre la imagen seleccionada: mejorar/convertir/
-  redimensionar — requiere exponer el pipeline de JUST4PICT o mover parte a J4SHARED), `Notas` /
-  `Workspaces`.
+- **F3 — módulos extra** ✅ **PARCIAL (v2.3.2, 29-sep)**: módulo `PICT` (acciones rápidas sobre la
+  selección: convertir a PNG/JPEG y redimensionar 50 % con `sips`, creando ficheros nuevos —
+  nunca sobrescribe; «Abrir en JUST4PICT» si está instalada) + **soltar documentos sobre el
+  módulo DESK** → propuesta de categoría (reglas + taxonomía compartida) con confirmación y
+  movimiento por la cola de trabajos (renombra en colisión; nunca borra) + **destino recordado
+  por carpeta** (`j4f.folderDestinations`, se precarga al abrir «Ordenar»). PENDIENTE: reglas
+  favoritas más ricas (por extensión, no solo destino) y «mejorar» de PICT (requiere exponer el
+  pipeline de JUST4PICT o moverlo a J4SHARED).
 
 ## Riesgos / notas
 

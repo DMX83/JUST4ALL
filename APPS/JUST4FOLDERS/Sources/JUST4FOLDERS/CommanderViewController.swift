@@ -382,12 +382,13 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let previewPlaceholderIcon = NSImageView()
     /// v2.3 (Panel Hub F1) — selector de módulo del panel derecho y host del contenido.
     private let previewModuleSelector = NSSegmentedControl(
-        labels: ["Vista previa", "DESK"],
+        labels: ["Vista previa", "DESK", "PICT"],
         trackingMode: .selectOne,
         target: nil,
         action: nil
     )
     private let previewContentHost = NSView()
+    private let pictMiniPanel = PictMiniPanelView()
     private let deskMiniPanel = DeskMiniPanelView(
         inboxURL: FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory() + "/Downloads", isDirectory: true)
@@ -806,11 +807,13 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     /// v2.0 — abre la ventana de ordenación (clasificar + mover con diario para deshacer).
     func openOrdering(for folder: URL) {
         orderingWindow?.close()
-        let controller = OrderingWindowController(folder: folder) { [weak self] moved in
+        // v2.3.2 (F3) — destino recordado por carpeta (precarga en la ventana).
+        let controller = OrderingWindowController(folder: folder, initialDestination: rememberedDestination(for: folder)) { [weak self] moved in
             guard let self else { return }
             // v2.3 (F2) — recuerda dónde quedan los «sin clasificar» del último destino.
             if let destination = self.orderingWindow?.currentDestination {
                 UserDefaults.standard.set(destination.path, forKey: "j4f.lastOrderingDestination")
+                self.rememberDestination(destination, for: folder)
             }
             self.orderingWindow = nil
             self.refreshDeskReview()
@@ -2737,10 +2740,17 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         deskMiniPanel.onOpenURL = { [weak self] url in self?.openFromDeskMini(url) }
         deskMiniPanel.onOrderFolder = { [weak self] url in self?.openOrdering(for: url) }
         deskMiniPanel.searchProvider = { [weak self] query in self?.performDeskMiniSearch(query) }
+        deskMiniPanel.onDropFiles = { [weak self] urls in self?.proposeDestination(for: urls) }
+        pictMiniPanel.onStatus = { [weak self] message in self?.statusLabel.stringValue = message }
+        pictMiniPanel.onCreatedFiles = { [weak self] in
+            self?.leftPanel.reloadAfterExternalChange()
+            self?.rightPanel.reloadAfterExternalChange()
+        }
 
         previewPane.addSubview(previewModuleSelector)
         previewPane.addSubview(previewContentHost)
         previewPane.addSubview(deskMiniPanel)
+        previewPane.addSubview(pictMiniPanel)
         NSLayoutConstraint.activate([
             // v2.3 — la toolbar (fullSizeContentView) tapa los primeros ~38pt de la ventana:
             // el contenido del panel arranca debajo para que el selector sea visible.
@@ -2756,15 +2766,24 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             deskMiniPanel.topAnchor.constraint(equalTo: previewContentHost.topAnchor),
             deskMiniPanel.leadingAnchor.constraint(equalTo: previewContentHost.leadingAnchor),
             deskMiniPanel.trailingAnchor.constraint(equalTo: previewContentHost.trailingAnchor),
-            deskMiniPanel.bottomAnchor.constraint(equalTo: previewContentHost.bottomAnchor)
+            deskMiniPanel.bottomAnchor.constraint(equalTo: previewContentHost.bottomAnchor),
+
+            pictMiniPanel.topAnchor.constraint(equalTo: previewContentHost.topAnchor),
+            pictMiniPanel.leadingAnchor.constraint(equalTo: previewContentHost.leadingAnchor),
+            pictMiniPanel.trailingAnchor.constraint(equalTo: previewContentHost.trailingAnchor),
+            pictMiniPanel.bottomAnchor.constraint(equalTo: previewContentHost.bottomAnchor)
         ])
 
         applyPreviewModule()
     }
 
-    /// v2.3 (Panel Hub F1) — cambia el módulo del panel lateral (Vista previa | DESK).
+    /// v2.3 (Panel Hub F1) — cambia el módulo del panel lateral (Vista previa | DESK | PICT).
     @objc private func onPreviewModuleChanged(_ sender: NSSegmentedControl) {
-        previewModule = sender.selectedSegment == 1 ? "desk" : "preview"
+        switch sender.selectedSegment {
+        case 1: previewModule = "desk"
+        case 2: previewModule = "pict"
+        default: previewModule = "preview"
+        }
         applyPreviewModule()
         if previewModule == "desk" {
             deskMiniPanel.focusSearch()
@@ -2774,17 +2793,27 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     /// Aplica el módulo guardado y sincroniza selector/contenido.
     private func applyPreviewModule() {
         let desk = previewModule == "desk"
-        previewModuleSelector.selectedSegment = desk ? 1 : 0
-        previewContentHost.isHidden = desk
+        let pict = previewModule == "pict"
+        previewModuleSelector.selectedSegment = desk ? 1 : (pict ? 2 : 0)
+        previewContentHost.isHidden = desk || pict
         deskMiniPanel.isHidden = !desk
+        pictMiniPanel.isHidden = !pict
         UserDefaults.standard.set(previewModule, forKey: "j4f.previewModule")
         if desk {
             deskMiniPanel.refreshInbox()
             refreshDeskReview()
-            statusLabel.stringValue = "Módulo DESK: bandeja + buscador del índice."
+            statusLabel.stringValue = "Módulo DESK: bandeja + buscador del índice (suelta documentos aquí para archivarlos)."
+        } else if pict {
+            refreshPictSelection()
+            statusLabel.stringValue = "Módulo PICT: acciones rápidas sobre la imagen seleccionada."
         } else {
             updatePreviewPane()
         }
+    }
+
+    /// v2.3.2 (F3) — sincroniza la selección del panel activo con el módulo PICT.
+    private func refreshPictSelection() {
+        pictMiniPanel.updateSelection(activePanel.selectedURLs())
     }
 
     /// Búsqueda global del índice para el módulo DESK (mismo servicio que ⌘F).
@@ -2827,6 +2856,80 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         deskMiniPanel.updateReview(count: items.count, folderName: root.lastPathComponent, folder: folder)
     }
 
+    // MARK: - F3: propuesta de destino al soltar documentos en el módulo DESK
+
+    /// v2.3.2 (F3) — soltar documentos sobre el módulo: propone categoría (reglas + taxonomía
+    /// compartidas de DESK) y, tras confirmar, los MUEVE con la cola de trabajos (nunca borra).
+    private func proposeDestination(for urls: [URL]) {
+        let files = urls.filter { url in
+            var isDirectory: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+            return exists && !isDirectory.boolValue
+        }
+        guard !files.isEmpty else {
+            statusLabel.stringValue = "Suelta ficheros (no carpetas) para proponerles destino."
+            NSSound.beep()
+            return
+        }
+
+        let parent = files[0].deletingLastPathComponent()
+        let remembered = rememberedDestination(for: parent)
+        let lastUsed = UserDefaults.standard.string(forKey: "j4f.lastOrderingDestination")
+            .map { URL(fileURLWithPath: $0, isDirectory: true) }
+        let root = remembered ?? lastUsed ?? parent
+
+        let items = FolderOrderer.plan(files: files)
+        var groups: [String: [FolderOrderer.Item]] = [:]
+        for item in items {
+            if let relative = item.destinationRelativePath {
+                groups[relative, default: []].append(item)
+            }
+        }
+        guard !groups.isEmpty else {
+            statusLabel.stringValue = "Nada que proponer para ese tipo de ficheros."
+            return
+        }
+
+        let total = groups.values.reduce(0) { $0 + $1.count }
+        var lines: [String] = []
+        for (relative, grouped) in groups.sorted(by: { $0.key < $1.key }) {
+            let reason = grouped.first?.reason ?? ""
+            if grouped.count == 1, let item = grouped.first {
+                lines.append("• \(item.url.lastPathComponent) → \(relative)/\(item.finalName ?? "")  (\(reason))")
+            } else {
+                lines.append("• \(grouped.count) ficheros → \(relative)/  (\(reason))")
+            }
+        }
+        let body = lines.prefix(8).joined(separator: "\n") + (lines.count > 8 ? "\n…" : "")
+
+        let alert = NSAlert()
+        alert.messageText = "Archivar \(total) documento(s) en \(root.lastPathComponent)"
+        alert.informativeText = body + "\n\nLos ficheros se moverán (nunca se borran); en colisión se renombra."
+        alert.addButton(withTitle: "Mover")
+        alert.addButton(withTitle: "Cancelar")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        for (relative, grouped) in groups {
+            let destination = root.appendingPathComponent(relative, isDirectory: true)
+            try? FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+            enqueueFileJob(type: .move, selected: grouped.map(\.url), destination: destination)
+        }
+        statusLabel.stringValue = "Archivando \(total) documento(s) en \(root.lastPathComponent)…"
+    }
+
+    /// v2.3.2 (F3) — destino recordado por carpeta (mapa carpeta → destino en UserDefaults).
+    private func rememberedDestination(for folder: URL) -> URL? {
+        let map = UserDefaults.standard.dictionary(forKey: "j4f.folderDestinations") as? [String: String]
+        guard let path = map?[folder.standardizedFileURL.path] else { return nil }
+        return URL(fileURLWithPath: path, isDirectory: true)
+    }
+
+    private func rememberDestination(_ destination: URL, for folder: URL) {
+        var map = (UserDefaults.standard.dictionary(forKey: "j4f.folderDestinations") as? [String: String]) ?? [:]
+        map[folder.standardizedFileURL.path] = destination.standardizedFileURL.path
+        UserDefaults.standard.set(map, forKey: "j4f.folderDestinations")
+    }
+
     private func togglePreviewPane() {
         previewPaneVisible.toggle()
         previewPane.isHidden = !previewPaneVisible
@@ -2836,6 +2939,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     private func updatePreviewPane() {
+        if previewModule == "pict" {
+            refreshPictSelection()
+        }
         guard previewPaneVisible, let ql = previewView else { return }
         let selected = activePanel.selectedURLs()
         let url = selected.count == 1 ? selected.first : nil

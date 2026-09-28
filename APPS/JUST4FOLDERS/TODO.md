@@ -42,8 +42,14 @@
   panel activo — reusa `QuarantineListing` de J4ICore) + **ACTIVIDAD** (trabajo en curso con
   barra, espejo de la barra inferior) + pulido F1 (Enter abre el primer resultado, Esc limpia,
   menús contextuales en resultados y bandeja, foco automático al buscador al cambiar de módulo).
-- [ ] **Panel Hub F3** (`PANEL_HUB.md`): reglas favoritas por carpeta, arrastrar documento al
-  hub para proponer destino y módulos extra (PICT con acciones rápidas).
+- [x] **Panel Hub F3 (v2.3.2)**: módulo **PICT mini** (convertir a PNG/JPEG y redimensionar 50 %
+  con `sips`, fichero nuevo — nunca sobrescribe; «Abrir en JUST4PICT» si está instalada) +
+  **drop de documentos sobre el módulo DESK** con propuesta de categoría + confirmación +
+  movimiento por la cola (validado e2e: factura → 01_Fiscal/Facturas) + **destino recordado por
+  carpeta** (`j4f.folderDestinations`, precargado en «Ordenar»).
+- [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de
+  PICT, unificar el diario de Deshacer para el drop (hoy mueve sin diario), selector compacto
+  (la vista previa perdió ~65pt de alto).
 - [ ] Menor conocido: la última columna («Tipo») puede recortar un carácter si el ancho queda
   justo; arrastrar el divisor lo resuelve. Reproducir con AppKit puro antes de tocarlo.
 

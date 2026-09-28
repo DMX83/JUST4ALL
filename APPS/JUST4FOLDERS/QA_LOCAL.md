@@ -62,7 +62,38 @@
 - [x] Comprobado en el mismo ciclo: barra de direccion por panel (atras/adelante + edicion),
   sidebar con acciones contextuales, portapapeles completo (⌘C/⌘X/⌘V/⌘D, cortar=mover, pegar
   desde Finder, Comprimir/Duplicar) y columnas manuales persistentes.
+- [x] Panel Hub F3 (v2.3.2): drop de «a-factura-luz-test.pdf» sobre el modulo DESK → alerta
+  «Archivar 1 documento(s) en JUST4DESK» con propuesta «01_Fiscal/Facturas/… (regla local:
+  «factura» en el nombre)» → «Mover» → el fichero aparecio en ~/JUST4DESK/01_Fiscal/Facturas y
+  desaparecio del origen (fixture limpiado despues). Modulo PICT: seleccion sincronizada
+  («a-foto-test.png»), «Redimensionar 50 %» creo 120x80 (original 240x160) SIN sobrescribir;
+  fixture limpiado. 55 tests verdes.
 - [x] `swift test`: 55 en `J4FOpsTests`, 0 fallos.
+
+## Checklist manual — Panel Hub v2.3.x (para verificar con la app en mano)
+
+Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano):
+
+- [ ] Selector `Vista previa | DESK | PICT` en el panel derecho: cambia sin parpadeos y se
+  recuerda al reabrir la app (`j4f.previewModule`).
+- [ ] DESK · buscador: teclear muestra resultados del indice; Enter abre el primero; Esc limpia.
+  Clic derecho en un resultado: Abrir / Abrir la carpeta contenedora.
+- [ ] DESK · bandeja: «Ordenar…» abre la ventana de clasificacion con el **Destino precargado**
+  (destino recordado por carpeta: `j4f.folderDestinations`, se guarda al ordenar).
+- [ ] DESK · POR REVISAR: tras ordenar una carpeta con dudosos, el contador sube; «Ver en panel»
+  abre 99_SinClasificar en el panel activo.
+- [ ] DESK · ACTIVIDAD: al copiar/mover un fichero, la fila muestra el progreso con barra y
+  vuelve a «sin trabajos en curso» al terminar.
+- [ ] Soltar (arrastrar de un panel) un documento sobre el modulo DESK: la fila se resalta en
+  azul al pasar por encima, aparece la propuesta con categoria/motivo, «Mover» archiva y
+  «Cancelar» no toca nada. **OJO**: este flujo mueve SIN el diario de Deshacer (⇧⌘Z solo cubre
+  «Ordenar esta carpeta»); decidir si se unifica.
+- [ ] PICT: seleccionar una imagen activa los botones; «Convertir a PNG/JPEG» y «Redimensionar
+  50 %» crean un fichero nuevo junto al original (nunca sobrescribe; sufijos -png/-jpg/-50%);
+  «Abrir en JUST4PICT» funciona si la apps esta instalada (bundle com.dmx83.just4pict).
+- [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.
+- [ ] Decision de diseno: la vista previa perdio ~65pt de alto (fila del selector + franja de la
+  toolbar); valorar selector compacto (iconos) o moverlo a la barra de herramientas.
 
 ## Rendimiento (100k, 28-sep)
 

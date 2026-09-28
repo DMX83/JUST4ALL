@@ -78,14 +78,16 @@ swift run
   de un panel); el ancho se guarda (`j4f.previewWidth`) y se autocorrige si los minimos de los
   paneles no conceden lo pedido (el tope real en modo dual ronda los 880pt; en modo simple hay
   mas espacio). El preview nunca invade el minimo usable de los paneles (220pt).
-- **Panel Hub (v2.3, fase F1)**: el panel lateral tiene dos modulos con selector
-  («Vista previa | DESK»): la vista previa de siempre y **DESK mini** — buscador instantaneo
-  sobre el indice (mismos resultados que ⌘F; Enter o doble clic abre, Esc limpia) + **bandeja**
-  de Descargas con «Ordenar…» (clasifica y mueve con diario y Deshacer; nunca borra) y «Abrir en
-  panel», + cola **POR REVISAR** (dudosos de 99_SinClasificar del ultimo destino de ordenacion,
-  «Ver en panel» navega el panel activo) y **ACTIVIDAD** (trabajo en curso con barra). Menus
-  contextuales en los resultados y en la bandeja. La seleccion se recuerda
-  (`j4f.previewModule`). Propuesta completa y fases siguientes en `PANEL_HUB.md`.
+- **Panel Hub (v2.3)**: el panel lateral tiene tres modulos con selector
+  («Vista previa | DESK | PICT», recordado en `j4f.previewModule`): la vista previa de siempre;
+  **DESK mini** — buscador instantaneo sobre el indice (mismos resultados que ⌘F; Enter o doble
+  clic abre, Esc limpia) + **bandeja** de Descargas con «Ordenar…» (clasifica y mueve con diario
+  y Deshacer; nunca borra) + cola **POR REVISAR** (dudosos de 99_SinClasificar del ultimo
+  destino, «Ver en panel») + **ACTIVIDAD** (trabajo en curso) y **soltar documentos sobre el
+  modulo** para proponerles categoria (confirmacion + movimiento por la cola); y **PICT mini** —
+  acciones rapidas sobre la seleccion (convertir a PNG/JPEG, redimensionar 50 % con `sips`,
+  creando ficheros nuevos; «Abrir en JUST4PICT» si esta instalada). Propuesta completa en
+  `PANEL_HUB.md`.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

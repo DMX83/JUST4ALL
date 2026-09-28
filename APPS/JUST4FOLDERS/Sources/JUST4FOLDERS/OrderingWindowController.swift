@@ -26,9 +26,9 @@ final class OrderingWindowController: NSWindowController, NSTableViewDataSource,
     /// v2.3 (Panel Hub F2) — destino elegido (raxiz donde viven las categorías y los dudosos).
     var currentDestination: URL { destinationRoot }
 
-    init(folder: URL, onFinished: @escaping (Int) -> Void) {
+    init(folder: URL, initialDestination: URL? = nil, onFinished: @escaping (Int) -> Void) {
         self.folder = folder
-        self.destinationRoot = folder
+        self.destinationRoot = initialDestination ?? folder
         self.onFinished = onFinished
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 720, height: 480),

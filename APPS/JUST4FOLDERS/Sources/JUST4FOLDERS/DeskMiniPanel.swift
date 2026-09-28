@@ -20,6 +20,8 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
     var onOrderFolder: ((URL) -> Void)?
     /// Lanzar la búsqueda global del índice; los resultados llegan por `presentSearchResults`.
     var searchProvider: ((String) -> Void)?
+    /// F3 — documentos soltados sobre el módulo: el commander propone destino y los archiva.
+    var onDropFiles: (([URL]) -> Void)?
 
     /// Carpeta de la bandeja (por defecto, Descargas del usuario).
     let inboxURL: URL
@@ -70,6 +72,8 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
         self.inboxURL = inboxURL
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true
+        registerForDraggedTypes([.fileURL])
         buildUI()
         refreshInbox()
     }
@@ -528,6 +532,47 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
             subtitle.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 1)
         ])
         return cell
+    }
+
+    // MARK: - Drag & drop (F3)
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard !droppedFileURLs(sender).isEmpty else { return [] }
+        setDropHighlight(true)
+        return .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        droppedFileURLs(sender).isEmpty ? [] : .copy
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        setDropHighlight(false)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        setDropHighlight(false)
+        let urls = droppedFileURLs(sender)
+        guard !urls.isEmpty else { return false }
+        onDropFiles?(urls)
+        return true
+    }
+
+    private func droppedFileURLs(_ sender: NSDraggingInfo) -> [URL] {
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
+        let objects = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: options) ?? []
+        let urls = objects.compactMap { ($0 as? NSURL).map { $0 as URL } }
+        return urls.filter { url in
+            var isDirectory: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+            return exists && !isDirectory.boolValue
+        }
+    }
+
+    private func setDropHighlight(_ on: Bool) {
+        layer?.borderWidth = on ? 2 : 0
+        layer?.borderColor = on ? NSColor.controlAccentColor.cgColor : nil
+        layer?.cornerRadius = 6
     }
 
     // MARK: - Formato
