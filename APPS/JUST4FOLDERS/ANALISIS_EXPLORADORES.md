@@ -101,12 +101,12 @@ los referentes del género, y convertirlo en un plan por olas. Honestidad por de
     izquierda/derecha (⌥⌘←/→).
 
 Validado en vivo: preview lateral con foto real, pestaña duplicada y toolbar nueva. *Hover por
-fila: pendiente (cosmético).*
+fila: ✅ completado en la Ola 3.*
 
 ### Ola 3 — «ADN propio» — ✅ completada (28-sep)
 
 13. ✅ **Paleta de comandos ⌘K**: busca acciones (título + teclas), ↑/↓ navegan, Enter ejecuta,
-    Esc cierra; 23 comandos de toda la app.
+    Esc cierra; 31 comandos de toda la app (23 en la Ola 3; +v2.2).
 14. ✅ **Árbol por panel** (⌥⌘E, columna lateral colapsable por panel, como Opus/TC): raíz en
     Home, expande solo lo necesario y resalta la ruta activa; doble clic navega y se recuerda
     entre sesiones. Validado en vivo.
@@ -129,11 +129,11 @@ Extra ✅: **hover por fila** sutil (no se dibuja sobre la fila seleccionada).
 | Capacidad | Finder | Opus | TC | ForkLift | QSpace | **J4F** |
 |---|---|---|---|---|---|---|
 | Doble panel + tabs | ✗/✓ | ✓ | ✓ | ✓ | ✓ | ✅ |
-| Drag & drop | ✓ | ✓ | ✓ | ✓ | ✓ | ❌ |
-| QuickLook (Espacio) | ✓ | ✓ | ✗ | ✓ | ✓ | ❌ |
-| Miniaturas/galería | ✓ | ✓ | ✗ | ✓ | ✓ | ❌ |
-| Breadcrumb | ✓ | ✓ | ✓ | ✓ | ✓ | ❌ |
-| F-keys completas | ✗ | parcial | ✓ | parcial | parcial | parcial |
+| Drag & drop | ✓ | ✓ | ✓ | ✓ | ✓ | ✅ |
+| QuickLook (Espacio) | ✓ | ✓ | ✗ | ✓ | ✓ | ✅ |
+| Miniaturas/galería | ✓ | ✓ | ✗ | ✓ | ✓ | ✅ |
+| Breadcrumb | ✓ | ✓ | ✓ | ✓ | ✓ | ✅ |
+| F-keys completas | ✗ | parcial | ✓ | parcial | parcial | ✅ F2–F8 |
 | Flat view | ✗ | ✓ | ✓ | ✗ | ✗ | ✅ |
 | Folder formats | ✗ | ✓ | parcial | ✗ | ✓ | ✅ |
 | Rename regex lote | ✗ | ✓ | ✓ | ✓ | ✓ | ✅ |
@@ -148,6 +148,10 @@ El gap no es de motor: es de **capa de interacción** (drag & drop, QuickLook, b
 y de **vida visual** (miniaturas, preview, ritmo de lista). La Ola 1 son ~4–6 piezas concretas y
 cambia la percepción de la app por completo; la Ola 2 la pone a nivel de uso diario; la Ola 3 la
 hace única además de la IA.
+
+**Actualización (28-sep, noche):** las tres olas se ejecutaron y validaron el mismo día — el gap
+de interacción/vida visual queda **cerrado** (pendiente menor: prueba manual del gesto drag &
+drop). Después llegaron el pase de diseño (v2.1) y la navegación/portapapeles/estilos (v2.2).
 
 Regla de oro del género: *un explorador se siente bueno cuando (a) ves el contenido sin abrirlo,
 (b) mueves las cosas sin pensar y (c) todo lo demás está a una tecla.*

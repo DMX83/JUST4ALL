@@ -13,7 +13,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 
 - APPS/JUST4PDF: App enfocada en herramientas para PDF.
 - APPS/JUST4CONVERT: App nativa macOS en SwiftUI para conversion multimedia.
-- APPS/JUST4FOLDERS: App nativa macOS en SwiftUI para organizar archivos por carpetas.
+- APPS/JUST4FOLDERS: App nativa macOS (AppKit-first): commander de 2 paneles con indice instantaneo e IA.
 - APPS/JUST4PICT: App nativa macOS en SwiftUI para mejoramiento automatico de imagenes.
 - APPS/JUST4DESK: App nativa macOS en SwiftUI para busqueda instantanea y organizacion automatica de documentos.
 - App principal (este repo): JUST4ALL en Swift (Sources/ y Resources/).
@@ -31,7 +31,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 
 - JUST4PDF: App macOS para leer PDFs, convertir PDF↔imagenes y herramientas basicas de PDF.
 - JUST4CONVERT: App nativa macOS para conversion de audio, video e imagenes con cola de trabajos.
-- JUST4FOLDERS: App nativa macOS para analizar y organizar archivos por categoria.
+- JUST4FOLDERS: Commander de archivos con indice instantaneo, busqueda global/semantica y organizacion asistida por IA.
 - JUST4PICT: App nativa macOS para mejorar imagenes por lotes con presets automaticos.
 - JUST4DESK: App nativa macOS para buscar al instante y archivar automaticamente documentos en una taxonomia ordenada.
 - JUST4ALL: Hub macOS para lanzar subapps con vista de detalles.
@@ -73,10 +73,10 @@ El repositorio contiene al menos los siguientes submodulos:
   - Merge y compresion de PDF en tres niveles.
   - Packaging para .app/.dmg y soporte de apertura de PDFs via integracion de macOS.
 - JUST4FOLDERS:
-  - Seleccion de carpeta origen/destino con escaneo recursivo.
-  - Resumen por categorias (imagenes, video, audio, documentos, comprimidos y otros).
-  - Organizacion por copia a subcarpetas de categoria en destino.
-  - Manejo de colisiones de nombre y progreso durante la ejecucion.
+  - Commander de 2 paneles (modo unico/dual) con pestanas, arbol por panel, galeria, vista previa y paleta de comandos (⌘K).
+  - Busqueda instantanea con el indice FTS5 compartido (J4IIndex): subarbol + global (⌘F) + semantica IA opcional (⌥⌘B).
+  - Vista aplanada, filtro rapido, rename en lote, duplicados, etiquetas Finder, tamanos de carpeta y portapapeles completo.
+  - «Ordenar esta carpeta» con reglas+taxonomia compartidas de JUST4DESK e IA opcional (diario + deshacer).
 - JUST4PICT:
   - Seleccion por archivos o carpeta para lote de imagenes.
   - Presets automaticos (Auto, Retrato, Paisaje, Documento, Ecommerce).
@@ -103,8 +103,8 @@ El repositorio contiene al menos los siguientes submodulos:
 
 ### JUST4FOLDERS
 
-- App nativa macOS en SwiftUI para organizar archivos por categoria.
-- Incluye analisis de carpetas y organizacion por copia.
+- App nativa macOS (SPM, AppKit-first): commander de 2 paneles con indice FTS5 compartido.
+- Ejecutar: `swift run` en `APPS/JUST4FOLDERS`; DMG con `./scripts/build_dmg.sh`.
 - Ver detalles en `APPS/JUST4FOLDERS/README.md`.
 
 ### JUST4PICT

@@ -76,8 +76,9 @@
 - [x] Implementar sandbox con security-scoped bookmarks.
 - [x] Implementar motor de operaciones v1 (queue + scheduler + budget 512MB).
 - [x] Completar productividad commander (tabs, shortcuts, search).
-- [ ] Resolver regresion de busqueda profunda (latencia alta/no retorno) con prioridad maxima.
-- [ ] Pulido App Store y release v1.0.0.
+- [x] Regresion de busqueda profunda resuelta (28-sep): indice FTS5 compartido (J4IIndex); 100k entradas en 11,4 s y consultas de 10–25 ms.
+- [x] Commander v2.x (28-sep): busqueda global (⌘F), vista aplanada, rename en lote, duplicados, etiquetas/tamanos, «Ordenar esta carpeta» con IA + busqueda semantica, portapapeles completo, estilos y modo de un solo panel.
+- [ ] Pulido App Store y release v1.0.0 — pulido y QA hechos; publicacion bloqueada por la licencia de Apple (firma/notarizacion).
 
 ## Fase 3.3 - JUST4PICT (MVP)
 

@@ -3,7 +3,7 @@
 ## Estado actual validado por CLI
 
 - `swift build`: OK
-- `swift test`: OK (54 tests, 28-sep)
+- `swift test`: OK (55 tests, 28-sep)
 - `scripts/perf_100k_listing.sh`: OK (28-sep: listado 100k + crawl/consultas del indice)
 - `scripts/qa_smoke.sh`: OK (28-sep: build+tests+arranque+AX)
 - `swift run JUST4FOLDERS`: arranca (sin crash inmediato)
@@ -26,6 +26,21 @@
   copia lo pendiente, omite origenes ya movidos y limpia el snapshot.
 - [x] Historial de snapshots acotado (280 → 50 terminales; el JSON crecia sin limite).
 - [x] VoiceOver no aplica aqui (app AppKit con labels propios); pendiente auditoria formal.
+
+## Validaciones 28-sep (noche) — UI v2.1/v2.2/v2.2b
+
+- [x] Layout a prueba de balas: ventana llena con ambos paneles completos (Nombre/Tamaño/
+  Modificado/Tipo) y sin conflictos del solver (los conflictos de AppKit, si los hay, van al
+  log unificado, no a stderr).
+- [x] Modo de un solo panel (⌘\\): ciclo completo con capturas — solo el activo; Tab alterna
+  izq/der; persistencia confirmada al relanzar la app; vuelta a dual con reajuste automatico de
+  columnas.
+- [x] Estilos visuales en vivo: cambio a Oceano reflejado al instante (chip, toggles, sidebar);
+  restaurado a Esmeralda.
+- [x] Comprobado en el mismo ciclo: barra de direccion por panel (atras/adelante + edicion),
+  sidebar con acciones contextuales, portapapeles completo (⌘C/⌘X/⌘V/⌘D, cortar=mover, pegar
+  desde Finder, Comprimir/Duplicar) y columnas manuales persistentes.
+- [x] `swift test`: 55 en `J4FOpsTests`, 0 fallos.
 
 ## Rendimiento (100k, 28-sep)
 

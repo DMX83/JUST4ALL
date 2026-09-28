@@ -38,22 +38,22 @@ Leyenda: ✅ hecho · 🟡 en curso/parcial · 🔴 pendiente · ➕ ventaja nue
 
 | Pilar Opus | FOLDERS | DESK | Nota |
 |---|---|---|---|
-| Doble panel + árboles + pestañas | 🟡 (commander en curso) | — | v1.0 |
-| Cola de operaciones con progreso | 🟡 (J4FOps listo; UI parcial) | — | motor propio |
+| Doble panel + árboles + pestañas | ✅ pestañas completas + árbol por panel + modo simple/dual (28-sep) | — | v2.2 |
+| Cola de operaciones con progreso | ✅ Task Manager + progreso en la ventana (Olas 2) | — | motor propio |
 | **Búsqueda instantánea** | ✅ **v1.1 (28-sep)**: J4IIndex compartido | ✅ FTS5 | ➕ Opus depende de Everything; nosotros lo tenemos |
 | Flat view filtrado en vivo | ✅ **(28-sep, v1.2)** | — | botón «Aplanada» por panel + ⌥⌘F |
 | Batch rename (regex/macros) | ✅ **(28-sep, v1.2)** | — | regex + preview en vivo (⇧⌘R) |
 | Duplicados | ✅ **(28-sep, v1.2)** | ✅ (hash, G2) | tamaño + SHA-256 streaming |
 | Sync / comparar carpetas | 🔴 | — | v2.x, solo si se pide |
 | Archivos comprimidos navegables | 🔴 | — | evaluar `unzip`/libarchive (v2.x) |
-| Visor / preview | 🟡 QuickLook fácil | ✅ QuickLook | integrar |
+| Visor / preview | ✅ QuickLook (Espacio/F3) + preview lateral (⌥⌘P) + galería (Olas 1–3) | ✅ QuickLook | hecho |
 | Labels/tags/ratings | ✅ etiquetas Finder **(v1.2)** | 🟡 (etiquetas Finder, G5.1) | color por fila + toggle |
 | Colores/grupos/estados | ✅ colores por etiqueta **(v1.2)** | — | grupos/estados pendientes |
 | Folder formats / temas | ✅ formats **(28-sep, v2.0)**; temas pendientes | — | aplanada + orden + ocultos por carpeta |
-| Toolbars/hotkeys configurables | 🟡 (toolbar fija) | — | v2.0 |
+| Toolbars/hotkeys configurables | 🟡 atajos configurables (⌥⌘K) + paleta ⌘K ✅; toolbar fija | — | v2.2 |
 | Scripting/extensibilidad | 🔴 | ➕ **MCP** (agentes) | ➕ Shortcuts/JXA/MCP > scripting propietario |
 | Cálculo de tamaños de carpeta | ✅ background **(v1.2)** | — | caché LRU + invalidación watcher |
-| Índice propio + IA | ✅ «Ordenar esta carpeta» **(28-sep)** | ➕ semántica + chat | reglas+taxonomía compartidas; IA pendiente |
+| Índice propio + IA | ✅ «Ordenar esta carpeta» + IA para dudosos + búsqueda semántica (28-sep) | ➕ semántica + chat | reglas+taxonomía compartidas; chat pendiente |
 
 **El hueco de mercado:** en macOS no hay un Opus. Hay comandantes buenos (Nimble Commander,
 ForkLift, Path Finder, Commander One, Marta) pero ninguno con **índice instantáneo propio +
@@ -72,7 +72,7 @@ IA + automatización por agentes**. Ese es el moat.
 - **FOLDERS busca con J4IIndex** (`IndexedSearchService`): indexado cooperativo por carpeta,
   consultas FTS5 <100 ms, poda de lo desaparecido, refresh por watcher. Sustituye al
   recorrido propio (`PathSearchIndex`) — **bloqueante de búsqueda resuelto**.
-- Pendiente de campo: validación con árboles reales enormes + timeout/feedback fino en la UI.
+- ✅ Validado en campo (28-sep): crawl de 100.101 entradas en 11,4 s, consultas FTS5 de 10–25 ms y progreso de indexado en vivo (`scripts/perf_100k_listing.sh`).
 
 ### v1.2 — «Fiel a Opus» (barato y muy visible)
 - ✅ **Flat view (28-sep):** botón «Aplanada» por panel (y ⌥⌘F en el menú Navegación) que lista
@@ -100,13 +100,17 @@ IA + automatización por agentes**. Ese es el moat.
   ni borra), diario JSON y «Deshacer última ordenación» (⌥⌘Z). IA **opcional** (28-sep): con clave
   configurada, «Usar IA para los dudosos» consulta a DeepSeek solo los ficheros que las reglas no
   clasifican (nombre + categorías; validado contra la taxonomía; máx. 40 por lote).
-- Búsqueda **semántica** («los papeles del seguro del coche») y chat del archivo en el panel.
+- ✅ **Búsqueda semántica (⌥⌘B, 28-sep):** la IA expande la consulta en términos («los papeles del seguro del coche» → seguro · coche · papeles) y se unen los resultados del índice sin duplicados; sin clave permanece literal. Chat del archivo: pendiente.
 - ✅ **Folder formats (28-sep):** cada carpeta recuerda su vista (aplanada, orden por columna y
   ocultos) y se restaura al volver (`J4FOps.FolderFormatStore`, JSON con LRU de 500 carpetas);
   «Olvidar formato de esta carpeta» en el menú contextual. Temas: fuera de alcance (ver
 `EVALUACION_DISENO.md`); recortado del alcance v2.0.
-- **Folder formats** (vista por carpeta) y temas.
-- Toolbars/hotkeys configurables + **acciones MCP** (agentes de IA operando el gestor).
+- ✅ **Pase de UI v2.1–v2.2b (28-sep, noche):** navegación (barra de dirección por panel, sidebar
+  con menus contextuales, chip IZQ/DER), layout a prueba de balas (ventana llena y columnas
+  repartidas contra el viewport), portapapeles completo (cortar=mover, zip, duplicar), columnas
+  manuales persistentes por carpeta, estilos visuales en Ajustes (5) y **modo de un solo panel**
+  (⌘\\, Tab alterna; persistente).
+- **Acciones MCP** (agentes operando el gestor) y toolbar configurable: pendientes.
 - Quick Action de Finder / servicios del sistema (integración con el Finder de macOS).
 
 ### v2.x — Solo si el uso lo pide
@@ -131,3 +135,5 @@ FTP/SFTP/MTP · plugins binarios · edición de metadatos EXIF a fondo · conver
    **Decidido e implementado (28-sep)**: la barra busca en el subárbol y ⌘F alterna a global
    (placeholder + estado lo reflejan; tambien en la paleta ⌘K).
 3. ¿Flat view persistente por carpeta (folder format) desde v1.2 o diferir a v2?
+   **Decidido e implementado (v2.0)**: persistente por carpeta (folder formats: aplanada + orden +
+   ocultos).

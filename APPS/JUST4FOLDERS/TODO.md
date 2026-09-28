@@ -73,7 +73,7 @@
   busca en la carpeta actual y **⌘F** alterna a «todo el índice» (propuesta aprobada del
   `ROADMAP_V2_OPUS.md`); también en la paleta ⌘K.
 
-## v1.2 — «Fiel a Opus» (en curso, 28-sep)
+## v1.2 — «Fiel a Opus» (completada, 28-sep)
 
 - [x] **Flat view:** botón «Aplanada» por panel + ⌥⌘F (menú Navegación). Lista instantánea de
   los ficheros del subárbol vía `SearchIndex.listByPathPrefix` (nuevo: recorrido del índice único
@@ -94,7 +94,7 @@
 - [x] **Duplicados** (⇧⌘D): tamaño + SHA-256 en streaming; grupos ordenados por desperdicio,
   «seleccionar sobrantes», revelar en Finder y mover a la Papelera con confirmación.
 
-## v2.0 — Diferenciación IA (en curso, 28-sep)
+## v2.0 — Diferenciación IA (completada, 28-sep)
 
 - [x] **«Ordenar esta carpeta»** (⌥⌘O / menú contextual): clasifica con las reglas y taxonomía
   compartidas de DESK (`RulesFilingClassifier` + `FilingPlanner` + `DefaultTaxonomy`),
@@ -135,7 +135,7 @@
 
 ## v2.0 — Ola 3 «ADN propio» (completada, 28-sep)
 
-- [x] Paleta de comandos ⌘K (buscador de acciones con teclas; 23 comandos).
+- [x] Paleta de comandos ⌘K (buscador de acciones con teclas; 31 comandos tras v2.2).
 - [x] Workspaces: guardar (⌥⌘S) y restaurar (⌥⌘L / contextual «Workspaces ▸») pestañas, activo
   y vista previa de ambos paneles (`WorkspaceStore` JSON; 2 tests).
 - [x] Hover por fila (sutil, fuera de la selección).
@@ -284,7 +284,7 @@
 - [x] Preferencias (delete/show hidden/buffer).
 - [x] Accesibilidad completa y keyboard-first.
 - [x] Pruebas de rendimiento con 100k archivos.
-- [x] Tests unit/integration de caminos criticos (54 en `J4FOpsTests`). UI: `scripts/qa_smoke.sh`
+- [x] Tests unit/integration de caminos criticos (55 en `J4FOpsTests`). UI: `scripts/qa_smoke.sh`
   (build+tests+arranque+comprobaciones AX) al estilo de JUST4DESK; XCUITest formal pendiente de un
   target Xcode (la app vive en SPM).
 - [x] Export de diagnostico (zip de logs).
