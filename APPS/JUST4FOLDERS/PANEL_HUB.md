@@ -48,8 +48,13 @@ Tres zonas apiladas en el panel (~≥220pt de ancho útil):
 
 ## Fases
 
-- **F1 — selector + DESK mini básico**: botones en el panel, persistencia, omnibox + bandeja
-  (Descargas) + «Ordenar» con undo reutilizado. *Sin IA nueva.*
+- **F1 — selector + DESK mini básico** ✅ **IMPLEMENTADA (v2.3, 29-sep)**: botones
+  «Vista previa | DESK» en la cabecera del panel (persistencia `j4f.previewModule`), omnibox
+  sobre el índice global (mismo servicio que ⌘F; 300 resultados, doble clic abre) y bandeja de
+  Descargas (14 recientes con antigüedad) con «Ordenar…» (reusa la ventana v2.0 con diario y
+  Deshacer), «Abrir en panel» y refresco. Validado en vivo (búsqueda «certificado» → 16
+  resultados; ciclo de módulos y persistencia). OJO: el contenido del panel arranca a 44pt del
+  borde superior porque la toolbar (fullSizeContentView) tapa los primeros ~38pt.
 - **F2 — ciclo de revisión**: cola «sin clasificar / por revisar», reglas favoritas por carpeta,
   actividad en vivo con progreso, arrastrar un documento de un panel al hub para proponer destino.
 - **F3 — módulos extra**: `PICT` (acciones rápidas sobre la imagen seleccionada: mejorar/convertir/

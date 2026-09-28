@@ -380,6 +380,19 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let previewInfoLabel = NSTextField(labelWithString: "")
     /// v2.1 — icono del estado vacío del preview (sin selección).
     private let previewPlaceholderIcon = NSImageView()
+    /// v2.3 (Panel Hub F1) — selector de módulo del panel derecho y host del contenido.
+    private let previewModuleSelector = NSSegmentedControl(
+        labels: ["Vista previa", "DESK"],
+        trackingMode: .selectOne,
+        target: nil,
+        action: nil
+    )
+    private let previewContentHost = NSView()
+    private let deskMiniPanel = DeskMiniPanelView(
+        inboxURL: FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory() + "/Downloads", isDirectory: true)
+    )
+    private var previewModule = UserDefaults.standard.string(forKey: "j4f.previewModule") ?? "preview"
 
     // v2.1 — barra lateral de navegación: árbol colapsable + sección de reautorización dinámica.
     private var sidebarTreeExpanded = (UserDefaults.standard.object(forKey: "j4f.sidebarTreeExpanded") as? Bool) ?? false
@@ -2665,6 +2678,17 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         previewPane.isHidden = !previewPaneVisible
         previewPane.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
 
+        // v2.3 (Panel Hub F1) — selector de módulo: Vista previa | DESK mini.
+        previewModuleSelector.translatesAutoresizingMaskIntoConstraints = false
+        previewModuleSelector.controlSize = .small
+        previewModuleSelector.segmentStyle = .rounded
+        previewModuleSelector.segmentDistribution = .fillEqually
+        previewModuleSelector.target = self
+        previewModuleSelector.action = #selector(onPreviewModuleChanged(_:))
+        previewModuleSelector.setAccessibilityLabel("Modulo del panel lateral")
+
+        previewContentHost.translatesAutoresizingMaskIntoConstraints = false
+
         let ql = QLPreviewView(frame: .zero, style: .normal)
         ql?.autostarts = true
         ql?.translatesAutoresizingMaskIntoConstraints = false
@@ -2685,24 +2709,99 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
         // Importante: la etiqueta debe estar ANTES en la jerarquía (las constraints no pueden
         // cruzar vistas sin ancestro común).
-        previewPane.addSubview(previewInfoLabel)
-        previewPane.addSubview(previewPlaceholderIcon)
+        previewContentHost.addSubview(previewInfoLabel)
+        previewContentHost.addSubview(previewPlaceholderIcon)
         if let ql {
-            previewPane.addSubview(ql)
+            previewContentHost.addSubview(ql)
             NSLayoutConstraint.activate([
-                ql.leadingAnchor.constraint(equalTo: previewPane.leadingAnchor, constant: 6),
-                ql.trailingAnchor.constraint(equalTo: previewPane.trailingAnchor, constant: -6),
-                ql.topAnchor.constraint(equalTo: previewPane.topAnchor, constant: 6),
+                ql.leadingAnchor.constraint(equalTo: previewContentHost.leadingAnchor),
+                ql.trailingAnchor.constraint(equalTo: previewContentHost.trailingAnchor),
+                ql.topAnchor.constraint(equalTo: previewContentHost.topAnchor),
                 ql.bottomAnchor.constraint(equalTo: previewInfoLabel.topAnchor, constant: -6)
             ])
         }
         NSLayoutConstraint.activate([
-            previewInfoLabel.leadingAnchor.constraint(equalTo: previewPane.leadingAnchor, constant: 10),
-            previewInfoLabel.trailingAnchor.constraint(equalTo: previewPane.trailingAnchor, constant: -10),
-            previewInfoLabel.bottomAnchor.constraint(equalTo: previewPane.bottomAnchor, constant: -10),
-            previewPlaceholderIcon.centerXAnchor.constraint(equalTo: previewPane.centerXAnchor),
-            previewPlaceholderIcon.centerYAnchor.constraint(equalTo: previewPane.centerYAnchor, constant: -8)
+            previewInfoLabel.leadingAnchor.constraint(equalTo: previewContentHost.leadingAnchor, constant: 4),
+            previewInfoLabel.trailingAnchor.constraint(equalTo: previewContentHost.trailingAnchor, constant: -4),
+            previewInfoLabel.bottomAnchor.constraint(equalTo: previewContentHost.bottomAnchor, constant: -4),
+            previewPlaceholderIcon.centerXAnchor.constraint(equalTo: previewContentHost.centerXAnchor),
+            previewPlaceholderIcon.centerYAnchor.constraint(equalTo: previewContentHost.centerYAnchor, constant: -8)
         ])
+
+        deskMiniPanel.onOpenURL = { [weak self] url in self?.openFromDeskMini(url) }
+        deskMiniPanel.onOrderFolder = { [weak self] url in self?.openOrdering(for: url) }
+        deskMiniPanel.searchProvider = { [weak self] query in self?.performDeskMiniSearch(query) }
+
+        previewPane.addSubview(previewModuleSelector)
+        previewPane.addSubview(previewContentHost)
+        previewPane.addSubview(deskMiniPanel)
+        NSLayoutConstraint.activate([
+            // v2.3 — la toolbar (fullSizeContentView) tapa los primeros ~38pt de la ventana:
+            // el contenido del panel arranca debajo para que el selector sea visible.
+            previewModuleSelector.topAnchor.constraint(equalTo: previewPane.topAnchor, constant: 44),
+            previewModuleSelector.leadingAnchor.constraint(equalTo: previewPane.leadingAnchor, constant: 6),
+            previewModuleSelector.trailingAnchor.constraint(equalTo: previewPane.trailingAnchor, constant: -6),
+
+            previewContentHost.topAnchor.constraint(equalTo: previewModuleSelector.bottomAnchor, constant: 6),
+            previewContentHost.leadingAnchor.constraint(equalTo: previewPane.leadingAnchor, constant: 6),
+            previewContentHost.trailingAnchor.constraint(equalTo: previewPane.trailingAnchor, constant: -6),
+            previewContentHost.bottomAnchor.constraint(equalTo: previewPane.bottomAnchor, constant: -6),
+
+            deskMiniPanel.topAnchor.constraint(equalTo: previewContentHost.topAnchor),
+            deskMiniPanel.leadingAnchor.constraint(equalTo: previewContentHost.leadingAnchor),
+            deskMiniPanel.trailingAnchor.constraint(equalTo: previewContentHost.trailingAnchor),
+            deskMiniPanel.bottomAnchor.constraint(equalTo: previewContentHost.bottomAnchor)
+        ])
+
+        applyPreviewModule()
+    }
+
+    /// v2.3 (Panel Hub F1) — cambia el módulo del panel lateral (Vista previa | DESK).
+    @objc private func onPreviewModuleChanged(_ sender: NSSegmentedControl) {
+        previewModule = sender.selectedSegment == 1 ? "desk" : "preview"
+        applyPreviewModule()
+    }
+
+    /// Aplica el módulo guardado y sincroniza selector/contenido.
+    private func applyPreviewModule() {
+        let desk = previewModule == "desk"
+        previewModuleSelector.selectedSegment = desk ? 1 : 0
+        previewContentHost.isHidden = desk
+        deskMiniPanel.isHidden = !desk
+        UserDefaults.standard.set(previewModule, forKey: "j4f.previewModule")
+        if desk {
+            deskMiniPanel.refreshInbox()
+            statusLabel.stringValue = "Módulo DESK: bandeja + buscador del índice."
+        } else {
+            updatePreviewPane()
+        }
+    }
+
+    /// Búsqueda global del índice para el módulo DESK (mismo servicio que ⌘F).
+    private func performDeskMiniSearch(_ query: String) {
+        Task { [weak self] in
+            let hits = (try? await IndexedSearchService.shared.searchGlobal(query: query, limit: 300)) ?? []
+            await MainActor.run { [weak self] in
+                self?.deskMiniPanel.presentSearchResults(hits, for: query)
+            }
+        }
+    }
+
+    /// Abrir desde el módulo DESK: carpetas en el panel activo; ficheros, con su app por defecto.
+    private func openFromDeskMini(_ url: URL) {
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+        guard exists else {
+            statusLabel.stringValue = "Ya no existe: \(url.lastPathComponent)"
+            NSSound.beep()
+            return
+        }
+        if isDirectory.boolValue {
+            activePanel.openPath(url.path)
+            statusLabel.stringValue = "Abierto \(url.lastPathComponent) en el panel activo."
+        } else {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func togglePreviewPane() {

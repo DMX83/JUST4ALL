@@ -45,6 +45,11 @@
   sin bandas muertas arriba/abajo/izquierda/derecha.
 - [x] Barra lateral sin hueco en «ARBOL» (v2.2e): captura con el arbol expandido — cabecera pegada
   al arbol y el arbol absorbiendo el sobrante (antes: fila «ARBOL» estirada con hueco enorme).
+- [x] Panel Hub F1 (v2.3): ciclo Vista previa ⇄ DESK por clic (persistido `j4f.previewModule` =
+  preview/desk); busqueda «certificado» → 16 resultados reales del indice con icono + ruta
+  (~/IDMX83/..., ~/JUST4DESK/09_Identidad/...); bandeja de Downloads con 4 elementos y antiguedad
+  («hace 3 sem», «hace 1 m»...); botones Ordenar…/Abrir en panel/⟳. Nota: el contenido del panel
+  arranca a 44pt del borde superior (la toolbar fullSizeContentView oculta los primeros ~38pt).
 - [x] Hueco inferior cerrado: los paneles ocupan todo el alto disponible (antes ~250 pt muertos
   a causa del stack de estado estirado; v2.2d: altura exacta por filas visibles).
 - [x] Estilos visuales en vivo: cambio a Oceano reflejado al instante (chip, toggles, sidebar);

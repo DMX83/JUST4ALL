@@ -78,6 +78,12 @@ swift run
   de un panel); el ancho se guarda (`j4f.previewWidth`) y se autocorrige si los minimos de los
   paneles no conceden lo pedido (el tope real en modo dual ronda los 880pt; en modo simple hay
   mas espacio). El preview nunca invade el minimo usable de los paneles (220pt).
+- **Panel Hub (v2.3, fase F1)**: el panel lateral tiene dos modulos con selector
+  («Vista previa | DESK»): la vista previa de siempre y **DESK mini** — buscador instantaneo
+  sobre el indice (mismos resultados que ⌘F; doble clic abre) + **bandeja** de Descargas con
+  «Ordenar…» (clasifica y mueve con diario y Deshacer; nunca borra) y «Abrir en panel». La
+  seleccion se recuerda (`j4f.previewModule`). Propuesta completa y fases siguientes
+  (cola de revision, actividad, PICT) en `PANEL_HUB.md`.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

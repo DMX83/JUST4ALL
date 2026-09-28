@@ -32,9 +32,13 @@
 - [x] **Barra lateral sin huecos** (v2.2e): las cabeceras de sección ya no se estiran (hugging
   requerido) y el árbol absorbe el espacio sobrante (mín. 160, prioridad 249; espaciador invisible
   cuando está colapsado) — se acabó el hueco entre «ÁRBOL» y el árbol.
-- [ ] **Panel Hub** (propuesta en `PANEL_HUB.md`): módulos intercambiables en el panel derecho con
-  botones — Vista previa · **DESK mini** (omnibox + bandeja + ordenar con undo) · futuro PICT;
-  viable porque los motores ya están compartidos (`J4ICore`/`J4IIndex`, `FolderOrderer`, IA).
+- [x] **Panel Hub F1 (v2.3)**: selector «Vista previa | DESK» en el panel lateral — módulo
+  **DESK mini** (`DeskMiniPanel.swift`): buscador sobre el índice global (`IndexedSearchService`,
+  cap 300, doble clic abre), bandeja de Descargas (14 recientes con antigüedad), «Ordenar…»
+  (ventana v2.0 con diario/Deshacer) y «Abrir en panel»; persistente (`j4f.previewModule`).
+  OJO: el contenido del panel arranca a 44pt del borde superior (la toolbar tapa los primeros ~38pt).
+- [ ] **Panel Hub F2/F3** (`PANEL_HUB.md`): cola «sin clasificar / por revisar», actividad en
+  vivo con progreso, reglas favoritas por carpeta y módulos extra (PICT con acciones rápidas).
 - [ ] Menor conocido: la última columna («Tipo») puede recortar un carácter si el ancho queda
   justo; arrastrar el divisor lo resuelve. Reproducir con AppKit puro antes de tocarlo.
 
