@@ -22,9 +22,14 @@
 - [x] BUSQUEDA PROFUNDA: **sustituida por el índice FTS5 compartido** (`J4IIndex` de
   `PACKAGES/J4SHARED`): `IndexedSearchService` crawlea cada carpeta (cooperativo) y responde en
   <100 ms; poda lo desaparecido y se refresca con el watcher. Ya no se recorre el árbol a mano.
-- [ ] Validar en campo con árboles reales enormes (100k+): primer indexado, resultados en vivo y
-  feedback de progreso fino en la UI (el estado se muestra en `onStatus`).
-- [ ] Decidir si el atajo del commander añade búsqueda global (todos los roots del índice).
+- [x] Validar en campo con árboles reales enormes (100k+): primer indexado, resultados en vivo y
+  feedback de progreso fino en la UI. Evidencia 28-sep: crawl de 100.101 entradas en 11,4 s y
+  consultas FTS5 de 10–25 ms (`scripts/perf_100k_listing.sh`); sonda de 12k en la UI: indexado
+  cooperativo en ~2 s con estado «Indexando «ruta»: N entradas…» (el listado en curso puede
+  mostrar su propio «Cargando N elemento(s)…» al mismo tiempo).
+- [x] Decidir si el atajo del commander añade búsqueda global: **implementado (28-sep)** — la barra
+  busca en la carpeta actual y **⌘F** alterna a «todo el índice» (propuesta aprobada del
+  `ROADMAP_V2_OPUS.md`); también en la paleta ⌘K.
 
 ## v1.2 — «Fiel a Opus» (en curso, 28-sep)
 
@@ -63,7 +68,8 @@
   índice sin duplicados; sin clave permanece literal. Motor validado contra la API real + 6 tests.
 - [x] **Folder formats** (v2.0): cada carpeta recuerda su vista — aplanada, columna/dirección de
   orden y ficheros ocultos — y se restaura al navegar de vuelta (`FolderFormatStore`, JSON con
-  LRU de 500 carpetas; «Olvidar formato de esta carpeta» en el menú contextual). Temas: pendiente.
+  LRU de 500 carpetas; «Olvidar formato de esta carpeta» en el menú contextual). Temas: fuera de
+  alcance del diseño evaluado (`EVALUACION_DISENO.md`); se reevaluará si vuelve al alcance.
 
 ## v2.0 — Ola 1 «explorador de verdad» (28-sep)
 
@@ -73,8 +79,7 @@
 - [x] Drag & drop: filas arrastrables; soltar en carpeta/panel/Finder; interior mueve (⌥ copia),
   desde fuera copia (⌘ mueve), todo por la cola existente. *Falta prueba manual del gesto.*
 - [x] Pulido de lista (`.inset`, fila 22, sin rayas) + estados vacíos («Carpeta vacía · ⌘N»).
-- [ ] Hover por fila y Ola 2 (preview lateral, F-keys completas, columnas configurables,
-  historial con menú, progreso en panel, tabs completas).
+- [x] Hover por fila y Ola 2 — completados (ver secciones "Ola 2" y "Ola 3" más abajo).
 
 ## v2.0 — Ola 2 «potencia sin fricción» (28-sep)
 
@@ -84,7 +89,7 @@
 - [x] Historial con menú (clic derecho en Atrás/Adelante) con salto directo y rebobinado correcto.
 - [x] Progreso del trabajo en la propia ventana: barra + «TIPO n/m (%)» encima del estado.
 - [x] Pestañas completas: duplicar (⌥⌘T), renombrar (⌥⌘R: nombre o dejar vacío) y mover (⌥⌘←/→).
-- [ ] Hover por fila (cosmético) y Ola 3 (paleta ⌘K, árbol por panel, galería, workspaces).
+- [x] Hover por fila (cosmético) y Ola 3 — completados (ver sección "Ola 3" más abajo).
 
 ## v2.0 — Ola 3 «ADN propio» (completada, 28-sep)
 
@@ -109,9 +114,14 @@
   - [x] J4FFileSystem
   - [x] J4FOps
   - [x] J4FUI
-- [ ] Logging con os_log en todos los modulos.
-- [ ] Error model central (tecnico + UX message).
-- [ ] CI base (build + tests) para modulo.
+- [x] Logging con os_log en todos los modulos (28-sep): commander/panel/busqueda y J4FOps (jobs,
+  stores, ordenacion) con subsystem `com.dmx83.just4folders`; los modulos compartidos
+  (J4FCore/J4FFileSystem) registran vía `J4Log` en sus rutas clave; J4FUI es solo bootstrap (N/A).
+- [x] Error model central (tecnico + UX message) (28-sep): `J4FError` (J4FOps) con `userMessage`,
+  `technicalDescription` y `J4FError.from(error)` para NSError propios, Cocoa y POSIX; adoptado en
+  los puntos de presentacion del commander/panel (+8 tests).
+- [x] CI base (build + tests) para modulo: cubierto por `.github/workflows/ci.yml` (J4SHARED +
+  JUST4DESK + JUST4FOLDERS en cada push/PR).
 
 ## MVP-1 — UI 2 paneles AppKit
 
@@ -195,12 +205,16 @@
 ### G) Persistencia y reanudación
 
 - [x] `JobSnapshotStore` para diagnóstico y recuperación básica al reabrir app.
-- [ ] Reanudación completa de jobs post-crash/muerte de app (v1.1 si se recorta alcance v1.0).
+- [x] Reanudación de jobs post-crash (28-sep): diario de items por trabajo (`job-<id>-items.json`),
+  diálogo al arrancar («Reanudar pendientes / Descartar / Más tarde») y botón «Reanudar» en Tasks
+  para snapshots de sesiones anteriores; omite orígenes ya movidos y nunca sobrescribe (policy
+  rename). Validado E2E con snapshot sintético. Historial de snapshots acotado a 50 terminales
+  (antes crecía sin límite: 280 entradas).
 
 ### Mapeo por módulos
 
-- [ ] `J4FFileSystem`: `VolumeProfileProbe`, `MountFlagsCheck` y `FileEnumerationStream` implementados; falta `BookmarkAccessManager`.
-- [ ] `J4FOps`: planner (`SizeClassifier`, `MkdirPlanBuilder`, `ConflictScan`, `ExecutionPlanFinalize`).
+- [x] `J4FFileSystem`: `VolumeProfileProbe`, `MountFlagsCheck` y `FileEnumerationStream` implementados; el rol «BookmarkAccessManager» lo cubren `SecurityScopedBookmarkStore` (J4SHARED) + la gestion de security-scope del commander (no se necesita clase aparte).
+- [x] `J4FOps`: planner (`SizeClassifier`, `MkdirPlanBuilder`, `ConflictScan`, `ExecutionPlanFinalize`) — implementados en `ExecutionPlanner.swift` (el mapeo estaba desactualizado).
 - [x] `J4FOps`: scheduler (`SchedulerBootstrap`, `TelemetryWindowSampler`, `ConcurrencyController`, `PhaseGate`).
 - [x] `J4FOps`: runtime (`MemoryBudgetManager`, `BufferPool`, `BufferSizer`).
 - [x] `J4FOps`: executors (`CopyBig`, `CopySmall`, `Move`, `Delete`, `RetryAndFallback`).
@@ -228,10 +242,14 @@
 - [x] Preferencias (delete/show hidden/buffer).
 - [x] Accesibilidad completa y keyboard-first.
 - [x] Pruebas de rendimiento con 100k archivos.
-- [ ] Tests unit/integration/UI de caminos criticos (unit+integration listos; UI pendiente).
+- [x] Tests unit/integration de caminos criticos (54 en `J4FOpsTests`). UI: `scripts/qa_smoke.sh`
+  (build+tests+arranque+comprobaciones AX) al estilo de JUST4DESK; XCUITest formal pendiente de un
+  target Xcode (la app vive en SPM).
 - [x] Export de diagnostico (zip de logs).
-- [ ] Firma/notarizacion/App Store Connect/TestFlight.
-- [ ] Publicacion v1.0.0.
+- [ ] Firma/notarizacion/App Store Connect/TestFlight — **BLOQUEADO: requiere licencia Apple**
+  (no abordado por indicacion del usuario, 28-sep).
+- [ ] Publicacion v1.0.0 — bloqueada por la firma/licencia; el DMG local se genera y valida con
+  `scripts/build_dmg.sh`.
 
 ## Validaciones recientes (2026-02-19)
 

@@ -103,7 +103,8 @@ IA + automatización por agentes**. Ese es el moat.
 - Búsqueda **semántica** («los papeles del seguro del coche») y chat del archivo en el panel.
 - ✅ **Folder formats (28-sep):** cada carpeta recuerda su vista (aplanada, orden por columna y
   ocultos) y se restaura al volver (`J4FOps.FolderFormatStore`, JSON con LRU de 500 carpetas);
-  «Olvidar formato de esta carpeta» en el menú contextual. Temas: pendiente.
+  «Olvidar formato de esta carpeta» en el menú contextual. Temas: fuera de alcance (ver
+`EVALUACION_DISENO.md`); recortado del alcance v2.0.
 - **Folder formats** (vista por carpeta) y temas.
 - Toolbars/hotkeys configurables + **acciones MCP** (agentes de IA operando el gestor).
 - Quick Action de Finder / servicios del sistema (integración con el Finder de macOS).
@@ -127,4 +128,6 @@ FTP/SFTP/MTP · plugins binarios · edición de metadatos EXIF a fondo · conver
    con motores compartidos? (Análisis en curso; ver discusión 28-sep).
 2. ¿La búsqueda del commander debe ser del panel (subárbol) o global (todos los roots del índice)?
    Propuesta: ambas — barra del panel = subárbol; `Cmd+F` = global.
+   **Decidido e implementado (28-sep)**: la barra busca en el subárbol y ⌘F alterna a global
+   (placeholder + estado lo reflejan; tambien en la paleta ⌘K).
 3. ¿Flat view persistente por carpeta (folder format) desde v1.2 o diferir a v2?

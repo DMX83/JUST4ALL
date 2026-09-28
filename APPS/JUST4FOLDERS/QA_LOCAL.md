@@ -3,17 +3,36 @@
 ## Estado actual validado por CLI
 
 - `swift build`: OK
-- `swift test`: OK
-- `scripts/perf_100k_listing.sh`: OK
+- `swift test`: OK (54 tests, 28-sep)
+- `scripts/perf_100k_listing.sh`: OK (28-sep: listado 100k + crawl/consultas del indice)
+- `scripts/qa_smoke.sh`: OK (28-sep: build+tests+arranque+AX)
 - `swift run JUST4FOLDERS`: arranca (sin crash inmediato)
 
-## Incidencia abierta critica (2026-02-19)
+## Incidencia de busqueda profunda (2026-02-19) — RESUELTA (28-sep)
 
-- Busqueda profunda sigue con comportamiento inestable:
-  - en algunos directorios grandes tarda demasiado (hasta minutos),
-  - en algunos casos no muestra resultados en tiempo razonable.
-- Estado: pendiente, prioridad maxima.
-- Decision: no cerrar QA de busqueda hasta garantizar respuesta consistente y visible para usuario.
+- La busqueda profunda por recorrido de arbol se sustituyo por el **indice FTS5 compartido**
+  (`J4IIndex`): consultas de 10–25 ms sobre 100k+ entradas (ver «Rendimiento» abajo); el
+  comportamiento inestable ya no es reproducible.
+- La decision original (no cerrar QA hasta respuesta consistente) queda cumplida; se mantiene la
+  checklist manual de abajo para regresiones.
+
+## Validaciones 28-sep (tarde-noche)
+
+- [x] `⌘F` alterna «esta carpeta ⇄ todo el indice» (placeholder y estado lo reflejan); la busqueda
+  global devuelve resultados de todo el indice (verificado por AX + captura).
+- [x] Estado de indexado en vivo: «Indexando «ruta»: N entradas…» (probado con 12k ficheros; el
+  listado en curso puede mostrar «Cargando N elemento(s)…» a la vez).
+- [x] Reanudacion post-crash E2E: snapshot sintetico → dialogo al arrancar → «Reanudar pendientes»
+  copia lo pendiente, omite origenes ya movidos y limpia el snapshot.
+- [x] Historial de snapshots acotado (280 → 50 terminales; el JSON crecia sin limite).
+- [x] VoiceOver no aplica aqui (app AppKit con labels propios); pendiente auditoria formal.
+
+## Rendimiento (100k, 28-sep)
+
+- `J4I PERF · crawl: 100.101 entradas en 11,4 s` (J4IIndex; `perf_100k_listing.sh`).
+- Queries FTS5: 10–25 ms tipicas (`archivo-500`: 25,0 ms · `dir-50`: 10,5 ms · `txt` (termino muy
+  comun): 102 ms).
+- Listado incremental 100k: test en verde (umbral <300 s; 230 s incl. creacion de los ficheros).
 
 ## Incidencias cerradas (2026-02-19)
 

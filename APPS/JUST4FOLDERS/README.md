@@ -29,6 +29,20 @@ swift run
 ./scripts/build_dmg.sh
 ```
 
+## Novedades 28-sep (tarde-noche)
+
+- **Busqueda global (⌘F)**: la barra del commander busca en la carpeta actual; **⌘F** alterna a
+  «todo el indice» (todas las ubicaciones indexadas) y ⌘F de nuevo vuelve. Tambien en la paleta ⌘K.
+- **Reanudacion tras caida**: si la sesion anterior murio con un trabajo activo, al arrancar se
+  ofrece «Reanudar pendientes» (omite lo ya hecho; los conflictos se renombran, nunca sobrescribe).
+  Diario por trabajo (`job-<id>-items.json`); historial de snapshots acotado a 50 terminales.
+- **Error model central (`J4FError`)**: mensajes UX unificados (permisos, conflictos, volumen RO,
+  sin espacio…) + detalle tecnico; adoptado en commander/panel.
+- **Logging os_log** por modulo (commander, panel, jobs, stores) con subsystem
+  `com.dmx83.just4folders`; los espectadores de `log stream` ven ademas el detalle.
+- **QA**: `scripts/qa_smoke.sh` (build + tests + arranque + AX) y `scripts/perf_100k_listing.sh`
+  (100k: listado + crawl/consultas del indice).
+
 ## MVP actual
 
 - Seleccion de carpeta origen y destino.

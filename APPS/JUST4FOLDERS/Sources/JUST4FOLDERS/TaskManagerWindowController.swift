@@ -200,9 +200,13 @@ final class TaskManagerWindowController: NSWindowController, NSTableViewDataSour
             cancelButton.isEnabled = false
             return
         }
-        pauseButton.isEnabled = snap.state == .running
-        resumeButton.isEnabled = snap.state == .paused
-        cancelButton.isEnabled = snap.state == .queued || snap.state == .running || snap.state == .paused
+        let isLive = jobQueue.snapshot(jobId: snap.id) != nil
+        pauseButton.isEnabled = isLive && snap.state == .running
+        resumeButton.isEnabled = (isLive && snap.state == .paused)
+            || (!isLive
+                && jobQueue.hasPersistedItems(jobId: snap.id)
+                && (snap.state == .paused || snap.state == .running || snap.state == .queued))
+        cancelButton.isEnabled = isLive && (snap.state == .queued || snap.state == .running || snap.state == .paused)
     }
 
     private func selectedJobId() -> UUID? {
@@ -223,7 +227,14 @@ final class TaskManagerWindowController: NSWindowController, NSTableViewDataSour
 
     @objc private func resumeSelected() {
         guard let id = selectedJobId() else { return }
-        jobQueue.resume(jobId: id)
+        if jobQueue.snapshot(jobId: id) != nil {
+            jobQueue.resume(jobId: id)
+            return
+        }
+        // Snapshot de una sesión anterior (sin trabajo vivo): re-encolar pendientes del diario.
+        if let job = jobQueue.interruptedJobs().first(where: { $0.snapshot.id == id }) {
+            jobQueue.requeueInterrupted(snapshot: job.snapshot, items: job.items)
+        }
     }
 
     @objc private func cancelSelected() {

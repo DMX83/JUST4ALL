@@ -43,6 +43,9 @@ public final class JobQueueService {
         jobs[id] = managed
         lock.unlock()
 
+        // v1.1 — diario de items para poder reanudar tras una caída (se escribe una vez).
+        snapshotStore.saveItems(items, jobId: id)
+
         queue.addOperation(managed.operation)
         managed.emitQueued()
         return id
@@ -77,6 +80,49 @@ public final class JobQueueService {
 
     public func persistedSnapshots() -> [JobSnapshot] {
         snapshotStore.loadAll()
+    }
+
+    /// v1.1 — trabajos que quedaron a medias en una sesión anterior (estado activo + diario de items).
+    /// La app ofrece reanudarlos al arrancar.
+    public func interruptedJobs() -> [(snapshot: JobSnapshot, items: [JobItem])] {
+        snapshotStore.loadAll().compactMap { snap in
+            guard snap.state == .running || snap.state == .paused || snap.state == .queued else { return nil }
+            guard let items = snapshotStore.loadItems(jobId: snap.id), !items.isEmpty else { return nil }
+            return (snap, items)
+        }
+    }
+
+    public func hasPersistedItems(jobId: UUID) -> Bool {
+        snapshotStore.hasItems(jobId: jobId)
+    }
+
+    /// Descarta el snapshot y su diario: el trabajo no volverá a ofrecerse.
+    public func discardPersisted(jobId: UUID) {
+        snapshotStore.remove(jobId: jobId)
+        snapshotStore.removeItems(jobId: jobId)
+    }
+
+    /// Re-encola los pendientes de un trabajo interrumpido: omite orígenes que ya no existen
+    /// (ya movidos/copiados antes de morir la sesión) y usa policy `.rename` — nunca sobrescribe.
+    /// Devuelve el id del trabajo nuevo y cuántos elementos quedaron pendientes (nil si no había).
+    @discardableResult
+    public func requeueInterrupted(
+        snapshot: JobSnapshot,
+        items: [JobItem],
+        options: JobExecutionOptions = JobExecutionOptions(),
+        onUpdate: UpdateHandler? = nil
+    ) -> (jobId: UUID, itemCount: Int)? {
+        discardPersisted(jobId: snapshot.id)
+        let pending = items.filter { FileManager.default.fileExists(atPath: $0.source.path) }
+        guard !pending.isEmpty else { return nil }
+        let id = enqueue(
+            type: snapshot.type,
+            items: pending,
+            conflictPolicy: .rename,
+            options: options,
+            onUpdate: onUpdate
+        )
+        return (id, pending.count)
     }
 
     @discardableResult
@@ -577,6 +623,11 @@ private final class ManagedJob {
         }
 
         snapshotStore.save(snap)
+
+        // v1.1 — el trabajo terminó (bien o cancelado): el diario de items ya no hace falta.
+        if snap.state == .done || snap.state == .cancelled {
+            snapshotStore.removeItems(jobId: id)
+        }
 
         if let eventKind {
             eventEmitter.emit(

@@ -20,6 +20,12 @@ actor IndexedSearchService {
         let modifiedTimeInterval: TimeInterval
     }
 
+    /// Caja para cruzar el callback de progreso hacia el mundo `@Sendable` del crawler.
+    /// El actor ya serializa su uso, así que el cruce es seguro en la práctica.
+    private struct ProgressBox: @unchecked Sendable {
+        let handler: (String, Int64) -> Void
+    }
+
     private let log = Logger(subsystem: "com.dmx83.just4folders", category: "index")
     private let index: SearchIndex
     private let crawler: IndexCrawler
@@ -46,11 +52,13 @@ actor IndexedSearchService {
     // MARK: - Indexado
 
     /// Asegura (cooperativo) que cada root pedido esté crawleado. Idempotente: los ya listos se saltan.
+    /// `onProgress` recibe (ruta del root, entradas escaneadas) por lote — para el estado en vivo.
     func ensureIndexedCooperative(
         roots: [URL],
         includeHidden: Bool,
         batchSize: Int = 400,
-        pausePerBatchMS: UInt64 = 20
+        pausePerBatchMS: UInt64 = 20,
+        onProgress: ((String, Int64) -> Void)? = nil
     ) async throws {
         let unique = Array(Set(roots.map { $0.standardizedFileURL.path })).sorted()
         for path in unique {
@@ -61,7 +69,8 @@ actor IndexedSearchService {
                 root: rootURL,
                 includeHidden: includeHidden,
                 batchSize: batchSize,
-                pausePerBatchMS: pausePerBatchMS
+                pausePerBatchMS: pausePerBatchMS,
+                onProgress: onProgress
             )
         }
     }
@@ -70,14 +79,40 @@ actor IndexedSearchService {
 
     /// Búsqueda instantánea: si la carpeta aún no está indexada, se crawlea antes (cooperativo);
     /// después la consulta es FTS5 sobre el subárbol, sin recorrer el árbol a mano.
-    func searchPreparing(query: String, under root: URL, includeHidden: Bool, limit: Int = 5000) async throws -> [Hit] {
+    func searchPreparing(
+        query: String,
+        under root: URL,
+        includeHidden: Bool,
+        limit: Int = 5000,
+        onProgress: ((String, Int64) -> Void)? = nil
+    ) async throws -> [Hit] {
         try await ensureCrawled(
             root: root.standardizedFileURL,
             includeHidden: includeHidden,
             batchSize: 800,
-            pausePerBatchMS: 8
+            pausePerBatchMS: 8,
+            onProgress: onProgress
         )
         return try await search(query: query, under: root, limit: limit)
+    }
+
+    /// v2.0 — búsqueda **global** (⌘F del commander): consulta TODO el índice, sin filtro de
+    /// subárbol. Antes asegura los roots indicados (paneles + ubicaciones autorizadas).
+    func searchGlobalPreparing(
+        query: String,
+        ensureRoots: [URL],
+        includeHidden: Bool,
+        limit: Int = 5000,
+        onProgress: ((String, Int64) -> Void)? = nil
+    ) async throws -> [Hit] {
+        try await ensureIndexedCooperative(
+            roots: ensureRoots,
+            includeHidden: includeHidden,
+            batchSize: 800,
+            pausePerBatchMS: 8,
+            onProgress: onProgress
+        )
+        return try await searchGlobal(query: query, limit: limit)
     }
 
     // MARK: - Vista aplanada (v1.2, «flat view»)
@@ -100,12 +135,18 @@ actor IndexedSearchService {
     }
 
     /// Flat view con indexado cooperativo previo (si la carpeta aún no está crawleada).
-    func flatEntriesPreparing(under root: URL, includeHidden: Bool, limit: Int = 50_000) async throws -> [Hit] {
+    func flatEntriesPreparing(
+        under root: URL,
+        includeHidden: Bool,
+        limit: Int = 50_000,
+        onProgress: ((String, Int64) -> Void)? = nil
+    ) async throws -> [Hit] {
         try await ensureCrawled(
             root: root.standardizedFileURL,
             includeHidden: includeHidden,
             batchSize: 800,
-            pausePerBatchMS: 8
+            pausePerBatchMS: 8,
+            onProgress: onProgress
         )
         return try await flatEntries(under: root, limit: limit)
     }
@@ -141,6 +182,50 @@ actor IndexedSearchService {
             let removed = (try? await index.removeEntries(rootID: rootInfo.id, paths: missing)) ?? 0
             if removed > 0 {
                 log.info("Índice: \(removed, privacy: .public) entrada(s) podadas (ya no existen en disco).")
+            }
+        }
+        return alive
+    }
+
+    /// v2.0 — consulta FTS5 sobre todas las entradas indexadas (todos los roots), sin filtro de ruta.
+    /// Mantiene la autocuración de `search`, con poda acotada (evita N consultas si el índice
+    /// arrastra cientos de huecos tras un cambio masivo externo).
+    func searchGlobal(query: String, limit: Int = 5000) async throws -> [Hit] {
+        let clean = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return [] }
+        let request = IndexSearchRequest(query: clean, filters: IndexSearchFilters(), limit: limit, includeContent: false)
+        let hits = try await index.search(request)
+
+        var alive: [Hit] = []
+        var missing: [String] = []
+        for hit in hits {
+            if FileManager.default.fileExists(atPath: hit.entry.path) {
+                alive.append(
+                    Hit(
+                        path: hit.entry.path,
+                        name: hit.entry.name,
+                        isDirectory: hit.entry.isDirectory,
+                        sizeBytes: hit.entry.sizeBytes,
+                        modifiedTimeInterval: hit.entry.modifiedAt?.timeIntervalSince1970 ?? 0
+                    )
+                )
+            } else {
+                missing.append(hit.entry.path)
+            }
+        }
+        if !missing.isEmpty, missing.count <= 300 {
+            var byRoot: [Int64: [String]] = [:]
+            for path in missing {
+                if let rootInfo = try? await index.rootID(containing: path) {
+                    byRoot[rootInfo.id, default: []].append(path)
+                }
+            }
+            var removed = 0
+            for (rootID, paths) in byRoot {
+                removed += (try? await index.removeEntries(rootID: rootID, paths: paths)) ?? 0
+            }
+            if removed > 0 {
+                log.info("Índice (global): \(removed, privacy: .public) entrada(s) podadas (ya no existen en disco).")
             }
         }
         return alive
@@ -224,7 +309,13 @@ actor IndexedSearchService {
 
     // MARK: - Privados
 
-    private func ensureCrawled(root: URL, includeHidden: Bool, batchSize: Int, pausePerBatchMS: UInt64) async throws {
+    private func ensureCrawled(
+        root: URL,
+        includeHidden: Bool,
+        batchSize: Int,
+        pausePerBatchMS: UInt64,
+        onProgress: ((String, Int64) -> Void)? = nil
+    ) async throws {
         guard Self.isDirectory(root) else { return }
         let path = root.path
         let current = await rootAndState(for: path)
@@ -242,7 +333,11 @@ actor IndexedSearchService {
             batchSize: max(100, batchSize),
             pausePerBatchMilliseconds: pausePerBatchMS
         )
-        _ = try await crawler.crawl(rootID: rootRow.id, rootPath: path, options: options)
+        let displayPath = (path as NSString).abbreviatingWithTildeInPath
+        let progressBox = onProgress.map { ProgressBox(handler: $0) }
+        _ = try await crawler.crawl(rootID: rootRow.id, rootPath: path, options: options, onProgress: { scanned in
+            progressBox?.handler(displayPath, scanned)
+        })
     }
 
     private static func isDirectory(_ url: URL) -> Bool {

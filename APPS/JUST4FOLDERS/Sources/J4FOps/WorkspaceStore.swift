@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Ola 3 — «Workspaces» estilo QSpace: guarda el estado de los dos paneles (pestañas y
 /// pestaña activa) + visibilidad del preview, con nombre, para restaurarlo después.
@@ -74,6 +75,8 @@ public final class WorkspaceStore {
         workspaces = decoded
     }
 
+    private let logger = Logger(subsystem: "com.dmx83.just4folders", category: "workspaces")
+
     private func persist() {
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -81,6 +84,7 @@ public final class WorkspaceStore {
             try data.write(to: url, options: .atomic)
         } catch {
             // Los workspaces son una comodidad: un fallo de escritura no rompe la app.
+            logger.error("No se pudo guardar workspaces.json: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

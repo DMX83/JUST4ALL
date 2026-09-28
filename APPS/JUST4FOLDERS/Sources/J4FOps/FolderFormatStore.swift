@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// v2.0 — «Folder formats»: recuerda la vista por carpeta (aplanada, orden, ocultos),
 /// como los formatos de carpeta de Directory Opus. Persistencia JSON en Application Support,
@@ -90,6 +91,8 @@ public final class FolderFormatStore {
         order = decoded.keys.sorted()
     }
 
+    private let logger = Logger(subsystem: "com.dmx83.just4folders", category: "folder-formats")
+
     private func save() {
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -97,6 +100,7 @@ public final class FolderFormatStore {
             try data.write(to: url, options: .atomic)
         } catch {
             // El formato es una comodidad: un fallo de escritura no debe afectar a la navegación.
+            logger.error("No se pudo guardar folder-formats.json: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

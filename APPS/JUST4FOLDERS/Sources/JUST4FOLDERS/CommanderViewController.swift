@@ -6,6 +6,7 @@ import J4ICore
 import QuickLookUI
 import QuickLookThumbnailing
 import UniformTypeIdentifiers
+import os
 
 extension Notification.Name {
     static let j4fFocusPathBar = Notification.Name("j4f.focusPathBar")
@@ -395,6 +396,12 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let statusLabel = NSTextField(labelWithString: "Listo")
     private let volumeWarningLabel = NSTextField(labelWithString: "")
     private let searchField = NSSearchField()
+    /// v2.0 — registro propio del commander (os_log; visible con `log stream`).
+    private let logger = Logger(subsystem: "com.dmx83.just4folders", category: "commander")
+    /// v2.0 — scope de búsqueda del campo (⌘F): false = carpeta actual; true = todo el índice.
+    private var globalSearchScope = false
+    /// v2.0 — throttle del estado de progreso de indexado (evita repintar por lote).
+    private var lastIndexProgressUpdate: Date = .distantPast
     private let directoryTree = NSOutlineView()
     private var toolbarConfigured = false
     private let authorizedTable = NSTableView()
@@ -514,6 +521,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             .init(title: "Cerrar pestaña", hint: "⌘W") { [weak self] in self?.closeTabOrWindow() },
             .init(title: "Ir a ruta…", hint: "⌘L") { NotificationCenter.default.post(name: .j4fFocusPathBar, object: nil) },
             .init(title: "Ir al Home", hint: "") { [weak self] in self?.goHome() },
+            .init(title: "Buscar en todo el índice", hint: "⌘F") { [weak self] in self?.setGlobalSearchScope(true, announce: true) },
+            .init(title: "Buscar solo en esta carpeta", hint: "") { [weak self] in self?.setGlobalSearchScope(false, announce: true) },
             .init(title: "Atrás", hint: "") { [weak self] in self?.goBack() },
             .init(title: "Adelante", hint: "") { [weak self] in self?.goForward() },
             .init(title: "Copiar al otro panel", hint: "F5") { [weak self] in self?.copySelection() },
@@ -1013,6 +1022,17 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         rightPanel.onSearchDidFinish = { [weak self] in
             self?.scheduleCooperativeIndexing()
         }
+
+        // v2.0 — scope de búsqueda (⌘F) y raíces para la búsqueda global.
+        leftPanel.isGlobalSearchActive = { [weak self] in self?.globalSearchScope ?? false }
+        rightPanel.isGlobalSearchActive = { [weak self] in self?.globalSearchScope ?? false }
+        leftPanel.indexRootsProvider = { [weak self] in self?.desiredIndexRoots() ?? [] }
+        rightPanel.indexRootsProvider = { [weak self] in self?.desiredIndexRoots() ?? [] }
+
+        // v1.1 — reanudación: si la sesión anterior murió con un trabajo activo, se ofrece rehacer los pendientes.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.checkInterruptedJobs()
+        }
     }
 
     @objc private func focusPathBar() {
@@ -1151,7 +1171,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             try activePanel.createDirectory(named: name)
             statusLabel.stringValue = "Carpeta creada: \(name)"
         } catch {
-            statusLabel.stringValue = "No se pudo crear la carpeta: \(error.localizedDescription)"
+            statusLabel.stringValue = "No se pudo crear la carpeta: \(J4FError.from(error).userMessage)"
             NSSound.beep()
         }
     }
@@ -1177,7 +1197,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             try activePanel.renameItem(at: source, to: newName)
             statusLabel.stringValue = "Renombrado: \(currentName) -> \(newName)"
         } catch {
-            statusLabel.stringValue = "No se pudo renombrar: \(error.localizedDescription)"
+            statusLabel.stringValue = "No se pudo renombrar: \(J4FError.from(error).userMessage)"
             NSSound.beep()
         }
     }
@@ -1261,13 +1281,42 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             loadSidebarLocations()
             statusLabel.stringValue = "Ubicacion autorizada guardada: \(url.lastPathComponent)"
         } catch {
-            statusLabel.stringValue = "Error al guardar bookmark: \(error.localizedDescription)"
+            statusLabel.stringValue = "Error al guardar bookmark: \(J4FError.from(error).userMessage)"
             NSSound.beep()
         }
     }
 
     @objc private func searchChanged(_ sender: NSSearchField) {
+        // v2.0 — vaciar el campo restaura el scope normal (⌘F vuelve a activar el global).
+        if sender.stringValue.trimmingCharacters(in: .whitespaces).isEmpty, globalSearchScope {
+            setGlobalSearchScope(false, announce: false)
+        }
         activePanel.setSearchQuery(sender.stringValue)
+    }
+
+    // MARK: - Búsqueda global (v2.0)
+
+    @objc private func toggleGlobalSearchScope() {
+        setGlobalSearchScope(!globalSearchScope, announce: true)
+    }
+
+    /// Alterna entre «buscar en esta carpeta» y «buscar en todo el índice» (⌘F).
+    private func setGlobalSearchScope(_ enabled: Bool, announce: Bool) {
+        if globalSearchScope != enabled {
+            globalSearchScope = enabled
+            searchField.placeholderString = enabled ? "Buscar en todo el índice…" : "Buscar en esta carpeta…"
+            searchField.toolTip = enabled
+                ? "Búsqueda global: abarca todas las ubicaciones indexadas."
+                : "Búsqueda en la carpeta actual. Pulsa ⌘F para buscar en todo el índice."
+            searchField.setAccessibilityLabel(enabled ? "Busqueda global" : "Busqueda rapida")
+            if announce {
+                statusLabel.stringValue = enabled
+                    ? "Búsqueda global activa: la consulta abarca todas las ubicaciones indexadas (⌘F vuelve a «esta carpeta»)."
+                    : "Búsqueda en la carpeta actual (⌘F busca en todo el índice)."
+            }
+            activePanel.rerunSearchNow()
+        }
+        view.window?.makeFirstResponder(searchField)
     }
 
     @objc private func manualRefresh() {
@@ -1303,7 +1352,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             try? FileManager.default.removeItem(at: result.tempDirectoryURL)
             statusLabel.stringValue = "Diagnostico exportado: \(destination.lastPathComponent)"
         } catch {
-            statusLabel.stringValue = "No se pudo exportar diagnostico: \(error.localizedDescription)"
+            statusLabel.stringValue = "No se pudo exportar diagnostico: \(J4FError.from(error).userMessage)"
             NSSound.beep()
         }
     }
@@ -1384,6 +1433,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         let report = bookmarkStore.resolveReport()
         authorizedLocations = report.resolvedURLs
         failedBookmarks = report.failedLocations
+        if !report.failedLocations.isEmpty {
+            logger.warning("Bookmarks sin resolver: \(report.failedLocations.map(\.path).joined(separator: ", "), privacy: .public)")
+        }
         for url in authorizedLocations {
             _ = beginSecurityScope(for: url)
         }
@@ -1419,7 +1471,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             loadSidebarLocations()
             statusLabel.stringValue = "Reautorizado: \(selectedURL.lastPathComponent)"
         } catch {
-            statusLabel.stringValue = "No se pudo reautorizar: \(error.localizedDescription)"
+            statusLabel.stringValue = "No se pudo reautorizar: \(J4FError.from(error).userMessage)"
             NSSound.beep()
         }
     }
@@ -1551,7 +1603,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             }
             watcher.setPaused(!activeJobIds.isEmpty)
         } catch {
-            statusLabel.stringValue = "No se pudo activar watcher para \(directory.lastPathComponent): \(error.localizedDescription)"
+            statusLabel.stringValue = "No se pudo activar watcher para \(directory.lastPathComponent): \(J4FError.from(error).userMessage)"
         }
     }
 
@@ -1614,7 +1666,12 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
                         roots: roots,
                         includeHidden: includeHidden,
                         batchSize: 400,
-                        pausePerBatchMS: 20
+                        pausePerBatchMS: 20,
+                        onProgress: { [weak self] displayPath, scanned in
+                            Task { @MainActor in
+                                self?.updateIndexProgress(displayPath: displayPath, scanned: scanned)
+                            }
+                        }
                     )
                     await MainActor.run {
                         self.isCooperativeIndexing = false
@@ -1642,6 +1699,68 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         leftPanel.flashIndexReady()
         rightPanel.flashIndexReady()
         statusLabel.stringValue = "Indexado incremental completado."
+    }
+
+    /// v2.0 — estado en vivo del crawl cooperativo: «Indexando «ruta»: N entradas…» (4/s máx).
+    private func updateIndexProgress(displayPath: String, scanned: Int64) {
+        let now = Date()
+        guard now.timeIntervalSince(lastIndexProgressUpdate) > 0.25 else { return }
+        lastIndexProgressUpdate = now
+        logger.debug("Progreso de indexado «\(displayPath, privacy: .public)»: \(scanned) entrada(s).")
+        statusLabel.stringValue = "Indexando «\(displayPath)»: \(scanned.formatted()) entrada(s)…"
+    }
+
+    // MARK: - Reanudación tras caída (v1.1)
+
+    /// Si la sesión anterior murió con un trabajo a medias (snapshot «running/paused» + diario de
+    /// items), ofrece re-encolar los pendientes. Los elementos ya movidos/copiados (origen ausente)
+    /// se omiten y los conflictos se resuelven renombrando (nunca se sobrescribe).
+    private func checkInterruptedJobs() {
+        let interrupted = jobQueue.interruptedJobs()
+        guard let primary = interrupted.first else { return }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Se interrumpió un trabajo de \(primary.snapshot.type.rawValue)"
+        alert.informativeText = "Se detectó un trabajo sin terminar de la sesión anterior (\(primary.snapshot.processedItems)/\(primary.snapshot.totalItems) elementos procesados). Al reanudar se omiten los ya hechos y los conflictos se renombran."
+        alert.addButton(withTitle: "Reanudar pendientes")
+        alert.addButton(withTitle: "Descartar")
+        alert.addButton(withTitle: "Más tarde")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            var resumed = 0
+            for job in interrupted {
+                let outcome = jobQueue.requeueInterrupted(
+                    snapshot: job.snapshot,
+                    items: job.items,
+                    options: currentJobOptions()
+                ) { [weak self] snapshot in
+                    guard let self else { return }
+                    let pct = Int(snapshot.progress * 100)
+                    self.statusLabel.stringValue = "[REANUDAR] \(snapshot.processedItems)/\(snapshot.totalItems) (\(pct)%) - \(snapshot.state.rawValue)"
+                    if snapshot.state == .done || snapshot.state == .failed || snapshot.state == .cancelled {
+                        self.leftPanel.refreshCurrentDirectory()
+                        self.rightPanel.refreshCurrentDirectory()
+                    }
+                }
+                if let outcome {
+                    resumed += outcome.itemCount
+                }
+            }
+            statusLabel.stringValue = resumed > 0
+                ? "Reanudados \(resumed) elemento(s) pendientes."
+                : "No quedaban pendientes por reanudar."
+        case .alertSecondButtonReturn:
+            for job in interrupted {
+                jobQueue.discardPersisted(jobId: job.snapshot.id)
+            }
+            statusLabel.stringValue = "Trabajos interrumpidos descartados."
+        default:
+            statusLabel.stringValue = "Hay trabajos interrumpidos: se volverá a preguntar en el próximo arranque."
+        }
+    }
+
+    private func currentJobOptions() -> JobExecutionOptions {
+        JobExecutionOptions(deletePreference: preferences.deleteBehavior.deletePreference)
     }
 
     private func pauseCooperativeIndexingForSearch() {
@@ -1925,6 +2044,19 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         guard view.window?.isKeyWindow == true else { return false }
         if NSApp.modalWindow != nil || view.window?.attachedSheet != nil {
             return false
+        }
+
+        // v2.0 — ⌘F: alterna «esta carpeta ⇄ todo el índice» (también con el buscador activo).
+        if event.keyCode == 3,
+           event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [.command] {
+            if isEditingTextInput {
+                let editor = view.window?.firstResponder as? NSTextView
+                if (editor?.delegate as? NSSearchField) !== searchField {
+                    return false
+                }
+            }
+            toggleGlobalSearchScope()
+            return true
         }
 
         if isEditingTextInput {
@@ -2466,7 +2598,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             item.target = self
             item.action = #selector(exportDiagnostics)
         case ToolbarID.search:
-            searchField.placeholderString = "Search"
+            searchField.placeholderString = globalSearchScope ? "Buscar en todo el índice…" : "Buscar en esta carpeta…"
+            searchField.toolTip = globalSearchScope
+                ? "Búsqueda global: abarca todas las ubicaciones indexadas."
+                : "Búsqueda en la carpeta actual. Pulsa ⌘F para buscar en todo el índice."
             searchField.target = self
             searchField.action = #selector(searchChanged(_:))
             searchField.delegate = self
@@ -2608,6 +2743,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     var onPasteRequested: (() -> Void)?
     var onSearchWillStart: (() -> Void)?
     var onSearchDidFinish: (() -> Void)?
+    /// v2.0 — scope de búsqueda: true = todo el índice (⌘F); false = subárbol de la carpeta actual.
+    var isGlobalSearchActive: (() -> Bool)?
+    /// Raíces a asegurar antes de una búsqueda global (paneles + ubicaciones autorizadas).
+    var indexRootsProvider: (() -> [URL])?
 
     private let side: PanelSide
     private let tableView = FocusAwareTableView()
@@ -2616,6 +2755,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private let tabsControl = NSSegmentedControl()
     private let indexedSearch = IndexedSearchService.shared
     private let flatToggleButton = NSButton()
+    /// v2.0 — registro del panel (os_log) para fallos silenciosos (IA, índice…).
+    private let logger = Logger(subsystem: "com.dmx83.just4folders", category: "panel")
 
     private var allRows: [FileRow] = []
     /// v1.2 — vista aplanada: cuando está activa, `flatRows` (índice) es la fuente.
@@ -2797,6 +2938,15 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: work)
     }
 
+    /// v2.0 — relanza la búsqueda actual sin debounce (p. ej. al cambiar el scope global con
+    /// texto ya escrito, o al terminar de indexar tras una búsqueda global).
+    func rerunSearchNow() {
+        guard !searchQuery.isEmpty else { return }
+        pendingSearchWorkItem?.cancel()
+        searchTask?.cancel()
+        startDeepSearch(query: searchQuery)
+    }
+
     // MARK: - Filtro rápido (v1.2: escribir filtra la lista, ⌫ borra, Esc limpia)
 
     var hasQuickFilter: Bool { !quickFilter.isEmpty }
@@ -2971,7 +3121,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 try FileManager.default.trashItem(at: url, resultingItemURL: &resulting)
                 deleted += 1
             } catch {
-                onStatus?("No se pudo borrar \(url.lastPathComponent): \(error.localizedDescription)")
+                onStatus?("No se pudo borrar \(url.lastPathComponent): \(J4FError.from(error).userMessage)")
             }
         }
         loadDirectory(currentURL, pushHistory: false)
@@ -3019,7 +3169,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 try FileManager.default.removeItem(at: url)
                 deleted += 1
             } catch {
-                onStatus?("No se pudo eliminar \(url.lastPathComponent): \(error.localizedDescription)")
+                onStatus?("No se pudo eliminar \(url.lastPathComponent): \(J4FError.from(error).userMessage)")
             }
         }
         loadDirectory(currentURL, pushHistory: false)
@@ -3144,7 +3294,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 try fm.copyItem(at: src, to: destination)
                 pasted += 1
             } catch {
-                onStatus?("Error pegando \(src.lastPathComponent): \(error.localizedDescription)")
+                onStatus?("Error pegando \(src.lastPathComponent): \(J4FError.from(error).userMessage)")
             }
         }
 
@@ -3869,7 +4019,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             } catch {
                 await MainActor.run {
                     guard self.loadToken == token else { return }
-                    self.onStatus?("Error cargando carpeta: \(error.localizedDescription)")
+                    self.onStatus?("Error cargando carpeta: \(J4FError.from(error).userMessage)")
                 }
             }
         }
@@ -4049,7 +4199,15 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         loadTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             do {
-                let hits = try await self.indexedSearch.flatEntriesPreparing(under: url, includeHidden: includeHidden)
+                let hits = try await self.indexedSearch.flatEntriesPreparing(
+                    under: url,
+                    includeHidden: includeHidden,
+                    onProgress: { [weak self] displayPath, scanned in
+                        Task { @MainActor in
+                            self?.onStatus?("Indexando «\(displayPath)»… \(scanned) entrada(s).")
+                        }
+                    }
+                )
                 guard !Task.isCancelled else { return }
                 let mapped = hits.map { hit in
                     FileRow(
@@ -4075,7 +4233,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 await MainActor.run {
                     guard self.loadToken == token else { return }
                     self.flatLoading = false
-                    self.onStatus?("No se pudo aplanar: \(error.localizedDescription)")
+                    self.onStatus?("No se pudo aplanar: \(J4FError.from(error).userMessage)")
                 }
             }
         }
@@ -4492,24 +4650,56 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     /// v2.0 — hits del índice para una consulta; con búsqueda semántica activa la IA expande
     /// la consulta en varios términos y se unen los resultados sin duplicados.
-    private func indexedSearchRows(for query: String, root: URL, includeHidden: Bool, maxMatches: Int) async -> [FileRow]? {
+    /// `global` (⌘F) consulta todo el índice en lugar del subárbol del panel.
+    private func indexedSearchRows(for query: String, root: URL, includeHidden: Bool, maxMatches: Int, global: Bool) async -> [FileRow]? {
         var queries: [String] = [query]
         if semanticSearchEnabled, let expander = semanticExpander {
-            if let expanded = try? await expander.expand(query: query), !expanded.isEmpty {
-                queries = expanded
-                onStatus?("IA: «\(query)» → \(expanded.joined(separator: " · "))")
+            do {
+                let expanded = try await expander.expand(query: query)
+                if !expanded.isEmpty {
+                    queries = expanded
+                    onStatus?("IA: «\(query)» → \(expanded.joined(separator: " · "))")
+                }
+            } catch {
+                logger.debug("Expansión semántica no disponible: \(error.localizedDescription, privacy: .public)")
             }
         }
 
         var rows: [FileRow] = []
         var seen = Set<String>()
         var anySuccess = false
+        let ensureRoots = indexRootsProvider?() ?? [root]
         for term in queries {
-            guard let hits = try? await indexedSearch.searchPreparing(query: term, under: root, includeHidden: includeHidden, limit: maxMatches) else { continue }
+            let progress: (String, Int64) -> Void = { [weak self] displayPath, scanned in
+                Task { @MainActor in
+                    self?.onStatus?("Indexando «\(displayPath)»… \(scanned) entrada(s).")
+                }
+            }
+            let hits: [IndexedSearchService.Hit]?
+            if global {
+                hits = try? await indexedSearch.searchGlobalPreparing(
+                    query: term,
+                    ensureRoots: ensureRoots,
+                    includeHidden: includeHidden,
+                    limit: maxMatches,
+                    onProgress: progress
+                )
+            } else {
+                hits = try? await indexedSearch.searchPreparing(
+                    query: term,
+                    under: root,
+                    includeHidden: includeHidden,
+                    limit: maxMatches,
+                    onProgress: progress
+                )
+            }
+            guard let hits else { continue }
             anySuccess = true
             for hit in hits where seen.insert(hit.path).inserted {
                 let relativePath: String
-                if hit.path.hasPrefix(root.path + "/") {
+                if global {
+                    relativePath = (hit.path as NSString).abbreviatingWithTildeInPath
+                } else if hit.path.hasPrefix(root.path + "/") {
                     relativePath = String(hit.path.dropFirst(root.path.count + 1))
                 } else {
                     relativePath = hit.name
@@ -4545,6 +4735,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         let terms = Self.searchTerms(from: clean)
         let maxMatches = 5000
         let allowIndexLookup = true
+        let global = isGlobalSearchActive?() ?? false
 
         let baseRows = flatView ? flatRows : allRows
         let quickRows = baseRows.filter { row in
@@ -4553,18 +4744,36 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
         searchRows = quickRows
         applySortAndReload()
-        onStatus?("Busqueda rapida: \(quickRows.count) coincidencias. Profundizando en \(root.path)...")
+        if global {
+            onStatus?("Busqueda global: \(quickRows.count) coincidencias locales. Consultando todo el indice…")
+        } else {
+            onStatus?("Busqueda rapida: \(quickRows.count) coincidencias. Profundizando en \(root.path)...")
+        }
 
         searchTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             if allowIndexLookup,
-               let mapped = await self.indexedSearchRows(for: clean, root: root, includeHidden: includeHidden, maxMatches: maxMatches) {
+               let mapped = await self.indexedSearchRows(for: clean, root: root, includeHidden: includeHidden, maxMatches: maxMatches, global: global) {
                 if Task.isCancelled { return }
                 await MainActor.run {
                     guard self.searchToken == token else { return }
                     self.searchRows = mapped
                     self.applySortAndReload()
-                    self.onStatus?("Busqueda indexada: \(self.searchRows.count) coincidencias en \(root.path)")
+                    if global {
+                        self.onStatus?("Busqueda global indexada: \(self.searchRows.count) coincidencias en todo el indice")
+                    } else {
+                        self.onStatus?("Busqueda indexada: \(self.searchRows.count) coincidencias en \(root.path)")
+                    }
+                    self.onSearchDidFinish?()
+                }
+                return
+            }
+
+            if global {
+                // Sin índice no hay recorrido global razonable (sería barrer el home entero).
+                await MainActor.run {
+                    guard self.searchToken == token else { return }
+                    self.onStatus?("Busqueda global: el indice no esta disponible; se muestran solo las coincidencias locales.")
                     self.onSearchDidFinish?()
                 }
                 return
@@ -4848,7 +5057,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             let createdURL = try createDirectoryWithIncrementalName(baseName: "Nueva carpeta")
             onStatus?("Carpeta creada: \(createdURL.lastPathComponent)")
         } catch {
-            onStatus?("No se pudo crear carpeta: \(error.localizedDescription)")
+            onStatus?("No se pudo crear carpeta: \(J4FError.from(error).userMessage)")
             NSSound.beep()
         }
     }
@@ -4875,7 +5084,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 onStatus?("No hay rutas válidas para pegar.")
             }
         } catch {
-            onStatus?("No se pudo pegar: \(error.localizedDescription)")
+            onStatus?("No se pudo pegar: \(J4FError.from(error).userMessage)")
             NSSound.beep()
         }
     }
@@ -5028,7 +5237,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             try renameItem(at: source, to: clean)
             onStatus?("Renombrado: \(source.lastPathComponent) -> \(clean)")
         } catch {
-            onStatus?("No se pudo renombrar: \(error.localizedDescription)")
+            onStatus?("No se pudo renombrar: \(J4FError.from(error).userMessage)")
             NSSound.beep()
         }
     }

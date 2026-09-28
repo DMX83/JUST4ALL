@@ -1,5 +1,8 @@
 import Foundation
 import J4ICore
+import os
+
+private let ordererLogger = Logger(subsystem: "com.dmx83.just4folders", category: "ordering")
 
 /// v2.0 — «Ordenar esta carpeta»: clasifica los ficheros de una carpeta con el motor
 /// compartido de JUST4DESK (`RulesFilingClassifier` + `FilingPlanner` + `DefaultTaxonomy`)
@@ -110,10 +113,16 @@ public enum FolderOrderer {
             let url = items[index].url
             done += 1
             onProgress?(done, limited.count)
-            guard let proposal = try? await advisor.propose(
-                fileName: url.lastPathComponent,
-                allowedCategories: allowed
-            ) else { continue }
+            let proposal: FilingProposal
+            do {
+                proposal = try await advisor.propose(
+                    fileName: url.lastPathComponent,
+                    allowedCategories: allowed
+                )
+            } catch {
+                ordererLogger.debug("IA no disponible para «\(url.lastPathComponent, privacy: .public)»: \(error.localizedDescription, privacy: .public)")
+                continue
+            }
             let resolved = FilingPlanner.resolve(proposal: proposal, originalFileName: url.lastPathComponent)
             guard !resolved.isQuarantine else { continue }
             items[index] = Item(

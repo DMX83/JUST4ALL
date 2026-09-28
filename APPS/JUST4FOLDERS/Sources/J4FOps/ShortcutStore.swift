@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// v2.0 — Atajos configurables: almacén JSON con los comandos del monitor de teclado.
 /// `all()` devuelve los valores por defecto salvo los que el usuario haya cambiado.
@@ -116,6 +117,8 @@ public final class ShortcutStore {
         persist()
     }
 
+    private let logger = Logger(subsystem: "com.dmx83.just4folders", category: "shortcuts")
+
     private func load() {
         guard let data = try? Data(contentsOf: url),
               let decoded = try? JSONDecoder().decode([String: ShortcutBinding].self, from: data) else { return }
@@ -128,7 +131,8 @@ public final class ShortcutStore {
             let data = try JSONEncoder().encode(overrides)
             try data.write(to: url, options: .atomic)
         } catch {
-            // Comodidad: un fallo de escritura no debe afectar al uso normal.
+            // Comodidad: un fallo de escritura no debe afectar al uso normal, pero queda traza.
+            logger.error("No se pudo guardar shortcuts.json: \(error.localizedDescription, privacy: .public)")
         }
     }
 }
