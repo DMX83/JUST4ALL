@@ -38,7 +38,9 @@ let package = Package(
                 .product(name: "J4FCore", package: "J4SHARED"),
                 .product(name: "J4FFileSystem", package: "J4SHARED"),
                 // Ladrillo v1.1: búsqueda del commander sobre el índice FTS5 compartido.
-                .product(name: "J4IIndex", package: "J4SHARED")
+                .product(name: "J4IIndex", package: "J4SHARED"),
+                // v1.2: etiquetas/colores del Finder por fila (FinderTags de J4ICore).
+                .product(name: "J4ICore", package: "J4SHARED")
             ]
         ),
         .testTarget(

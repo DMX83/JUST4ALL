@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import J4FFileSystem
 import J4FOps
+import J4ICore
 import UniformTypeIdentifiers
 
 extension Notification.Name {
@@ -1283,6 +1284,28 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             return false
         }
 
+        // v1.2 — filtro rápido: escribir sobre una tabla filtra; ⌫ borra; Esc limpia.
+        if let panel = panelOwningTableFirstResponder(), flagsEither([[], [.shift]], event) {
+            if event.keyCode == 53 { // Esc
+                if panel.hasQuickFilter {
+                    panel.clearQuickFilter()
+                    return true
+                }
+            } else if event.keyCode == 51 { // ⌫
+                if panel.hasQuickFilter {
+                    panel.removeQuickFilterLastCharacter()
+                    return true
+                }
+            } else if let chars = event.characters, !chars.isEmpty,
+                      chars.unicodeScalars.allSatisfy({ scalar in
+                          scalar.value >= 0x20 && scalar.value != 0x7F
+                              && !(scalar.value >= 0xF700 && scalar.value <= 0xF8FF)
+                      }) {
+                panel.appendQuickFilter(chars)
+                return true
+            }
+        }
+
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
         if flags == [] {
@@ -1340,6 +1363,19 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         guard let firstResponder = view.window?.firstResponder else { return false }
         guard let textView = firstResponder as? NSTextView else { return false }
         return textView.isFieldEditor || textView.enclosingScrollView == nil
+    }
+
+    /// ¿Qué panel tiene la tabla con el foco? (para el filtro rápido)
+    private func panelOwningTableFirstResponder() -> FilePanelViewController? {
+        if leftPanel.isTableFirstResponder() { return leftPanel }
+        if rightPanel.isTableFirstResponder() { return rightPanel }
+        return nil
+    }
+
+    /// ¿Los modificadores del evento están exactamente en alguno de los conjuntos dados?
+    private func flagsEither(_ sets: [NSEvent.ModifierFlags], _ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        return sets.contains(flags)
     }
 
     private func pasteItemsFromClipboardToActivePanel() {
@@ -1760,6 +1796,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private var sortColumn: String = "name"
     private var ascending = true
     private var searchQuery: String = ""
+    /// v1.2 — filtro rápido: teclea para filtrar la lista actual (⌫ borra, Esc limpia).
+    private var quickFilter: String = ""
+    /// v1.2 — caché de color de etiqueta Finder por ruta (0 = sin color).
+    private let tagColorCache = NSCache<NSString, NSNumber>()
     private var includeHiddenFiles = false
     private var isActivePanel = false
 
@@ -1855,6 +1895,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     func setSearchQuery(_ query: String) {
         searchQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        quickFilter = ""
         pendingSearchWorkItem?.cancel()
         searchTask?.cancel()
 
@@ -1870,6 +1911,108 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
         pendingSearchWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: work)
+    }
+
+    // MARK: - Filtro rápido (v1.2: escribir filtra la lista, ⌫ borra, Esc limpia)
+
+    var hasQuickFilter: Bool { !quickFilter.isEmpty }
+
+    /// ¿La tabla de este panel tiene el foco del teclado?
+    func isTableFirstResponder() -> Bool {
+        view.window?.firstResponder === tableView
+    }
+
+    func appendQuickFilter(_ text: String) {
+        quickFilter += text
+        activatePanel()
+        applySortAndReload()
+        onStatus?("Filtro: «\(quickFilter)» — \(rows.count) coincidencia(s) · Esc limpia")
+    }
+
+    func removeQuickFilterLastCharacter() {
+        guard !quickFilter.isEmpty else { return }
+        quickFilter.removeLast()
+        applySortAndReload()
+        if quickFilter.isEmpty {
+            onStatus?("Filtro limpiado.")
+        } else {
+            onStatus?("Filtro: «\(quickFilter)» — \(rows.count) coincidencia(s) · Esc limpia")
+        }
+    }
+
+    func clearQuickFilter() {
+        guard !quickFilter.isEmpty else { return }
+        quickFilter = ""
+        applySortAndReload()
+        onStatus?("Filtro limpiado.")
+    }
+
+    // MARK: - Etiquetas Finder (v1.2: color por fila + toggle en menú contextual)
+
+    nonisolated static let tagPalette: [(name: String, colorIndex: Int)] = [
+        ("Rojo", 6), ("Naranja", 7), ("Amarillo", 5), ("Verde", 2),
+        ("Azul", 4), ("Morado", 3), ("Gris", 1)
+    ]
+
+    nonisolated static func tagColor(forIndex index: Int) -> NSColor? {
+        switch index {
+        case 1: return .systemGray
+        case 2: return .systemGreen
+        case 3: return .systemPurple
+        case 4: return .systemBlue
+        case 5: return .systemYellow
+        case 6: return .systemRed
+        case 7: return .systemOrange
+        default: return nil
+        }
+    }
+
+    /// Índice de color de la primera etiqueta con color (0 = sin color). Cacheado por ruta.
+    private func tagColorIndex(for url: URL) -> Int {
+        let key = url.standardizedFileURL.path as NSString
+        if let cached = tagColorCache.object(forKey: key) { return cached.intValue }
+        let index = FinderTags.entries(of: url).first(where: { $0.colorIndex > 0 })?.colorIndex ?? 0
+        tagColorCache.setObject(NSNumber(value: index), forKey: key)
+        return index
+    }
+
+    private func invalidateTagColorCache(for urls: [URL]) {
+        for url in urls {
+            tagColorCache.removeObject(forKey: url.standardizedFileURL.path as NSString)
+        }
+    }
+
+    @objc private func contextApplyTag(_ sender: NSMenuItem) {
+        guard let name = sender.representedObject as? String else { return }
+        let colorIndex = Self.tagPalette.first(where: { $0.name == name })?.colorIndex ?? 0
+        let urls = selectedURLs()
+        guard !urls.isEmpty else { return }
+        let allHave = urls.allSatisfy { url in
+            FinderTags.entries(of: url).contains { $0.name == name }
+        }
+        let entry = FinderTags.TagEntry(name: name, colorIndex: colorIndex)
+        var updated = 0
+        for url in urls {
+            let change = allHave ? FinderTags.remove([name], from: url) : FinderTags.addColored([entry], to: url)
+            if change == .updated { updated += 1 }
+        }
+        invalidateTagColorCache(for: urls)
+        tableView.reloadData()
+        onStatus?("Etiqueta «\(name)» \(allHave ? "quitada" : "puesta") en \(updated) elemento(s).")
+    }
+
+    @objc private func contextClearTags() {
+        let urls = selectedURLs()
+        guard !urls.isEmpty else { return }
+        var updated = 0
+        for url in urls {
+            let names = FinderTags.entries(of: url).map(\.name)
+            guard !names.isEmpty else { continue }
+            if FinderTags.remove(names, from: url) == .updated { updated += 1 }
+        }
+        invalidateTagColorCache(for: urls)
+        tableView.reloadData()
+        onStatus?("Etiquetas quitadas en \(updated) elemento(s).")
     }
 
     func selectedURLs() -> [URL] {
@@ -2194,6 +2337,20 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         menu.addItem(withTitle: "Copiar ruta", action: #selector(contextCopyPath), keyEquivalent: "")
         menu.addItem(withTitle: "Pegar item", action: #selector(contextPasteItems), keyEquivalent: "")
         menu.addItem(withTitle: "Informacion", action: #selector(contextShowInfo), keyEquivalent: "")
+        let tagsItem = NSMenuItem(title: "Etiquetas", action: nil, keyEquivalent: "")
+        let tagsMenu = NSMenu(title: "Etiquetas")
+        for (name, _) in Self.tagPalette {
+            let item = NSMenuItem(title: name, action: #selector(contextApplyTag(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = name
+            tagsMenu.addItem(item)
+        }
+        tagsMenu.addItem(.separator())
+        let clearTagsItem = NSMenuItem(title: "Quitar etiquetas", action: #selector(contextClearTags), keyEquivalent: "")
+        clearTagsItem.target = self
+        tagsMenu.addItem(clearTagsItem)
+        tagsItem.submenu = tagsMenu
+        menu.addItem(tagsItem)
         menu.addItem(.separator())
         menu.addItem(withTitle: "Nueva carpeta", action: #selector(contextCreateFolder), keyEquivalent: "")
         menu.addItem(withTitle: "Renombrar", action: #selector(contextRename), keyEquivalent: "")
@@ -2227,6 +2384,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         searchTask?.cancel()
         pendingRefreshWorkItem?.cancel()
         pendingSearchWorkItem?.cancel()
+        quickFilter = ""
         loadToken = UUID()
 
         if pushHistory, url != currentURL {
@@ -2335,6 +2493,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         pendingRefreshWorkItem?.cancel()
         pendingSearchWorkItem?.cancel()
         pendingFlatRefreshWorkItem?.cancel()
+        quickFilter = ""
         loadToken = UUID()
 
         if pushHistory, url != currentURL {
@@ -2499,7 +2658,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
         label.stringValue = text
         label.lineBreakMode = .byTruncatingMiddle
-        label.textColor = item.isDirectory && columnId == "name" ? .controlAccentColor : .labelColor
+        if columnId == "name", let tagColor = Self.tagColor(forIndex: tagColorIndex(for: item.url)) {
+            label.textColor = tagColor
+        } else {
+            label.textColor = item.isDirectory && columnId == "name" ? .controlAccentColor : .labelColor
+        }
 
         let existingLeadingConstraints = cell.constraints.filter { constraint in
             (constraint.firstItem as? NSTextField) == label && constraint.firstAttribute == .leading
@@ -2562,7 +2725,15 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private func applySortAndReload() {
         let selectedPaths = Set(selectedURLs().map { $0.standardizedFileURL.path })
         let base = flatView ? flatRows : allRows
-        let filtered: [FileRow] = searchQuery.isEmpty ? base : searchRows
+        let filtered: [FileRow]
+        if !searchQuery.isEmpty {
+            filtered = searchRows
+        } else if !quickFilter.isEmpty {
+            let needle = Self.normalizedSearchText(quickFilter)
+            filtered = base.filter { Self.normalizedSearchText($0.name).contains(needle) }
+        } else {
+            filtered = base
+        }
 
         rows = filtered.sorted { lhs, rhs in
             let result: ComparisonResult
@@ -2595,7 +2766,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 tableView.selectRowIndexes(indexes, byExtendingSelection: false)
             }
         }
-        rowCountLabel.stringValue = flatView ? "\(rows.count) items · aplanada" : "\(rows.count) items"
+        rowCountLabel.stringValue = "\(rows.count) items"
+            + (flatView ? " · aplanada" : "")
+            + (quickFilter.isEmpty ? "" : " · filtro «\(quickFilter)»")
     }
 
     private func startDeepSearch(query: String) {

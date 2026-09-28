@@ -88,6 +88,43 @@ public enum FinderTags {
         writeAttribute(url, tags: tags) == .updated
     }
 
+    // MARK: - Color (v1.2 — colores por fila en el commander de JUST4FOLDERS)
+
+    /// Etiqueta con su índice de color del Finder
+    /// (0 = sin color; 1 gris, 2 verde, 3 morado, 4 azul, 5 amarillo, 6 rojo, 7 naranja).
+    public struct TagEntry: Sendable, Equatable {
+        public let name: String
+        public let colorIndex: Int
+
+        public init(name: String, colorIndex: Int) {
+            self.name = name
+            self.colorIndex = colorIndex
+        }
+    }
+
+    /// Etiquetas del fichero **con color** (parsea «Nombre\nÍndice» del formato Finder).
+    public static func entries(of url: URL) -> [TagEntry] {
+        rawTags(of: url).map { tag in
+            let parts = tag.split(separator: "\n", maxSplits: 1)
+            let name = parts.first.map(String.init) ?? tag
+            let color = parts.count > 1 ? (Int(parts[1]) ?? 0) : 0
+            return TagEntry(name: name, colorIndex: color)
+        }
+    }
+
+    /// Añade etiquetas **con color** (formato Finder «Nombre\nÍndice»). Si ya existía una
+    /// etiqueta con ese nombre, actualiza su color. Aditivo con el resto de etiquetas.
+    @discardableResult
+    public static func addColored(_ entries: [TagEntry], to url: URL) -> Change {
+        let target = entries.filter { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard !target.isEmpty else { return .unchanged }
+        var current = rawTags(of: url)
+        let targetNames = Set(target.map(\.name))
+        current.removeAll { targetNames.contains(displayName($0)) }
+        current.append(contentsOf: target.map { $0.colorIndex > 0 ? "\($0.name)\n\($0.colorIndex)" : $0.name })
+        return writeAttribute(url, tags: current)
+    }
+
     // MARK: - Internals
 
     private static func displayName(_ tag: String) -> String {

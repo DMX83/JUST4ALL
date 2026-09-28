@@ -76,4 +76,28 @@ final class FinderTagsTests: XCTestCase {
         XCTAssertEqual(FinderTags.remove([""], from: file), .unchanged)
         XCTAssertEqual(FinderTags.names(of: file), [])
     }
+
+    func testEntriesExposeColorIndex() throws {
+        let file = try makeFile()
+        XCTAssertTrue(FinderTags.setRawTags(["Proyecto\n6", "SinColor"], of: file))
+        let entries = FinderTags.entries(of: file)
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(entries[0], FinderTags.TagEntry(name: "Proyecto", colorIndex: 6))
+        XCTAssertEqual(entries[1], FinderTags.TagEntry(name: "SinColor", colorIndex: 0))
+    }
+
+    func testAddColoredWritesFinderFormatAndUpdatesColor() throws {
+        let file = try makeFile()
+        XCTAssertEqual(FinderTags.addColored([FinderTags.TagEntry(name: "Rojo", colorIndex: 6)], to: file), .updated)
+        XCTAssertTrue(FinderTags.setRawTags(["Rojo\n6"], of: file), "formato esperado con color")
+
+        // Mismo nombre, nuevo color: se actualiza sin duplicar.
+        XCTAssertEqual(FinderTags.addColored([FinderTags.TagEntry(name: "Rojo", colorIndex: 7)], to: file), .updated)
+        XCTAssertEqual(FinderTags.entries(of: file), [FinderTags.TagEntry(name: "Rojo", colorIndex: 7)])
+
+        // Aditivo: otra etiqueta no toca la existente.
+        XCTAssertEqual(FinderTags.addColored([FinderTags.TagEntry(name: "Azul", colorIndex: 4)], to: file), .updated)
+        let names = FinderTags.entries(of: file).map(\.name).sorted()
+        XCTAssertEqual(names, ["Azul", "Rojo"])
+    }
 }
