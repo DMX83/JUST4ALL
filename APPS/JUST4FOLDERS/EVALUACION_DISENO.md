@@ -98,6 +98,14 @@ en secundario) y el contador un dato discreto a la derecha.
 Validado en vivo con la ventana maximizada: los dos paneles llenan el ancho, columnas visibles
 con cifras a la derecha, estado con origen y copy corregido.
 
-*(Fuera de alcance de esta evaluación: temas, iconografía a medida, i18n completa,
-accesibilidad formal. Pendientes P2/P3 restantes: HUD del filtro rápido, contraste de etiquetas
-en selección, toolbar/menú contextual, jerarquía del header.)*
+### Seguimiento (misma fecha)
+
+7. ✅ **HUD del filtro rápido**: banda transitoria centrada sobre la tabla («texto · N coincidencias»)
+   que se desvanece a los ~2 s (patrón type-select); se oculta al limpiar el filtro.
+8. ✅ **Contraste de etiquetas con selección**: el color de la etiqueta pasa a un **punto** delante
+   del nombre; el nombre queda neutro y legible también con la fila seleccionada.
+
+Validado en vivo: filtro activo + fila seleccionada + etiqueta roja, todo legible a la vez.
+
+*(Fuera de alcance: temas, iconografía a medida, i18n completa, accesibilidad formal.
+Pendientes P3: toolbar/menú contextual, jerarquía del header, sidebar.)*

@@ -1911,6 +1911,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private let folderFormatStore = FolderFormatStore.shared
     private var isRestoringFormat = false
     private var didApplyInitialFormat = false
+    /// Diseño (P2) — HUD transitorio del filtro rápido (patrón type-select).
+    private let quickFilterHUD = NSVisualEffectView()
+    private let quickFilterHUDLabel = NSTextField(labelWithString: "")
+    private var quickFilterHUDHideWorkItem: DispatchWorkItem?
     private var includeHiddenFiles = false
     private var isActivePanel = false
 
@@ -1936,6 +1940,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         pendingRefreshWorkItem?.cancel()
         pendingSearchWorkItem?.cancel()
         pendingFlatRefreshWorkItem?.cancel()
+        quickFilterHUDHideWorkItem?.cancel()
     }
 
     override func loadView() {
@@ -2007,6 +2012,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     func setSearchQuery(_ query: String) {
         searchQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         quickFilter = ""
+        hideQuickFilterHUD()
         pendingSearchWorkItem?.cancel()
         searchTask?.cancel()
 
@@ -2038,6 +2044,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         activatePanel()
         applySortAndReload()
         onStatus?("Filtro: «\(quickFilter)» — \(rows.count) coincidencia(s) · Esc limpia")
+        updateQuickFilterHUD()
     }
 
     func removeQuickFilterLastCharacter() {
@@ -2046,8 +2053,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         applySortAndReload()
         if quickFilter.isEmpty {
             onStatus?("Filtro limpiado.")
+            hideQuickFilterHUD()
         } else {
             onStatus?("Filtro: «\(quickFilter)» — \(rows.count) coincidencia(s) · Esc limpia")
+            updateQuickFilterHUD()
         }
     }
 
@@ -2056,6 +2065,33 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         quickFilter = ""
         applySortAndReload()
         onStatus?("Filtro limpiado.")
+        hideQuickFilterHUD()
+    }
+
+    // MARK: - HUD del filtro rápido (P2 de diseño)
+
+    private func updateQuickFilterHUD() {
+        guard !quickFilter.isEmpty else {
+            hideQuickFilterHUD()
+            return
+        }
+        quickFilterHUDLabel.stringValue = "\(quickFilter)   ·   \(rows.count) coincidencia(s)"
+        quickFilterHUD.isHidden = false
+        quickFilterHUD.alphaValue = 1
+        quickFilterHUDHideWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.quickFilterHUD.animator().alphaValue = 0
+        }
+        quickFilterHUDHideWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8, execute: work)
+    }
+
+    private func hideQuickFilterHUD() {
+        quickFilterHUDHideWorkItem?.cancel()
+        quickFilterHUDHideWorkItem = nil
+        quickFilterHUD.isHidden = true
+        quickFilterHUD.alphaValue = 0
     }
 
     // MARK: - Etiquetas Finder (v1.2: color por fila + toggle en menú contextual)
@@ -2448,6 +2484,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         view.addSubview(tabsRow)
         view.addSubview(scrollView)
 
+        configureQuickFilterHUD(above: scrollView)
+
         NSLayoutConstraint.activate([
             header.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
             header.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
@@ -2466,6 +2504,33 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         let parent = currentURL.deletingLastPathComponent()
         guard parent.path != currentURL.path else { return }
         openURL(parent)
+    }
+
+    private func configureQuickFilterHUD(above scrollView: NSScrollView) {
+        quickFilterHUD.translatesAutoresizingMaskIntoConstraints = false
+        quickFilterHUD.material = .hudWindow
+        quickFilterHUD.blendingMode = .withinWindow
+        quickFilterHUD.state = .active
+        quickFilterHUD.wantsLayer = true
+        quickFilterHUD.layer?.cornerRadius = 8
+        quickFilterHUD.isHidden = true
+        quickFilterHUD.alphaValue = 0
+        quickFilterHUD.setAccessibilityLabel("Filtro rápido")
+
+        quickFilterHUDLabel.translatesAutoresizingMaskIntoConstraints = false
+        quickFilterHUDLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        quickFilterHUDLabel.textColor = .white
+        quickFilterHUD.addSubview(quickFilterHUDLabel)
+        view.addSubview(quickFilterHUD)
+
+        NSLayoutConstraint.activate([
+            quickFilterHUD.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            quickFilterHUD.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 12),
+            quickFilterHUDLabel.leadingAnchor.constraint(equalTo: quickFilterHUD.leadingAnchor, constant: 10),
+            quickFilterHUDLabel.trailingAnchor.constraint(equalTo: quickFilterHUD.trailingAnchor, constant: -10),
+            quickFilterHUDLabel.topAnchor.constraint(equalTo: quickFilterHUD.topAnchor, constant: 6),
+            quickFilterHUDLabel.bottomAnchor.constraint(equalTo: quickFilterHUD.bottomAnchor, constant: -6)
+        ])
     }
 
     private func makeContextMenu() -> NSMenu {
@@ -2535,6 +2600,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         pendingRefreshWorkItem?.cancel()
         pendingSearchWorkItem?.cancel()
         quickFilter = ""
+        hideQuickFilterHUD()
         loadToken = UUID()
 
         if pushHistory, url != currentURL {
@@ -2684,6 +2750,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         pendingSearchWorkItem?.cancel()
         pendingFlatRefreshWorkItem?.cancel()
         quickFilter = ""
+        hideQuickFilterHUD()
         loadToken = UUID()
 
         if pushHistory, url != currentURL {
@@ -2892,8 +2959,18 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         label.stringValue = text
         label.lineBreakMode = .byTruncatingMiddle
         if columnId == "name", let tagColor = Self.tagColor(forIndex: tagColorIndex(for: item.url)) {
-            label.textColor = tagColor
+            // Etiqueta Finder: punto de color + nombre neutro (legible también con la fila seleccionada).
+            let attributed = NSMutableAttributedString(
+                string: "●  ",
+                attributes: [.foregroundColor: tagColor, .font: label.font as Any]
+            )
+            attributed.append(NSAttributedString(
+                string: item.name,
+                attributes: [.foregroundColor: NSColor.labelColor, .font: label.font as Any]
+            ))
+            label.attributedStringValue = attributed
         } else {
+            label.attributedStringValue = NSAttributedString(string: text)
             label.textColor = item.isDirectory && columnId == "name" ? .controlAccentColor : .labelColor
         }
 
