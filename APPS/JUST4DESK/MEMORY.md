@@ -687,6 +687,13 @@
   lista (y del índice si quedara entrada) **sin errores rojos «ya no existe»** — solo una nota
   suave; conserva selección y destinos elegidos. Suite **234**. Capturas
   `docs/design/N7/review-refresh-*.png`.
+- Motores compartidos (28-sep): **`J4ICore`/`J4IIndex` extraídos a `PACKAGES/J4SHARED`** (con
+  `J4FCore`/`J4FFileSystem`, de origen JUST4FOLDERS): un solo hogar, sin dependencias cruzadas;
+  JUST4DESK elimina su dependencia muerta de JUST4FOLDERS y pasa a consumir solo J4SHARED.
+  Los imports no cambian (mismos módulos; cambian las rutas de fuentes y los manifiestos).
+  De paso: `J4Log` gana `J4I_LOG_FILE=<ruta>` y `J4I_LOG_SUBSYSTEM`, y FOLDERS v1.1 estrena
+  búsqueda sobre **J4IIndex** (su bloqueante histórico, resuelto). Suites: J4SHARED 110 ·
+  DESK 125 · FOLDERS 7 (242, 0 fallos).
 
 ## Lecciones y trampas
 
@@ -784,7 +791,8 @@
 
 - **DeepSeek API** (`https://api.deepseek.com`, modelo `deepseek-flash`): opcional; key en
   `DEEPSEEK_API_KEY` o `.env.secrets`. JSON mode: `response_format=json_object` + "json" en el prompt.
-- Sin otras dependencias de red. Dependencia local: `APPS/JUST4FOLDERS`.
+- Sin otras dependencias de red. Dependencias locales: `PACKAGES/J4SHARED` (motores
+  compartidos; incluye `J4FCore`/`J4FFileSystem` de origen JUST4FOLDERS).
 
 ## Histórico
 

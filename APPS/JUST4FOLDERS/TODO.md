@@ -17,11 +17,14 @@
 - [x] Fixes de foco/rename/context menu/paste job queue en UI local.
 - [x] Fix de copia recursiva con archivo grande en J4FOps.
 
-## Bloqueante actual (prioridad maxima)
+## Bloqueante RESUELTO (28-sep) — búsqueda indexada v1.1
 
-- [ ] BUSQUEDA PROFUNDA: en ciertos arboles/directorios grandes sigue lenta o no retorna resultados en tiempos aceptables.
-- [ ] Definir y aplicar timeout/feedback de progreso visible durante busqueda profunda para evitar estado "colgado".
-- [ ] Ajustar pipeline de busqueda/indexacion para garantizar respuesta perceptible < 3s en casos comunes.
+- [x] BUSQUEDA PROFUNDA: **sustituida por el índice FTS5 compartido** (`J4IIndex` de
+  `PACKAGES/J4SHARED`): `IndexedSearchService` crawlea cada carpeta (cooperativo) y responde en
+  <100 ms; poda lo desaparecido y se refresca con el watcher. Ya no se recorre el árbol a mano.
+- [ ] Validar en campo con árboles reales enormes (100k+): primer indexado, resultados en vivo y
+  feedback de progreso fino en la UI (el estado se muestra en `onStatus`).
+- [ ] Decidir si el atajo del commander añade búsqueda global (todos los roots del índice).
 
 ## MVP-0 — Fundaciones
 

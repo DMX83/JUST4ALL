@@ -677,3 +677,16 @@ Convención por version + build stamp:
   (auto-curación para eventos FSEvents perdidos), con una **nota suave** en la barra de estado.
 - +3 tests (`ReviewRefreshTests`); suite **234** (233 + 1 skip). Capturas antes/después en
   `docs/design/N7/` (`review-refresh-*.png`).
+
+### Changed — motores compartidos en PACKAGES/J4SHARED (28-sep)
+
+- `J4ICore`/`J4IIndex` salen del paquete de la app a **`PACKAGES/J4SHARED`** (junto a
+  `J4FCore`/`J4FFileSystem`, de origen JUST4FOLDERS): un único hogar de motores compartidos, sin
+  dependencias cruzadas entre apps. JUST4DESK elimina su dependencia (ya muerta) de
+  JUST4FOLDERS. Los imports no cambian (mismos módulos); solo los manifiestos.
+- `J4Log`: `J4I_LOG_FILE` acepta ahora una **ruta** (además de `0` para desactivar) y nuevo
+  `J4I_LOG_SUBSYSTEM`; JUST4FOLDERS escribe en `~/Library/Logs/JUST4FOLDERS/just4folders.log`.
+- JUST4FOLDERS v1.1 usa **`J4IIndex` para su búsqueda** (su bloqueante histórico): indexado
+  cooperativo por carpeta + consultas FTS5; índice propio en
+  `~/Library/Application Support/JUST4FOLDERS/search-index.sqlite`.
+- Suites tras el refactor: J4SHARED **110** · JUST4DESK **125** · JUST4FOLDERS **7** (total 242, 0 fallos).

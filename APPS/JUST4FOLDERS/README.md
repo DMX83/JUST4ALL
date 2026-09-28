@@ -9,6 +9,7 @@ La meta v1.0 es evolucionar a arquitectura AppKit-first tipo commander (2 panele
 - Roadmap general: `../../TODO.md`
 - Tareas de este modulo: `TODO.md`
 - Plan completo v1.0: `ROADMAP_V1.md`
+- Roadmap v2 (ADN Directory Opus: flat view, batch rename, IA): `ROADMAP_V2_OPUS.md`
 - Checklist motor adaptativo: `TODO.md` (seccion "Motor adaptativo v1.0")
 
 ## Requisitos
@@ -42,6 +43,8 @@ swift run
 - Organizacion por copia en carpeta destino con estructura por categoria.
 - Manejo de colisiones de nombre (`archivo-1.ext`, `archivo-2.ext`, ...).
 - Barra de progreso durante organizacion.
+- Busqueda indexada (**v1.1, 28-sep**): indice FTS5 compartido (`J4IIndex`, ver `PACKAGES/J4SHARED`)
+  con indexado cooperativo por carpeta y consultas <100 ms (sustituye al recorrido propio).
 - Sidebar con ubicaciones autorizadas, favoritos y recientes.
 - Reautorizacion guiada de bookmarks invalidos/stale.
 - Deteccion de volumen read-only / NTFS con aviso en UI.

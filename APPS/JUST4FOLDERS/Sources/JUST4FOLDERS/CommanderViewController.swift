@@ -126,7 +126,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let bookmarkStore = SecurityScopedBookmarkStore()
     private let favoriteStore = FavoriteLocationStore()
     private let recentStore = RecentLocationStore()
-    private let pathIndex = PathSearchIndex.shared
+    private let indexedSearch = IndexedSearchService.shared
     private let jobQueue = JobQueueService()
     private let leftWatcher = DirectoryWatchService()
     private let rightWatcher = DirectoryWatchService()
@@ -908,9 +908,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
                     self.rightPanel.refreshForChangedPaths(changedPaths)
                 }
                 Task {
-                    let indexed = await self.pathIndex.isIndexed(for: directory)
+                    let indexed = await self.indexedSearch.isIndexed(for: directory)
                     if indexed {
-                        await self.pathIndex.refreshChangedPaths(changedPaths, watchedRoot: directory, includeHidden: self.preferences.showHiddenFiles)
+                        await self.indexedSearch.refreshChangedPaths(changedPaths, watchedRoot: directory, includeHidden: self.preferences.showHiddenFiles)
                     }
                 }
             }
@@ -975,7 +975,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             self.cooperativeIndexTask = Task.detached(priority: .utility) { [weak self] in
                 guard let self else { return }
                 do {
-                    try await self.pathIndex.ensureIndexedCooperative(
+                    try await self.indexedSearch.ensureIndexedCooperative(
                         roots: roots,
                         includeHidden: includeHidden,
                         batchSize: 400,
@@ -1726,7 +1726,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private let titleLabel = NSTextField(labelWithString: "")
     private let rowCountLabel = NSTextField(labelWithString: "")
     private let tabsControl = NSSegmentedControl()
-    private let pathIndex = PathSearchIndex.shared
+    private let indexedSearch = IndexedSearchService.shared
 
     private var allRows: [FileRow] = []
     private var rows: [FileRow] = []
@@ -2475,8 +2475,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
         searchTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
-            if allowIndexLookup, await self.pathIndex.isIndexed(for: root) {
-                let hits = (try? await self.pathIndex.search(query: clean, under: root, limit: maxMatches)) ?? []
+            if allowIndexLookup,
+               let hits = try? await self.indexedSearch.searchPreparing(query: clean, under: root, includeHidden: includeHidden, limit: maxMatches) {
                 if Task.isCancelled { return }
                 let mapped: [FileRow] = hits.map { hit in
                     let url = URL(fileURLWithPath: hit.path)
