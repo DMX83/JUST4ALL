@@ -58,7 +58,9 @@
   únicamente los que las reglas no clasifican (máx. 40 por lote), valida la respuesta contra la
   taxonomía (confianza ≥ 0,5 y categoría permitida) y muestra el motivo «IA: …». Privacidad:
   solo sale el nombre del fichero y la lista de categorías.
-- [ ] Búsqueda semántica en el panel (embeddings del índice).
+- [x] **Búsqueda semántica (IA)** (⌥⌘B): con clave, la consulta se expande con DeepSeek en términos
+  («los papeles del seguro del coche» → seguro · coche · papeles) y se unen los resultados del
+  índice sin duplicados; sin clave permanece literal. Motor validado contra la API real + 6 tests.
 - [x] **Folder formats** (v2.0): cada carpeta recuerda su vista — aplanada, columna/dirección de
   orden y ficheros ocultos — y se restaura al navegar de vuelta (`FolderFormatStore`, JSON con
   LRU de 500 carpetas; «Olvidar formato de esta carpeta» en el menú contextual). Temas: pendiente.
@@ -84,7 +86,7 @@
 - [x] Pestañas completas: duplicar (⌥⌘T), renombrar (⌥⌘R: nombre o dejar vacío) y mover (⌥⌘←/→).
 - [ ] Hover por fila (cosmético) y Ola 3 (paleta ⌘K, árbol por panel, galería, workspaces).
 
-## v2.0 — Ola 3 «ADN propio» (en marcha, 28-sep)
+## v2.0 — Ola 3 «ADN propio» (completada, 28-sep)
 
 - [x] Paleta de comandos ⌘K (buscador de acciones con teclas; 23 comandos).
 - [x] Workspaces: guardar (⌥⌘S) y restaurar (⌥⌘L / contextual «Workspaces ▸») pestañas, activo
@@ -92,8 +94,10 @@
 - [x] Hover por fila (sutil, fuera de la selección).
 - [x] Galería/mosaico (⌥⌘G): rejilla NSCollectionView con miniaturas grandes (128 px), doble
   clic abre, recordada por carpeta en el folder format; convive con orden/filtro/aplanada.
-- [ ] Árbol por panel y atajos configurables. Tamaño de miniatura ajustable.
-- [ ] Árbol por panel, galería/mosaico y atajos configurables.
+- [x] Árbol por panel (⌥⌘E, colapsable, resaltado de ruta, persistente).
+- [x] Tamaño de miniaturas S/M/L (cíclico desde la paleta; recordado).
+- [x] Atajos configurables (⌥⌘K: reasignar/restablecer/JSON).
+- [x] Búsqueda semántica IA (⌥⌘B; expansión validada contra la API real).
 
 ## MVP-0 — Fundaciones
 

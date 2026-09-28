@@ -55,6 +55,10 @@ extension Notification.Name {
     static let j4fWorkspaceRestore = Notification.Name("j4f.workspaceRestore")
     /// Ola 3 — vista en galería (⌥⌘G).
     static let j4fToggleGallery = Notification.Name("j4f.toggleGallery")
+    static let j4fTogglePanelTree = Notification.Name("j4f.togglePanelTree")
+    static let j4fGalleryThumbSize = Notification.Name("j4f.galleryThumbSize")
+    static let j4fToggleSemanticSearch = Notification.Name("j4f.toggleSemanticSearch")
+    static let j4fEditShortcuts = Notification.Name("j4f.editShortcuts")
 }
 
 @main
@@ -89,6 +93,15 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fToggleGallery, object: nil)
                 }
                 .keyboardShortcut("g", modifiers: [.command, .option])
+                Button("Árbol en el panel") {
+                    NotificationCenter.default.post(name: .j4fTogglePanelTree, object: nil)
+                }
+                .keyboardShortcut("e", modifiers: [.command, .option])
+                Menu("Tamaño de miniaturas") {
+                    Button("Pequeñas") { NotificationCenter.default.post(name: .j4fGalleryThumbSize, object: nil, userInfo: ["size": "S"]) }
+                    Button("Medianas") { NotificationCenter.default.post(name: .j4fGalleryThumbSize, object: nil, userInfo: ["size": "M"]) }
+                    Button("Grandes") { NotificationCenter.default.post(name: .j4fGalleryThumbSize, object: nil, userInfo: ["size": "L"]) }
+                }
                 Divider()
                 Button("Paleta de comandos") {
                     NotificationCenter.default.post(name: .j4fCommandPalette, object: nil)
@@ -132,6 +145,15 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fUndoOrdering, object: nil)
                 }
                 .keyboardShortcut("z", modifiers: [.command, .option])
+                Divider()
+                Button("Búsqueda semántica (IA)") {
+                    NotificationCenter.default.post(name: .j4fToggleSemanticSearch, object: nil)
+                }
+                .keyboardShortcut("b", modifiers: [.command, .option])
+                Button("Editar atajos…") {
+                    NotificationCenter.default.post(name: .j4fEditShortcuts, object: nil)
+                }
+                .keyboardShortcut("k", modifiers: [.command, .option])
                 Divider()
                 Button("Guardar workspace…") {
                     NotificationCenter.default.post(name: .j4fWorkspaceSave, object: nil)

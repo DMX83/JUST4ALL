@@ -103,17 +103,24 @@ los referentes del género, y convertirlo en un plan por olas. Honestidad por de
 Validado en vivo: preview lateral con foto real, pestaña duplicada y toolbar nueva. *Hover por
 fila: pendiente (cosmético).*
 
-### Ola 3 — «ADN propio» — 🟡 en marcha (28-sep)
+### Ola 3 — «ADN propio» — ✅ completada (28-sep)
 
 13. ✅ **Paleta de comandos ⌘K**: busca acciones (título + teclas), ↑/↓ navegan, Enter ejecuta,
     Esc cierra; 23 comandos de toda la app.
-14. ⏳ **Árbol por panel** (columna lateral colapsable, como Opus/TC) — pendiente.
+14. ✅ **Árbol por panel** (⌥⌘E, columna lateral colapsable por panel, como Opus/TC): raíz en
+    Home, expande solo lo necesario y resalta la ruta activa; doble clic navega y se recuerda
+    entre sesiones. Validado en vivo.
 15. ✅ **Galería/mosaico** (⌥⌘G, recordada por carpeta): rejilla de miniaturas grandes (128 px)
     con nombre debajo; doble clic abre; convive con orden/filtro/aplanada y con la vista previa
-    lateral. *Tamaño de miniatura ajustable: pendiente.*
+    lateral. Tamaño de miniatura ajustable: ✅ S/M/L (cíclico desde la paleta, recordado).
 16. ✅ **Workspaces** (QSpace-style): guarda pestañas/activo/preview de ambos paneles con nombre;
     restaurar desde el menú, el contextual (Workspaces ▸) o la paleta.
-17. ⏳ **Atajos configurables** + export/import — pendiente.
+17. ✅ **Atajos configurables**: editor (⌥⌘K) con tabla de los comandos del monitor, reasignación
+    («Cambiar…» y pulsa la combinación), restablecer y apertura del JSON (`shortcuts.json`) en el
+    Finder. Los menús SwiftUI conservan sus teclas. Validado en vivo.
+18. ✅ **Búsqueda semántica (IA)**: con ⌥⌘B, la IA expande la consulta en términos («los papeles
+    del seguro del coche» → seguro · coche · papeles, validado contra la API real) y se unen los
+    resultados del índice sin duplicados; sin clave sigue siendo literal.
 
 Extra ✅: **hover por fila** sutil (no se dibuja sobre la fila seleccionada).
 

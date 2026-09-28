@@ -171,7 +171,85 @@ private final class FileThumbnailCache {
 
 private let sharedThumbnailCache = FileThumbnailCache(size: 40, countLimit: 512)
 /// Ola 3 — miniaturas grandes para la galería.
-private let sharedGalleryThumbnailCache = FileThumbnailCache(size: 128, countLimit: 256)
+private let sharedGalleryThumbnailCache = FileThumbnailCache(size: 256, countLimit: 256)
+
+/// Ola 3 — árbol de carpetas por panel (perezoso, solo carpetas, sin ocultos).
+private final class PanelTreeController: NSObject, NSOutlineViewDataSource, NSOutlineViewDelegate {
+    weak var panel: FilePanelViewController?
+    weak var outlineView: NSOutlineView?
+
+    private let root: URL
+    private var childrenCache: [String: [URL]] = [:]
+
+    init(root: URL) {
+        self.root = root
+        super.init()
+    }
+
+    private func children(of url: URL) -> [URL] {
+        let key = url.standardizedFileURL.path
+        if let cached = childrenCache[key] { return cached }
+        let entries = (try? FileManager.default.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )) ?? []
+        let dirs = entries.filter { candidate in
+            (try? candidate.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+                && !candidate.lastPathComponent.hasSuffix(".app")
+        }.sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
+        childrenCache[key] = dirs
+        return dirs
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
+        if item == nil { return 1 }
+        guard let url = item as? URL else { return 0 }
+        return children(of: url).count
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
+        if item == nil { return root }
+        guard let url = item as? URL else { return root }
+        return children(of: url)[index]
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
+        guard let url = item as? URL else { return false }
+        return !children(of: url).isEmpty
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
+        guard let url = item as? URL else { return nil }
+        let identifier = NSUserInterfaceItemIdentifier("PanelTreeCell")
+        let cell = outlineView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView ?? NSTableCellView()
+        cell.identifier = identifier
+        let label: NSTextField
+        if let existing = cell.textField {
+            label = existing
+        } else {
+            label = NSTextField(labelWithString: "")
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.lineBreakMode = .byTruncatingMiddle
+            label.font = .systemFont(ofSize: 11)
+            cell.textField = label
+            cell.addSubview(label)
+            NSLayoutConstraint.activate([
+                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 4),
+                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
+                label.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
+            ])
+        }
+        label.stringValue = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
+        return cell
+    }
+
+    @objc func treeDoubleClicked(_ sender: Any?) {
+        guard let outlineView, outlineView.clickedRow >= 0,
+              let url = outlineView.item(atRow: outlineView.clickedRow) as? URL else { return }
+        panel?.openPath(url.path)
+    }
+}
 
 /// Ola 3 — celda de la galería (miniatura + nombre).
 private final class GalleryItem: NSCollectionViewItem {
@@ -197,14 +275,15 @@ private final class GalleryItem: NSCollectionViewItem {
             subview.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(subview)
         }
+        // v2.0 — el tamaño lo fija itemSize: la miniatura se estira para llenar la celda.
         NSLayoutConstraint.activate([
             thumb.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
-            thumb.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            thumb.widthAnchor.constraint(equalToConstant: 96),
-            thumb.heightAnchor.constraint(equalToConstant: 72),
+            thumb.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 6),
+            thumb.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -6),
             nameLabel.topAnchor.constraint(equalTo: thumb.bottomAnchor, constant: 4),
             nameLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 4),
-            nameLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -4)
+            nameLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -4),
+            container.bottomAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2)
         ])
         view = container
     }
@@ -290,6 +369,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private var orderingWindow: OrderingWindowController?
     /// Ola 3 — paleta de comandos (⌘K).
     private var commandPalette: CommandPaletteWindowController?
+    private var shortcutEditor: ShortcutEditorWindowController?
     /// Ola 1 — panel que alimenta el QuickLook (Espacio).
     private weak var previewPanelSource: FilePanelViewController?
     /// Ola 2 — vista previa lateral (⌥⌘P) y progreso de trabajos en la ventana.
@@ -370,11 +450,52 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NotificationCenter.default.addObserver(self, selector: #selector(onRestoreLastWorkspaceRequested), name: .j4fWorkspaceRestoreLast, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onWorkspaceRestoreRequested(_:)), name: .j4fWorkspaceRestore, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onToggleGalleryRequested), name: .j4fToggleGallery, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onTogglePanelTreeRequested), name: .j4fTogglePanelTree, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onGalleryThumbSizeRequested(_:)), name: .j4fGalleryThumbSize, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onToggleSemanticSearchRequested), name: .j4fToggleSemanticSearch, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onEditShortcutsRequested), name: .j4fEditShortcuts, object: nil)
     }
 
     /// Ola 3 — alterna lista/galería del panel activo (⌥⌘G).
     @objc private func onToggleGalleryRequested() {
         activePanel.setGalleryMode(!activePanel.isGalleryMode)
+    }
+
+    /// Ola 3 — muestra/oculta el árbol de carpetas del panel activo (⌥⌘E).
+    @objc private func onTogglePanelTreeRequested() {
+        activePanel.setPanelTreeVisible(!activePanel.isPanelTreeVisible)
+    }
+
+    /// v2.0 — tamaño de miniaturas de la galería en ambos paneles (S/M/L).
+    @objc private func onGalleryThumbSizeRequested(_ note: Notification) {
+        guard let key = note.userInfo?["size"] as? String else { return }
+        leftPanel.setGalleryThumbSize(key)
+        rightPanel.setGalleryThumbSize(key)
+        statusLabel.stringValue = "Miniaturas de la galería: tamaño \(key)."
+    }
+
+    /// v2.0 — activa/desactiva la búsqueda semántica con IA (⌥⌘B).
+    @objc private func onToggleSemanticSearchRequested() {
+        let enabling = !UserDefaults.standard.bool(forKey: "j4f.semanticSearch")
+        leftPanel.setSemanticSearch(enabling)
+        rightPanel.setSemanticSearch(enabling)
+        if enabling && !leftPanel.isSemanticSearchAvailable {
+            statusLabel.stringValue = "Búsqueda semántica activada, pero sin clave de IA (DEEPSEEK_API_KEY o .env.secrets): de momento busca de forma literal."
+        } else {
+            statusLabel.stringValue = enabling
+                ? "Búsqueda semántica activada: la IA interpretará tus consultas."
+                : "Búsqueda semántica desactivada."
+        }
+    }
+
+    /// v2.0 — editor de atajos configurables (⌥⌘K).
+    @objc private func onEditShortcutsRequested() {
+        if shortcutEditor == nil {
+            shortcutEditor = ShortcutEditorWindowController()
+        }
+        shortcutEditor?.window?.center()
+        shortcutEditor?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     // MARK: - Paleta de comandos (Ola 3)
@@ -403,6 +524,15 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             .init(title: "Vista aplanada", hint: "⌥⌘F") { [weak self] in self?.onToggleFlatViewRequested() },
             .init(title: "Vista previa lateral", hint: "⌥⌘P") { [weak self] in self?.onTogglePreviewRequested() },
             .init(title: "Vista en galería / lista", hint: "⌥⌘G") { [weak self] in self?.onToggleGalleryRequested() },
+            .init(title: "Árbol en el panel", hint: "⌥⌘E") { [weak self] in self?.onTogglePanelTreeRequested() },
+            .init(title: "Tamaño de miniaturas: cíclico S→M→L", hint: "") {
+                let order = ["S", "M", "L"]
+                let current = UserDefaults.standard.string(forKey: "j4f.galleryThumbSize") ?? "M"
+                let next = order[(order.firstIndex(of: current).map { $0 + 1 } ?? 0) % order.count]
+                NotificationCenter.default.post(name: .j4fGalleryThumbSize, object: nil, userInfo: ["size": next])
+            },
+            .init(title: "Búsqueda semántica (IA) — activar/desactivar", hint: "⌥⌘B") { [weak self] in self?.onToggleSemanticSearchRequested() },
+            .init(title: "Editar atajos…", hint: "⌥⌘K") { [weak self] in self?.onEditShortcutsRequested() },
             .init(title: "Renombrar en lote…", hint: "⇧⌘R") { [weak self] in self?.onBatchRenameRequested() },
             .init(title: "Buscar duplicados…", hint: "⇧⌘D") { [weak self] in self?.onFindDuplicatesRequested() },
             .init(title: "Ordenar esta carpeta…", hint: "⌥⌘O") { [weak self] in self?.onOrderFolderRequested() },
@@ -1771,6 +1901,26 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
     }
 
+    /// v2.0 — ejecuta un comando de atajo configurable (devuelve false si no aplica).
+    private func performShortcutCommand(_ command: String) -> Bool {
+        switch command {
+        case "rename": renameSelection()
+        case "quickLook": _ = toggleQuickLookPreview()
+        case "openEdit": activePanel.openSelection()
+        case "copy": copySelection()
+        case "move": moveSelection()
+        case "mkdir": createDirectory()
+        case "delete": deleteSelection()
+        case "newTab": newTab()
+        case "closeTab": closeTabOrWindow()
+        case "selectAll": activePanel.selectAllItems()
+        case "paste": pasteItemsFromClipboardToActivePanel()
+        case "duplicateTab": onDuplicateTabRequested()
+        default: return false
+        }
+        return true
+    }
+
     private func handleKeyShortcut(_ event: NSEvent) -> Bool {
         guard view.window?.isKeyWindow == true else { return false }
         if NSApp.modalWindow != nil || view.window?.attachedSheet != nil {
@@ -1804,6 +1954,14 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
 
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        // v2.0 — atajos configurables (shortcuts.json): se resuelven antes de los por defecto.
+        if let command = ShortcutStore.shared.command(
+            keyCode: event.keyCode,
+            flags: (flags.contains(.command), flags.contains(.option), flags.contains(.shift), flags.contains(.control))
+        ), performShortcutCommand(command) {
+            return true
+        }
 
         if flags == [] {
             switch event.keyCode {
@@ -2515,6 +2673,12 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private let collectionView = NSCollectionView()
     private let galleryLayout = NSCollectionViewFlowLayout()
     private weak var listScrollView: NSScrollView?
+    /// Ola 3 — árbol del panel (columna colapsable a la izquierda).
+    private let panelTreeScroll = NSScrollView()
+    private let panelTreeView = NSOutlineView()
+    private var treeController: PanelTreeController?
+    private var treeWidthConstraint: NSLayoutConstraint?
+    private var panelTreeVisible = UserDefaults.standard.bool(forKey: "j4f.panelTreeVisible")
     private var includeHiddenFiles = false
     private var isActivePanel = false
 
@@ -3240,6 +3404,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         galleryLayout.minimumLineSpacing = 10
         galleryLayout.sectionInset = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
         collectionView.collectionViewLayout = galleryLayout
+        setGalleryThumbSize(galleryThumbSizeKey)
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.isSelectable = true
@@ -3288,35 +3453,110 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         flatToggleButton.setAccessibilityLabel("Vista aplanada del panel \(side.rawValue)")
         tabsRow.addArrangedSubview(flatToggleButton)
 
-        view.addSubview(header)
-        view.addSubview(breadcrumbRow)
-        view.addSubview(tabsRow)
-        view.addSubview(scrollView)
-        view.addSubview(galleryScrollView)
+        let panelColumn = NSView()
+        panelColumn.translatesAutoresizingMaskIntoConstraints = false
+        panelColumn.addSubview(header)
+        panelColumn.addSubview(breadcrumbRow)
+        panelColumn.addSubview(tabsRow)
+        panelColumn.addSubview(scrollView)
+        panelColumn.addSubview(galleryScrollView)
+
+        // Ola 3 — árbol de carpetas del panel (columna colapsable, perezosa).
+        let tree = PanelTreeController(root: FileManager.default.homeDirectoryForCurrentUser)
+        tree.panel = self
+        tree.outlineView = panelTreeView
+        treeController = tree
+        panelTreeView.headerView = nil
+        panelTreeView.rowSizeStyle = .small
+        panelTreeView.selectionHighlightStyle = .regular
+        panelTreeView.dataSource = tree
+        panelTreeView.delegate = tree
+        panelTreeView.target = tree
+        panelTreeView.doubleAction = #selector(PanelTreeController.treeDoubleClicked(_:))
+        panelTreeView.setAccessibilityLabel("Árbol del panel \(side.rawValue)")
+        if panelTreeView.tableColumns.isEmpty {
+            let treeColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("panelTree"))
+            treeColumn.title = "Carpetas"
+            treeColumn.width = 160
+            panelTreeView.addTableColumn(treeColumn)
+            panelTreeView.outlineTableColumn = treeColumn
+        }
+        panelTreeScroll.documentView = panelTreeView
+        panelTreeScroll.hasVerticalScroller = true
+        panelTreeScroll.borderType = .noBorder
+        panelTreeScroll.translatesAutoresizingMaskIntoConstraints = false
+        panelTreeScroll.isHidden = !panelTreeVisible
+
+        view.addSubview(panelTreeScroll)
+        view.addSubview(panelColumn)
 
         configureQuickFilterHUD(above: scrollView)
         configureEmptyState(over: scrollView)
 
         NSLayoutConstraint.activate([
-            header.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            header.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
-            header.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
-            breadcrumbRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            breadcrumbRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            header.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
+            header.topAnchor.constraint(equalTo: panelColumn.topAnchor, constant: 8),
+            breadcrumbRow.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
+            breadcrumbRow.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
             breadcrumbRow.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 4),
-            tabsRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            tabsRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            tabsRow.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
+            tabsRow.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
             tabsRow.topAnchor.constraint(equalTo: breadcrumbRow.bottomAnchor, constant: 4),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            scrollView.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: tabsRow.bottomAnchor, constant: 8),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8),
-            galleryScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            galleryScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            scrollView.bottomAnchor.constraint(equalTo: panelColumn.bottomAnchor, constant: -8),
+            galleryScrollView.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
+            galleryScrollView.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
             galleryScrollView.topAnchor.constraint(equalTo: tabsRow.bottomAnchor, constant: 8),
-            galleryScrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8)
+            galleryScrollView.bottomAnchor.constraint(equalTo: panelColumn.bottomAnchor, constant: -8),
+
+            panelTreeScroll.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
+            panelTreeScroll.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
+            panelTreeScroll.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8),
+            panelColumn.leadingAnchor.constraint(equalTo: panelTreeScroll.trailingAnchor, constant: 6),
+            panelColumn.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            panelColumn.topAnchor.constraint(equalTo: view.topAnchor),
+            panelColumn.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        treeWidthConstraint = panelTreeScroll.widthAnchor.constraint(equalToConstant: panelTreeVisible ? 170 : 0)
+        treeWidthConstraint?.isActive = true
     }
+
+    /// Ola 3 — muestra/oculta el árbol lateral del panel (se recuerda entre sesiones).
+    func setPanelTreeVisible(_ visible: Bool) {
+        panelTreeVisible = visible
+        panelTreeScroll.isHidden = !visible
+        treeWidthConstraint?.constant = visible ? 170 : 0
+        UserDefaults.standard.set(visible, forKey: "j4f.panelTreeVisible")
+        onStatus?(visible ? "Árbol del panel visible." : "Árbol del panel oculto.")
+    }
+
+    var isPanelTreeVisible: Bool { panelTreeVisible }
+
+    /// v2.0 — búsqueda semántica: expansión de la consulta con IA (si hay clave configurada).
+    private let semanticExpander: (any QueryExpanding)? = DeepSeekQueryExpander()
+    private var semanticSearchEnabled = UserDefaults.standard.bool(forKey: "j4f.semanticSearch")
+
+    var isSemanticSearchEnabled: Bool { semanticSearchEnabled }
+    var isSemanticSearchAvailable: Bool { semanticExpander != nil }
+
+    func setSemanticSearch(_ enabled: Bool) {
+        semanticSearchEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "j4f.semanticSearch")
+    }
+
+    /// v2.0 — tamaño de miniaturas de la galería (S/M/L), recordado entre sesiones.
+    static let galleryThumbSizes: [String: CGFloat] = ["S": 88, "M": 124, "L": 176]
+
+    func setGalleryThumbSize(_ key: String) {
+        let size = Self.galleryThumbSizes[key] ?? Self.galleryThumbSizes["M"]!
+        galleryLayout.itemSize = NSSize(width: size, height: size * 0.9)
+        UserDefaults.standard.set(key, forKey: "j4f.galleryThumbSize")
+    }
+
+    var galleryThumbSizeKey: String { UserDefaults.standard.string(forKey: "j4f.galleryThumbSize") ?? "M" }
 
     @objc private func navigateToParentDirectory() {
         let parent = currentURL.deletingLastPathComponent()
@@ -3342,7 +3582,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         view.addSubview(quickFilterHUD)
 
         NSLayoutConstraint.activate([
-            quickFilterHUD.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            quickFilterHUD.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
             quickFilterHUD.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 12),
             quickFilterHUDLabel.leadingAnchor.constraint(equalTo: quickFilterHUD.leadingAnchor, constant: 10),
             quickFilterHUDLabel.trailingAnchor.constraint(equalTo: quickFilterHUD.trailingAnchor, constant: -10),
@@ -4250,6 +4490,43 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         updateEmptyState()
     }
 
+    /// v2.0 — hits del índice para una consulta; con búsqueda semántica activa la IA expande
+    /// la consulta en varios términos y se unen los resultados sin duplicados.
+    private func indexedSearchRows(for query: String, root: URL, includeHidden: Bool, maxMatches: Int) async -> [FileRow]? {
+        var queries: [String] = [query]
+        if semanticSearchEnabled, let expander = semanticExpander {
+            if let expanded = try? await expander.expand(query: query), !expanded.isEmpty {
+                queries = expanded
+                onStatus?("IA: «\(query)» → \(expanded.joined(separator: " · "))")
+            }
+        }
+
+        var rows: [FileRow] = []
+        var seen = Set<String>()
+        var anySuccess = false
+        for term in queries {
+            guard let hits = try? await indexedSearch.searchPreparing(query: term, under: root, includeHidden: includeHidden, limit: maxMatches) else { continue }
+            anySuccess = true
+            for hit in hits where seen.insert(hit.path).inserted {
+                let relativePath: String
+                if hit.path.hasPrefix(root.path + "/") {
+                    relativePath = String(hit.path.dropFirst(root.path.count + 1))
+                } else {
+                    relativePath = hit.name
+                }
+                rows.append(FileRow(
+                    url: URL(fileURLWithPath: hit.path),
+                    name: hit.name,
+                    isDirectory: hit.isDirectory,
+                    sizeBytes: hit.isDirectory ? nil : hit.sizeBytes,
+                    modifiedDate: Date(timeIntervalSince1970: hit.modifiedTimeInterval),
+                    typeDescription: "\(hit.isDirectory ? "Folder" : "Archivo") • \(relativePath)"
+                ))
+            }
+        }
+        return anySuccess ? rows : nil
+    }
+
     private func startDeepSearch(query: String) {
         let clean = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else {
@@ -4281,25 +4558,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         searchTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             if allowIndexLookup,
-               let hits = try? await self.indexedSearch.searchPreparing(query: clean, under: root, includeHidden: includeHidden, limit: maxMatches) {
+               let mapped = await self.indexedSearchRows(for: clean, root: root, includeHidden: includeHidden, maxMatches: maxMatches) {
                 if Task.isCancelled { return }
-                let mapped: [FileRow] = hits.map { hit in
-                    let url = URL(fileURLWithPath: hit.path)
-                    let relativePath: String
-                    if hit.path.hasPrefix(root.path + "/") {
-                        relativePath = String(hit.path.dropFirst(root.path.count + 1))
-                    } else {
-                        relativePath = hit.name
-                    }
-                    return FileRow(
-                        url: url,
-                        name: hit.name,
-                        isDirectory: hit.isDirectory,
-                        sizeBytes: hit.isDirectory ? nil : hit.sizeBytes,
-                        modifiedDate: Date(timeIntervalSince1970: hit.modifiedTimeInterval),
-                        typeDescription: "\(hit.isDirectory ? "Folder" : "Archivo") • \(relativePath)"
-                    )
-                }
                 await MainActor.run {
                     guard self.searchToken == token else { return }
                     self.searchRows = mapped
