@@ -14,6 +14,14 @@
 
 ## Estado actual
 
+- Fecha: 2026-09-28 (tarde-noche)
+- **F15.x cerrada** (icono + créditos, densidad de listas, animaciones con «Reducir movimiento»,
+  VoiceOver/contraste; queda anotado como pendiente honesto el tamaño de texto/Dynamic Type) y
+  **N6 parcial**: DMG real con Quick Action de Finder + icono en el bundle, cadena validada en
+  vivo (`open -b` → G4 → IA → `99_SinClasificar`); pendiente firma/notarización (licencia Apple).
+- Claves nuevas: `j4i.listDensity` (cómoda|compacta). Scripts: `build_dmg.sh` copia
+  `packaging/macos/AppIcon.icns` al bundle y monta staging del DMG (app + workflow + LEEME).
+
 - Fecha: 2026-09-28
 - Fase: **F7.1 completada** — sobre F3–F6, F6.1 y F7 (registro en vivo, análisis «lite» por
   nombre/extensión, taxonomía ampliada, cola acotada): + ventana de **Ajustes (⌘,)** con
@@ -811,7 +819,8 @@
 - Post-MVP: cap diario de llamadas DeepSeek + métricas ✅ (N1); xlsx ✅ (N8); pendientes: renombrar
   y drag & drop en el explorador; imágenes reales para `Assets/JUST4DESK/` del hub.
 - Mapa de mejoras priorizado: `MEJORAS.md` — N1–N4 y el lote N5/N7/N8/N9 implementados (28-sep);
-  **N6 (DMG real + sandbox + Quick Action de Finder) pendiente** — es el siguiente hito grande.
+  **N6 parcial**: DMG + Quick Action validados (28-sep, tarde-noche); pendiente firma/notarización
+  (licencia Apple) y sandbox estricto para distribución.
 - Decidir en F5 si el primer arranque propone activar el modo simulación (recomendado) o arranca en automático directo.
 
 ## Dependencias externas
@@ -823,4 +832,11 @@
 
 ## Histórico
 
-- (vacío)
+- **2026-09-28 (tarde-noche) — F15.x + N6 parcial.** Densidad `j4i.listDensity` (cómoda/compacta)
+  en búsqueda/explorador/«Por revisar» con segmentada en Ajustes → Acerca de → «Apariencia»;
+  animaciones de panel gateadas por `accessibilityReduceMotion`; VoiceOver en listas/árbol (label
+  combinado, selección, acción) y contraste secundario; tarjeta «Créditos». Icono de app
+  provisional generado por código (`docs/design/icon/`, `packaging/macos/AppIcon.icns`). N6
+  parcial: `packaging/quick_action/` (workflow + LEEME + instalador), DMG con staging; Quick
+  Action registrada en `pbs` y validada E2E en vivo. Suite 125 tests en verde; commits `c8dbd1b`
+  y posteriores de esta tanda.

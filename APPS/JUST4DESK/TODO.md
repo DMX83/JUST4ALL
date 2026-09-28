@@ -259,10 +259,20 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
 
 ## F15.x — Siguientes de diseño (candidatos)
 
-- [ ] Icono de app propio (Dock/DMG) y pantalla «Acerca de» con créditos.
-- [ ] Densidad configurable de listas (compacta/cómoda).
-- [ ] Animaciones de transición de paneles + respeto a «Reducir movimiento».
-- [ ] Revisión de accesibilidad (VoiceOver en listas/árbol, contraste AA) y tamaño de texto.
+- [x] Icono de app propio (Dock/DMG) y pantalla «Acerca de» con créditos. Icono provisional
+  generado por código (squircle índigo + glifo), `packaging/macos/AppIcon.icns` + evidencia en
+  `docs/design/icon/`; el DMG copia el .icns al bundle y declara `CFBundleIconFile`. Tarjeta
+  «Créditos» en Acerca de (J4SHARED, MCP, icono provisional).
+- [x] Densidad configurable de listas (compacta/cómoda). `J4I.ListDensity` + clave
+  `j4i.listDensity` (persistente); aplica a resultados de búsqueda, explorador y «Por revisar»;
+  segmentada en Ajustes → Acerca de → «Apariencia». Validado en vivo (toggle + capturas).
+- [x] Animaciones de transición de paneles + respeto a «Reducir movimiento». Búsqueda, omnibox,
+  explorador y «Por revisar» animan solo si el sistema no pide reducir movimiento.
+- [x] Revisión de accesibilidad (VoiceOver en listas/árbol, contraste AA). Filas de resultados,
+  árbol y ficheros del explorador como elementos combinados con etiqueta legible, rasgo de
+  selección y acción de apertura; terciarios subidos a secundarios en esas listas. **Pendiente
+  honesto**: tamaño de texto (Dynamic Type completo) — requiere migrar a tipografías semánticas;
+  anotado para F16.
 
 ## N1 — Control de la IA (cap, contadores, interruptor) — completada
 
@@ -341,7 +351,11 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
   deshechos («%»), fuentes de decisión y uso de IA; barrido de vectores huérfanos.
 - [x] **N9** — CI (GitHub Actions): build + tests por push/PR en `APPS/JUST4DESK`.
 - [ ] **N6** — Empaquetado real (DMG + sandbox + Quick Action de Finder; las notificaciones ya
-  llegan con el bundle, N5).
+  llegan con el bundle, N5). **Parcial (28-sep, tarde-noche)**: DMG de verdad generado con
+  `build_dmg.sh` (app + Quick Action `Enviar a JUST4DESK.workflow` + LEEME + instalador); icono
+  propio en el bundle; Quick Action registrada (`pbs`) y cadena completa validada en vivo
+  (`open -b` → G4 → clasificación IA → `99_SinClasificar` con traza). **Pendiente**: firma +
+  notarización (requiere licencia Apple) y endurecer sandbox para distribución.
 
 ## Referencias
 

@@ -8,6 +8,23 @@ Convención por version + build stamp:
 
 ## [Unreleased] — 2026-09-24
 
+### Added — F15.x + N6 parcial (28-sep, tarde-noche)
+
+- **Densidad de listas configurable** (cómoda/compacta): `J4I.ListDensity` + clave persistente
+  `j4i.listDensity`; aplica a resultados de búsqueda, explorador y «Por revisar»; segmentada en
+  Ajustes → Acerca de → «Apariencia».
+- **Animaciones de panel que respetan «Reducir movimiento»**: búsqueda, omnibox, explorador y
+  «Por revisar» gatean sus transiciones con `accessibilityReduceMotion`.
+- **Accesibilidad (VoiceOver)**: filas de resultados/árbol/ficheros como elementos combinados
+  con etiqueta (nombre, tipo, tamaño, fecha), rasgo de selección y acción de apertura; contraste
+  de textos secundarios en listas.
+- **Icono de app** provisional (`packaging/macos/AppIcon.icns`, generado por código; evidencia en
+  `docs/design/icon/J4DESK-icon-1024.png`); `build_dmg.sh` lo copia al bundle y declara
+  `CFBundleIconFile`.
+- **N6 (parcial)**: DMG con Quick Action de Finder «Enviar a JUST4DESK» + LEEME + instalador
+  (`packaging/quick_action/`); validada de punta a punta en vivo. Pendiente firma/notarización.
+- Tarjeta **«Créditos»** en Acerca de.
+
 ### Added — Auditoría 28-sep (tarde): rellenos en Ajustes
 
 - Ajustes → Indexado: tarjeta **«Rellenos del índice»** — contenido (con/sin texto · pendientes),

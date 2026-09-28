@@ -123,7 +123,16 @@ automático nunca borra). Con ficheros seleccionados, la **barra espaciadora** a
 ```
 
 Genera `dist/JUST4DESK-<version>+<buildStamp>.dmg` (con alias `JUST4DESK.dmg` y
-`JUST4DESK-latest.dmg`).
+`JUST4DESK-latest.dmg`). El DMG incluye:
+
+- `JUST4DESK.app` — con **icono propio** (`packaging/macos/AppIcon.icns`).
+- **Quick Action de Finder** «Enviar a JUST4DESK» (`packaging/quick_action/`): envía los
+  ficheros seleccionados al pipeline de archivado (mismo camino que arrastrarlos al Dock).
+  Instálala copiándola a `~/Library/Services` o con `Instalar Quick Action.command`.
+- `LEEME.txt` con instrucciones.
+
+> Nota: el DMG va sin firmar/notarizar hasta contar con licencia Apple Developer; al abrirlo en
+> otro Mac, usa clic derecho → Abrir.
 
 ## Configuración IA (DeepSeek)
 

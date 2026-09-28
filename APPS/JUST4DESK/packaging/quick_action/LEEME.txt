@@ -1,0 +1,32 @@
+JUST4DESK — Quick Action de Finder («Enviar a JUST4DESK»)
+==========================================================
+
+Qué hace
+--------
+Añade al menú contextual del Finder (clic derecho → Servicios, o Quick
+Actions) la acción «Enviar a JUST4DESK». Los ficheros o carpetas que
+selecciones se envían al pipeline de archivado de JUST4DESK, exactamente
+igual que si los arrastraras al icono del Dock (con su diario/undo).
+
+Cómo instalarla (dos opciones)
+------------------------------
+1) Doble clic en «Instalar Quick Action.command» de esta carpeta.
+   Copia el flujo a ~/Library/Services. Si macOS lo bloquea, ábrelo con
+   clic derecho → Abrir.
+
+2) Manual: copia la carpeta «Enviar a JUST4DESK.workflow» a
+   ~/Library/Services (Finder → Ir → Carpeta…, escribe ~/Library/Services).
+
+Tras instalarla, puede tardar unos segundos en aparecer. Búscala en:
+Finder → clic derecho sobre archivos → Servicios → «Enviar a JUST4DESK».
+
+Desinstalar
+-----------
+Borra «Enviar a JUST4DESK.workflow» de ~/Library/Services.
+
+Notas
+-----
+- Requiere que JUST4DESK esté instalada en /Applications (o accesible
+  por Launch Services); si no, la acción intenta abrirla por nombre.
+- La app debe tener permiso de acceso a las carpetas implicadas (TCC);
+  macOS te lo pedirá la primera vez.

@@ -80,12 +80,37 @@ if [ -f "$INFO_PLIST" ]; then
   /usr/libexec/PlistBuddy -c "Add :NSDownloadsFolderUsageDescription string 'JUST4DESK vigila tu carpeta de Descargas para clasificar y archivar los ficheros que lleguen.'" "$INFO_PLIST" 2>/dev/null || true
   /usr/libexec/PlistBuddy -c "Add :NSDesktopFolderUsageDescription string 'JUST4DESK necesita leer las carpetas de entrada que elijas.'" "$INFO_PLIST" 2>/dev/null || true
   /usr/libexec/PlistBuddy -c "Add :NSDocumentsFolderUsageDescription string 'JUST4DESK necesita leer las carpetas de entrada que elijas.'" "$INFO_PLIST" 2>/dev/null || true
+
+  # F15.x — icono propio: copia el .icns al bundle y lo declara en el Info.plist.
+  if [ -f "packaging/macos/AppIcon.icns" ]; then
+    mkdir -p "$APP_PATH/Contents/Resources"
+    cp "packaging/macos/AppIcon.icns" "$APP_PATH/Contents/Resources/AppIcon.icns"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AppIcon.icns" "$INFO_PLIST" 2>/dev/null || \
+      /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon.icns" "$INFO_PLIST"
+  else
+    echo "Aviso: packaging/macos/AppIcon.icns no encontrado; el bundle irá sin icono propio."
+  fi
 fi
 
 mkdir -p "$DIST_DIR"
 DMG_PATH="$DIST_DIR/$APP_LABEL.dmg"
 
-hdiutil create -volname "$APP_NAME" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+# N6 — staging del DMG: app + Quick Action de Finder («Enviar a JUST4DESK») + LEEME.
+STAGING_DIR="$DIST_DIR/staging-$APP_NAME"
+rm -rf "$STAGING_DIR"
+mkdir -p "$STAGING_DIR"
+cp -R "$APP_PATH" "$STAGING_DIR/"
+if [ -d "packaging/quick_action/Enviar a JUST4DESK.workflow" ]; then
+  cp -R "packaging/quick_action/Enviar a JUST4DESK.workflow" "$STAGING_DIR/"
+  cp "packaging/quick_action/LEEME.txt" "$STAGING_DIR/"
+  [ -f "packaging/quick_action/Instalar Quick Action.command" ] && \
+    cp "packaging/quick_action/Instalar Quick Action.command" "$STAGING_DIR/"
+else
+  echo "Aviso: Quick Action no encontrada; el DMG solo llevará la app."
+fi
+
+hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_PATH"
+rm -rf "$STAGING_DIR"
 
 ln -sf "$(basename "$DMG_PATH")" "$DIST_DIR/$APP_NAME.dmg"
 ln -sf "$(basename "$DMG_PATH")" "$DIST_DIR/$APP_NAME-latest.dmg"

@@ -74,3 +74,13 @@ movidos. Estado global hoy: DESK 125 + J4SHARED 116 + FOLDERS 43 = **284 en verd
 (contenido/vectores, última pasada) con «Rellenar ahora»; validado en vivo (manual → semántica
 3950/3950). Deudas vivas: DMG firmado/notarizado + Quick Action (N6; firma con licencia),
 accesibilidad/icono y densidad/animaciones (F15.x).
+
+## 7. Actualización (28-sep, tarde-noche)
+
+**F15.x cerrada** (salvo tamaño de texto: requiere migración a tipografías semánticas, anotado):
+icono de app propio (generado por código, en bundle y DMG) + tarjeta «Créditos»; densidad de
+listas configurable (`j4i.listDensity`); animaciones de panel que respetan «Reducir movimiento»;
+VoiceOver/contraste en resultados, explorador y «Por revisar». **N6 parcial**: DMG real (app +
+Quick Action de Finder + LEEME/instalador) con Quick Action registrada en `pbs` y cadena E2E
+validada en vivo (`open -b` → G4 → clasificación IA → `99_SinClasificar`). Pendiente único de N6:
+firma + notarización (licencia Apple) y endurecer sandbox para distribución.
