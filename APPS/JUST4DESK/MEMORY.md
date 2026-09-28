@@ -94,6 +94,11 @@
 - Configuración inicial: onboarding pide carpeta raíz (sugerencia `~/JUST4INDEX`) y carpeta de entrada
   (sugerencia `~/Descargas`); genera el esqueleto de taxonomía y lo indexa para búsqueda.
 - F1/F2 completadas: motor de índice (bench 100k: crawl 6.92 s; queries 0.3–38 ms) y UI buscador.
+- (28-sep, tarde) Limpieza del registro en tests: SwiftPM no define las variables de XCTest, así
+  que los tests escribían en el log real (`ContentBackfillTests`); guard añadido en `J4Log`
+  (`NSClassFromString("XCTestCase")`) verificado por mtime/tamaño. Conteo de suite corregido:
+  DESK **125** + J4SHARED **116** + FOLDERS 43 = **284 en verde** (los 211/215 previos incluían
+  `J4ICoreTests`, movidos a J4SHARED en 19d3d5e).
 - Pendiente: **QA manual del usuario** (DMG real + flujo end-to-end con documentos reales).
 
 ## Decisiones clave
@@ -694,6 +699,14 @@
   De paso: `J4Log` gana `J4I_LOG_FILE=<ruta>` y `J4I_LOG_SUBSYSTEM`, y FOLDERS v1.1 estrena
   búsqueda sobre **J4IIndex** (su bloqueante histórico, resuelto). Suites: J4SHARED 110 ·
   DESK 125 · FOLDERS 7 (242, 0 fallos).
+
+### 2026-09-28 (tarde) — Tests sin log real + conteo de suite corregido
+
+- `J4Log` silencia el archivo bajo XCTest también con SwiftPM (`NSClassFromString("XCTestCase")`),
+  porque `swift test` no define `XCTestConfigurationFilePath`/`XCTestBundlePath`; verificado por
+  mtime/tamaño del log real durante `ContentBackfillTests` (antes crecía, ahora no).
+- Conteo corregido tras el refactor 19d3d5e: DESK **125** + J4SHARED **116** + FOLDERS 43 =
+  **284 verdes** (los 211/215 previos contaban doble los `J4ICoreTests` movidos a `PACKAGES/J4SHARED`).
 
 ## Lecciones y trampas
 

@@ -57,3 +57,19 @@ documentación y deuda técnica.
 - **Rendimiento**: el puntuado semántico es fuerza bruta sobre 4k vectores (< 20 ms); si el archivo
   crece ×10, valorar un índice ANN — no necesario hoy.
 - **Reindexados**: ahora conservadores y cubiertos por tests (`ReindexPreservationTests`).
+
+## 6. Actualización (28-sep, tarde)
+
+Resueltas desde esta foto (verificadas): **G5.1** etiquetas Finder (commit `a4f384a`, validado en
+vivo), lote **N5–N9** (avisos del sistema, ⌘Z + operadores, panel Estadísticas, **xlsx** en
+extracción, QuickLook en resultados, **CI en GitHub Actions** → deudas 4 y 7 cerradas) y el **log
+en tests** (deuda 5): la causa era que SwiftPM no define las variables de XCTest — guard añadido en
+`J4Log` (`NSClassFromString("XCTestCase")`) y verificado por mtime/tamaño del archivo real.
+
+**Corrección de conteo**: la suite DESK es **125** (5 bundles) tras el refactor `19d3d5e` que movió
+`J4ICoreTests` a `PACKAGES/J4SHARED` (**116** allí). El «211» de la sección 1 sumaba tests ya
+movidos. Estado global hoy: DESK 125 + J4SHARED 116 + FOLDERS 43 = **284 en verde**.
+
+**Deudas vivas**: DMG firmado/notarizado + Quick Action de Finder (N6 empaquetado; con licencia),
+**UI de estado de los rellenos** (contenido/vectores en Ajustes), accesibilidad/icono y
+densidad/animaciones (F15.x).

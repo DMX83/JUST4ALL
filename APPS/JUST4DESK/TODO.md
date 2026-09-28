@@ -19,7 +19,7 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
 - [x] Docs base: README/TODO/CHANGELOG/MEMORY/ARCHITECTURE/PRIVACY.
 - [x] Skill `.github/skills/just4desk/SKILL.md`.
 - [x] Validación build: `swift build` verde (toolchain Command Line Tools).
-- [ ] Validación tests: `swift test` bloqueado hasta aceptar la licencia de Xcode (acción del usuario, una vez): `sudo xcodebuild -license accept`.
+- [x] Validación tests: resuelto — suite completa en verde (licencia Xcode aceptada).
 
 ## F1 — Motor de índice (J4IIndex) — completada
 
@@ -62,7 +62,7 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
 - [x] `DeepSeekFilingAdvisor` (taxonomía + profile truncado ≤ 4000 chars → JSON de propuesta).
 - [x] `FilingPlanner` + `RulesFilingClassifier` fallback + taxonomía seed (fold sin acentos/prefijos numéricos).
 - [x] Cache por hash integrada en el pipeline (no re-analiza ni re-clasifica).
-- [ ] Cap diario de llamadas + métricas de uso estimadas (post-MVP).
+- [x] Cap diario + métricas de uso: N1 (interruptor/cap/contadores) y F12.0 (tokens reales en Ajustes → IA y registro).
 
 ## F5 — Archivado automático (J4IFiling) — completada
 

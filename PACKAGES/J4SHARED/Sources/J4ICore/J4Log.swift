@@ -292,6 +292,11 @@ public enum J4Log {
         if environment["XCTestConfigurationFilePath"] != nil || environment["XCTestBundlePath"] != nil {
             return nil
         }
+        // SwiftPM (`swift test`) no define las variables de XCTest, pero XCTest está cargado
+        // en el proceso: sin este guard, los tests escribían en el registro real de la app.
+        if NSClassFromString("XCTestCase") != nil {
+            return nil
+        }
         let base = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library", isDirectory: true)
         return base
