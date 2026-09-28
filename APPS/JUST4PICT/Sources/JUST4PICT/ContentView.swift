@@ -11,21 +11,6 @@ private enum ActivityLogFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-private enum PreviewKind: String {
-    case original = "Original"
-    case pro = "Procesado Pro"
-    case ai = "IA"
-}
-
-private struct PreviewLightboxItem: Identifiable {
-    let kind: PreviewKind
-    let image: NSImage
-    let badge: String?
-    let summary: String?
-
-    var id: PreviewKind { kind }
-}
-
 private final class OutputSettings: ObservableObject {
     @Published var format: OutputFormat
     @Published var quality: Double
@@ -74,6 +59,15 @@ struct ContentView: View {
     private let openAIAdvisor = OpenAIImageAdvisor()
     private let openAIReconstruction = OpenAIImageReconstructionService()
     private let supportedExtensions: Set<String> = ["jpg", "jpeg", "png", "heic", "heif", "webp", "tif", "tiff", "bmp", "gif"]
+
+    /// Orquestadores de dominio (sin estado propio: el estado vive en los view-models).
+    private var batchProcessor: BatchItemProcessor {
+        BatchItemProcessor(enhancer: enhancer, reconstruction: openAIReconstruction)
+    }
+
+    private var aiResolutionEngine: AIResolutionEngine {
+        AIResolutionEngine(advisor: openAIAdvisor, enhancer: enhancer)
+    }
 
     init(
         initialFormat: OutputFormat = .preferredDefault,
@@ -1015,11 +1009,11 @@ struct ContentView: View {
                         shouldUpdateUIState: false
                     )
                 } else {
-                    runResolution = localRunResolution(from: snapshot)
+                    runResolution = AIRunResolution.local(from: snapshot)
                 }
 
                 let destinationDirectory = snapshot.outputDirectory ?? input.deletingLastPathComponent()
-                let outputURL = uniqueOutputURL(
+                let outputURL = OutputPathResolver.uniqueOutputURL(
                     for: input,
                     in: destinationDirectory,
                     format: runResolution.format,
@@ -1027,7 +1021,7 @@ struct ContentView: View {
                 )
 
                 do {
-                    try await runEnhancement(
+                    try await batchProcessor.run(BatchItemJob(
                         inputURL: input,
                         outputURL: outputURL,
                         mode: snapshot.mode,
@@ -1040,7 +1034,7 @@ struct ContentView: View {
                         sceneOverride: runResolution.recipe?.mappedScene,
                         aiPrompt: runResolution.aiPrompt,
                         aiTuning: runResolution.aiTuning
-                    )
+                    ))
                     await MainActor.run {
                         recordSuccessfulRun(
                             inputURL: input,
@@ -1102,11 +1096,11 @@ struct ContentView: View {
                     shouldUpdateUIState: true
                 )
             } else {
-                runResolution = localRunResolution(from: snapshot)
+                runResolution = AIRunResolution.local(from: snapshot)
             }
 
             let destinationDirectory = snapshot.outputDirectory ?? file.deletingLastPathComponent()
-            let outputURL = uniqueOutputURL(
+            let outputURL = OutputPathResolver.uniqueOutputURL(
                 for: file,
                 in: destinationDirectory,
                 format: runResolution.format,
@@ -1114,7 +1108,7 @@ struct ContentView: View {
             )
 
             do {
-                try await runEnhancement(
+                try await batchProcessor.run(BatchItemJob(
                     inputURL: file,
                     outputURL: outputURL,
                     mode: snapshot.mode,
@@ -1127,7 +1121,7 @@ struct ContentView: View {
                     sceneOverride: runResolution.recipe?.mappedScene,
                     aiPrompt: runResolution.aiPrompt,
                     aiTuning: runResolution.aiTuning
-                )
+                ))
                 await MainActor.run {
                     recordSuccessfulRun(
                         inputURL: file,
@@ -1155,61 +1149,6 @@ struct ContentView: View {
         }
     }
 
-    private func runEnhancement(
-        inputURL: URL,
-        outputURL: URL,
-        mode: EnhancementMode,
-        preset: EnhancementPreset,
-        quality: Double,
-        format: OutputFormat,
-        exportProfile: ExportProfile,
-        upscaleTargetLongSide: CGFloat?,
-        faceRestoreStrength: Double?,
-        sceneOverride: ImageEnhancer.SceneType?,
-        aiPrompt: String?,
-        aiTuning: AIEnhancementTuning?
-    ) async throws {
-        if mode == .ai {
-            _ = resolvedAIPrompt(for: inputURL, preferredPrompt: aiPrompt)
-        }
-
-        if mode == .reconstructAI {
-            let intent = reconstructionIntent(
-                for: inputURL,
-                preset: preset,
-                sceneOverride: sceneOverride
-            )
-            try await openAIReconstruction.reconstructImage(
-                inputURL: inputURL,
-                outputURL: outputURL,
-                format: format,
-                quality: quality,
-                exportProfile: exportProfile,
-                preset: preset,
-                intent: intent
-            )
-            return
-        }
-
-        try await Task.detached(priority: .userInitiated) {
-            try autoreleasepool {
-                let worker = ImageEnhancer()
-                try worker.enhance(
-                    inputURL: inputURL,
-                    outputURL: outputURL,
-                    preset: preset,
-                    quality: quality,
-                    format: format,
-                    exportProfile: exportProfile,
-                    upscaleTargetLongSide: upscaleTargetLongSide,
-                    faceRestoreStrength: faceRestoreStrength,
-                    tuning: aiTuning,
-                    sceneOverride: sceneOverride
-                )
-            }
-        }.value
-    }
-
     private func makeBatchRunSnapshot(for mode: EnhancementMode) -> BatchRunSnapshot {
         BatchRunSnapshot(
             mode: mode,
@@ -1218,23 +1157,6 @@ struct ContentView: View {
             format: activeFormat,
             quality: activeQuality,
             exportProfile: outputSettings.exportProfile
-        )
-    }
-
-    private func localRunResolution(from snapshot: BatchRunSnapshot) -> AIRunResolution {
-        AIRunResolution(
-            preset: snapshot.preset,
-            format: snapshot.format,
-            quality: snapshot.quality,
-            upscaleTargetLongSide: nil,
-            faceRestoreStrength: nil,
-            aiSuggestedPreset: nil,
-            aiSuggestedQuality: nil,
-            aiReason: nil,
-            aiPrompt: nil,
-            aiTuning: nil,
-            recipe: nil,
-            usedFallback: false
         )
     }
 
@@ -1410,11 +1332,6 @@ struct ContentView: View {
         schedulePreviewRefresh()
     }
 
-    private func imagePixelDimensions(for fileURL: URL) -> (width: Int, height: Int) {
-        let size = enhancer.pixelSize(for: fileURL)
-        return (Int(size?.width ?? 0), Int(size?.height ?? 0))
-    }
-
     @MainActor
     private func applyAIResolutionToUI(_ resolution: AIRunResolution, for fileURL: URL, fromCache: Bool) {
         if let suggestedPreset = EnhancementPlanner.suggestedPreset(for: resolution) {
@@ -1454,18 +1371,7 @@ struct ContentView: View {
         invalidateProcessedPreview()
     }
 
-    private func aiResolutionCacheKey(
-        for fileURL: URL,
-        basePreset: EnhancementPreset,
-        baseFormat: OutputFormat
-    ) -> AIResolutionCacheKey {
-        AIResolutionCacheKey(
-            fileURL: fileURL.standardizedFileURL,
-            basePreset: basePreset,
-            baseFormat: baseFormat
-        )
-    }
-
+    @MainActor
     private func resolveAIRunConfiguration(
         for fileURL: URL,
         basePreset: EnhancementPreset,
@@ -1473,81 +1379,34 @@ struct ContentView: View {
         baseQuality: Double,
         shouldUpdateUIState: Bool
     ) async -> AIRunResolution {
-        let cacheKey = aiResolutionCacheKey(
+        let outcome = await aiResolutionEngine.resolve(
             for: fileURL,
             basePreset: basePreset,
-            baseFormat: baseFormat
+            baseFormat: baseFormat,
+            baseQuality: baseQuality,
+            cache: aiState
         )
 
-        if let cached = await MainActor.run(body: { aiState.resolutionCache[cacheKey] }) {
+        switch outcome {
+        case .cached(let resolution):
             if shouldUpdateUIState {
-                await MainActor.run {
-                    applyAIResolutionToUI(cached, for: fileURL, fromCache: true)
-                }
+                applyAIResolutionToUI(resolution, for: fileURL, fromCache: true)
             }
-            return cached
-        }
-
-        let dimensions = imagePixelDimensions(for: fileURL)
-
-        do {
-            let recommendation = try await openAIAdvisor.recommendHD(
-                inputURL: fileURL,
-                fileName: fileURL.lastPathComponent,
-                width: dimensions.width,
-                height: dimensions.height,
-                currentPreset: basePreset,
-                currentFormat: baseFormat
-            )
-
-            let resolution = EnhancementPlanner.resolve(
-                recommendation: recommendation,
-                basePreset: basePreset,
-                baseFormat: baseFormat,
-                baseQuality: baseQuality
-            )
-
-            if shouldUpdateUIState {
-                await MainActor.run {
-                    aiState.resolutionCache[cacheKey] = resolution
-                    applyAIResolutionToUI(resolution, for: fileURL, fromCache: false)
-                }
-            } else {
-                await MainActor.run {
-                    aiState.resolutionCache[cacheKey] = resolution
-                }
-            }
-
             return resolution
-        } catch {
-            let fallback = EnhancementPlanner.fallbackPlan(
-                fileName: fileURL.lastPathComponent,
-                width: dimensions.width,
-                height: dimensions.height,
-                basePreset: basePreset,
-                baseFormat: baseFormat,
-                baseQuality: baseQuality
-            )
-
+        case .fresh(let resolution):
             if shouldUpdateUIState {
-                await MainActor.run {
-                    resetAIRunState(status: "IA no disponible, usando flujo local")
-                    aiState.promptHD = fallback.aiPrompt ?? aiState.promptHD
-                    appendLog("[IA] ⚠️ IA no disponible: \(error.localizedDescription)")
-                    invalidateProcessedPreview()
-                }
+                applyAIResolutionToUI(resolution, for: fileURL, fromCache: false)
             }
-
+            return resolution
+        case .fallback(let fallback, let error):
+            if shouldUpdateUIState {
+                resetAIRunState(status: "IA no disponible, usando flujo local")
+                aiState.promptHD = fallback.aiPrompt ?? aiState.promptHD
+                appendLog("[IA] ⚠️ IA no disponible: \(error.localizedDescription)")
+                invalidateProcessedPreview()
+            }
             return fallback
         }
-    }
-
-    private func resolvedAIPrompt(for inputURL: URL, preferredPrompt: String?) -> String {
-        let trimmedPrompt = preferredPrompt?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let trimmedPrompt, !trimmedPrompt.isEmpty {
-            return trimmedPrompt
-        }
-        return enhancer.promptForImageType(inputURL: inputURL)
     }
 
     @MainActor
@@ -1578,7 +1437,7 @@ struct ContentView: View {
             if selectedMode == .reconstructAI {
                 let reconstructedPreview = try await openAIReconstruction.reconstructPreviewImage(
                     inputURL: selectedPreviewURL,
-                    intent: reconstructionIntent(
+                    intent: batchProcessor.reconstructionIntent(
                         for: selectedPreviewURL,
                         preset: preset,
                         sceneOverride: previewState.effectivePreviewScene
@@ -1590,7 +1449,7 @@ struct ContentView: View {
                 }
                 previewState.aiPreviewImage = reconstructedPreview
             } else if let aiTuningForRun = aiState.tuningForRun {
-                _ = resolvedAIPrompt(for: selectedPreviewURL, preferredPrompt: aiState.promptHD)
+                _ = batchProcessor.resolvedAIPrompt(for: selectedPreviewURL, preferredPrompt: aiState.promptHD)
                 let aiPreview = try enhancer.enhancedPreviewImage(
                     inputURL: selectedPreviewURL,
                     preset: preset,
@@ -1740,34 +1599,6 @@ struct ContentView: View {
         return result
     }
 
-    private func uniqueOutputURL(
-        for inputURL: URL,
-        in directory: URL,
-        format: OutputFormat,
-        mode: EnhancementMode
-    ) -> URL {
-        let baseName = inputURL.deletingPathExtension().lastPathComponent
-        let suffix: String
-        switch mode {
-        case .local:
-            suffix = "-enhanced"
-        case .ai:
-            suffix = "-enhanced_ia"
-        case .reconstructAI:
-            suffix = "-reconstruct_ia"
-        }
-        let buildSuffix = BuildInfo.buildStamp.replacingOccurrences(of: " ", with: "_")
-        var candidate = directory.appendingPathComponent("\(baseName)\(suffix)-\(buildSuffix).\(format.fileExtension)")
-        var index = 1
-
-        while FileManager.default.fileExists(atPath: candidate.path) {
-            candidate = directory.appendingPathComponent("\(baseName)\(suffix)-\(buildSuffix)-\(index).\(format.fileExtension)")
-            index += 1
-        }
-
-        return candidate
-    }
-
     private func aiTuningSummary(_ tuning: AIEnhancementTuning?) -> String? {
         guard let tuning else { return nil }
         return "sombras \(Int(tuning.shadowAmount * 100)), luces \(Int(tuning.highlightAmount * 100)), vibrance \(Int(tuning.vibrance * 100)), nitidez \(Int(tuning.sharpen * 100))"
@@ -1794,7 +1625,7 @@ struct ContentView: View {
 
     private var reconstructionPreviewSummary: String {
         if let selectedPreviewURL = previewState.selectedPreviewURL,
-           reconstructionIntent(for: selectedPreviewURL, preset: preset, sceneOverride: previewState.effectivePreviewScene) == .ecommerceCleanup {
+           batchProcessor.reconstructionIntent(for: selectedPreviewURL, preset: preset, sceneOverride: previewState.effectivePreviewScene) == .ecommerceCleanup {
             return "reconstrucción IA para producto: limpia bordes complejos, preserva branding y recompone sobre blanco"
         }
         return "reconstrucción generativa conservadora para imágenes pequeñas o muy comprimidas"
@@ -1844,28 +1675,6 @@ struct ContentView: View {
         case .reconstructAI:
             return "IA-R"
         }
-    }
-
-    private func reconstructionIntent(
-        for inputURL: URL,
-        preset: EnhancementPreset,
-        sceneOverride: ImageEnhancer.SceneType?
-    ) -> ReconstructionIntent {
-        let effectiveScene: ImageEnhancer.SceneType?
-        if let sceneOverride {
-            effectiveScene = sceneOverride
-        } else if preset == .ecommerce {
-            effectiveScene = .ecommerce
-        } else if preset == .auto {
-            effectiveScene = enhancer.detectSceneType(inputURL: inputURL)
-        } else {
-            effectiveScene = nil
-        }
-
-        return OpenAIImageReconstructionService.recommendedIntent(
-            preset: preset,
-            scene: effectiveScene
-        )
     }
 
     private var aiPreviewSummary: String? {
@@ -1986,277 +1795,4 @@ struct ContentView: View {
     }
 }
 
-private struct PreviewLightboxView: View {
-    let items: [PreviewLightboxItem]
-    @Binding var selectedKind: PreviewKind
 
-    @Environment(\.dismiss) private var dismiss
-    @FocusState private var isFocused: Bool
-    @State private var zoomScale: CGFloat = 1.0
-    @State private var dragOffset: CGSize = .zero
-    @State private var accumulatedOffset: CGSize = .zero
-
-    private var selectedIndex: Int {
-        items.firstIndex(where: { $0.kind == selectedKind }) ?? 0
-    }
-
-    private var selectedItem: PreviewLightboxItem? {
-        guard items.indices.contains(selectedIndex) else { return nil }
-        return items[selectedIndex]
-    }
-
-    var body: some View {
-        VStack(spacing: 12) {
-            header
-
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.black.opacity(0.92))
-
-                if let item = selectedItem {
-                    GeometryReader { geometry in
-                        ScrollView([.horizontal, .vertical]) {
-                            Image(nsImage: item.image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(
-                                    width: max(geometry.size.width - 80, 320) * zoomScale,
-                                    height: max(geometry.size.height - 80, 320) * zoomScale
-                                )
-                                .offset(
-                                    x: accumulatedOffset.width + dragOffset.width,
-                                    y: accumulatedOffset.height + dragOffset.height
-                                )
-                                .gesture(dragGesture)
-                                .padding(40)
-                        }
-                    }
-                }
-            }
-            .frame(minWidth: 900, minHeight: 560)
-            .overlay(alignment: .leading) {
-                if items.count > 1 {
-                    navigationButton(systemImage: "chevron.left", action: goToPrevious)
-                        .padding(.leading, 14)
-                }
-            }
-            .overlay(alignment: .trailing) {
-                if items.count > 1 {
-                    navigationButton(systemImage: "chevron.right", action: goToNext)
-                        .padding(.trailing, 14)
-                }
-            }
-        }
-        .padding(18)
-        .frame(minWidth: 980, minHeight: 680)
-        .focusable()
-        .focused($isFocused)
-        .onAppear {
-            isFocused = true
-        }
-        .onMoveCommand { direction in
-            switch direction {
-            case .left:
-                goToPrevious()
-            case .right:
-                goToNext()
-            default:
-                break
-            }
-        }
-    }
-
-    private var header: some View {
-        HStack(spacing: 12) {
-            if let item = selectedItem {
-                Text(item.kind.rawValue)
-                    .font(.system(size: 17, weight: .bold))
-
-                if let badge = item.badge {
-                    Text(badge)
-                        .font(.system(size: 10, weight: .bold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(badge == "IA" ? Color.purple.opacity(0.14) : Color.blue.opacity(0.12))
-                        .foregroundColor(badge == "IA" ? .purple : .blue)
-                        .clipShape(Capsule())
-                }
-
-                Text("\(selectedIndex + 1)/\(items.count)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-
-                if let summary = item.summary, !summary.isEmpty {
-                    Text(summary)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
-            }
-
-            Spacer()
-
-            HStack(spacing: 8) {
-                Button("1:1") {
-                    resetViewport(to: 1.0)
-                }
-                .buttonStyle(.bordered)
-
-                Button("Ajustar") {
-                    resetViewport(to: 0.9)
-                }
-                .buttonStyle(.bordered)
-
-                Button("Cerrar") {
-                    dismiss()
-                }
-                .buttonStyle(.borderedProminent)
-            }
-        }
-    }
-
-    private var dragGesture: some Gesture {
-        DragGesture()
-            .onChanged { value in
-                dragOffset = value.translation
-            }
-            .onEnded { value in
-                accumulatedOffset.width += value.translation.width
-                accumulatedOffset.height += value.translation.height
-                dragOffset = .zero
-            }
-    }
-
-    private func navigationButton(systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .bold))
-                .frame(width: 36, height: 36)
-        }
-        .buttonStyle(.borderedProminent)
-    }
-
-    private func goToPrevious() {
-        guard items.count > 1 else { return }
-        let newIndex = selectedIndex == 0 ? items.count - 1 : selectedIndex - 1
-        selectedKind = items[newIndex].kind
-        resetViewport(to: 1.0)
-    }
-
-    private func goToNext() {
-        guard items.count > 1 else { return }
-        let newIndex = selectedIndex == items.count - 1 ? 0 : selectedIndex + 1
-        selectedKind = items[newIndex].kind
-        resetViewport(to: 1.0)
-    }
-
-    private func resetViewport(to scale: CGFloat) {
-        zoomScale = scale
-        dragOffset = .zero
-        accumulatedOffset = .zero
-    }
-}
-
-private struct BeforeAfterSliderView: View {
-    let originalImage: NSImage
-    let processedImage: NSImage
-    let processedLabel: String
-    let processedBadge: String?
-    @Binding var position: CGFloat
-
-    var body: some View {
-        GeometryReader { geometry in
-            let clampedPosition = min(max(position, 0.0), 1.0)
-            let dividerX = max(0, min(geometry.size.width, geometry.size.width * clampedPosition))
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    Text("Before / After")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    comparisonPill(title: "Original", badge: nil)
-                    comparisonPill(title: processedLabel, badge: processedBadge)
-                }
-
-                ZStack {
-                    imageLayer(image: originalImage)
-
-                    imageLayer(image: processedImage)
-                        .mask(alignment: .leading) {
-                            Rectangle()
-                                .frame(width: dividerX)
-                        }
-
-                    Rectangle()
-                        .fill(Color.white.opacity(0.92))
-                        .frame(width: 2)
-                        .shadow(color: .black.opacity(0.18), radius: 3, x: 0, y: 0)
-                        .position(x: dividerX, y: geometry.size.height / 2)
-
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 26, height: 26)
-                        .overlay {
-                            Image(systemName: "arrow.left.and.right")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.black.opacity(0.75))
-                        }
-                        .shadow(color: .black.opacity(0.16), radius: 5, x: 0, y: 1)
-                        .position(x: dividerX, y: geometry.size.height / 2)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            let newPosition = value.location.x / max(geometry.size.width, 1)
-                            position = min(max(newPosition, 0.0), 1.0)
-                        }
-                )
-
-                Slider(value: $position, in: 0...1)
-                    .controlSize(.small)
-            }
-        }
-    }
-
-    private func imageLayer(image: NSImage) -> some View {
-        Image(nsImage: image)
-            .resizable()
-            .scaledToFit()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black.opacity(0.04))
-    }
-
-    private func comparisonPill(title: String, badge: String?) -> some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.secondary)
-
-            if let badge {
-                Text(badge)
-                    .font(.system(size: 9, weight: .semibold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(badgeColor(for: badge).opacity(0.14))
-                    .foregroundColor(badgeColor(for: badge))
-                    .clipShape(Capsule())
-            }
-        }
-    }
-
-    private func badgeColor(for badge: String) -> Color {
-        switch badge {
-        case "IA":
-            return .purple
-        case "IA→PRO", "IA-R":
-            return .orange
-        default:
-            return .blue
-        }
-    }
-}

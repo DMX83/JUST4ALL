@@ -1,12 +1,6 @@
 import Foundation
 import SwiftUI
 
-struct AIResolutionCacheKey: Hashable {
-    let fileURL: URL
-    let basePreset: EnhancementPreset
-    let baseFormat: OutputFormat
-}
-
 @MainActor
 final class AIResolutionViewModel: ObservableObject {
     @Published var statusMessage = "IA lista"
