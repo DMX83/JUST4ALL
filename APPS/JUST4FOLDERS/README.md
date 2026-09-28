@@ -60,6 +60,9 @@ swift run
   (nunca copia ni borra); «Deshacer ultima ordenacion» (⌥⌘Z) con diario.
 - IA opcional en la ordenacion (**v2.0**): con `DEEPSEEK_API_KEY` (o `.env.secrets`), «Usar IA para
   los dudosos» consulta solo lo que las reglas no clasifican (se envia unicamente el nombre).
+- Ola 1 de explorador (**v2.0**): miniaturas reales (imagen/PDF/video), **QuickLook con Espacio**,
+  **breadcrumb clicable**, **drag & drop** (interior mueve/⌥ copia; desde Finder copia/⌘ mueve),
+  filas estilo Finder y estados vacios («Carpeta vacia · ⌘N»).
 - Folder formats (**v2.0**): cada carpeta recuerda su vista (aplanada, orden, ocultos) y se restaura
   al volver; «Olvidar formato de esta carpeta» en el menu contextual.
 - Sidebar con ubicaciones autorizadas, favoritos y recientes.

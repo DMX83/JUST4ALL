@@ -3,6 +3,8 @@ import Foundation
 import J4FFileSystem
 import J4FOps
 import J4ICore
+import QuickLookUI
+import QuickLookThumbnailing
 import UniformTypeIdentifiers
 
 extension Notification.Name {
@@ -108,7 +110,66 @@ private final class FileIconCache {
 
 private let sharedFileIconCache = FileIconCache()
 
-final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSearchFieldDelegate, NSControlTextEditingDelegate, NSTableViewDataSource, NSTableViewDelegate, NSOutlineViewDataSource, NSOutlineViewDelegate, NSToolbarItemValidation {
+/// Ola 1 — miniaturas reales (imagen/PDF/vídeo) con caché LRU y generación perezosa.
+private final class FileThumbnailCache {
+    private let lock = NSLock()
+    private let cache = NSCache<NSString, NSImage>()
+    private var inFlight: Set<String> = []
+
+    init() {
+        cache.countLimit = 512
+    }
+
+    func cached(for url: URL) -> NSImage? {
+        lock.lock()
+        defer { lock.unlock() }
+        return cache.object(forKey: url.standardizedFileURL.path as NSString)
+    }
+
+    /// Pide la miniatura si el tipo es «visual»; `completion` se llama en main al terminar.
+    func request(for url: URL, completion: @escaping () -> Void) {
+        let key = url.standardizedFileURL.path
+        lock.lock()
+        if cache.object(forKey: key as NSString) != nil || inFlight.contains(key) {
+            lock.unlock()
+            return
+        }
+        guard Self.isEligible(url) else {
+            lock.unlock()
+            return
+        }
+        inFlight.insert(key)
+        lock.unlock()
+
+        let request = QLThumbnailGenerator.Request(
+            fileAt: url,
+            size: CGSize(width: 40, height: 40),
+            scale: 2,
+            representationTypes: .thumbnail
+        )
+        QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { [weak self] representation, _ in
+            guard let self else { return }
+            self.lock.lock()
+            if let image = representation?.nsImage {
+                self.cache.setObject(image, forKey: key as NSString)
+            }
+            self.inFlight.remove(key)
+            self.lock.unlock()
+            if representation != nil {
+                DispatchQueue.main.async { completion() }
+            }
+        }
+    }
+
+    private static func isEligible(_ url: URL) -> Bool {
+        guard let type = UTType(filenameExtension: url.pathExtension) else { return false }
+        return type.conforms(to: .image) || type.conforms(to: .pdf) || type.conforms(to: .movie)
+    }
+}
+
+private let sharedThumbnailCache = FileThumbnailCache()
+
+final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSearchFieldDelegate, NSControlTextEditingDelegate, NSTableViewDataSource, NSTableViewDelegate, NSOutlineViewDataSource, NSOutlineViewDelegate, NSToolbarItemValidation, QLPreviewPanelDataSource, QLPreviewPanelDelegate {
     private enum ToolbarID {
         static let root = NSToolbar.Identifier("j4f.toolbar.main")
         static let back = NSToolbarItem.Identifier("j4f.toolbar.back")
@@ -146,6 +207,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private var duplicatesWindow: DuplicatesWindowController?
     /// v2.0 — ventana de «Ordenar esta carpeta» (una a la vez).
     private var orderingWindow: OrderingWindowController?
+    /// Ola 1 — panel que alimenta el QuickLook (Espacio).
+    private weak var previewPanelSource: FilePanelViewController?
 
     private var activeSide: PanelSide = .left {
         didSet {
@@ -497,6 +560,20 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         rightPanel.onStatus = { [weak self] text in
             self?.statusLabel.stringValue = "DER · \(text)"
             self?.updatePathFieldFromActivePanel()
+        }
+        leftPanel.onSelectionChanged = { [weak self] in
+            guard let self else { return }
+            self.previewSourceSelectionChanged(self.leftPanel)
+        }
+        rightPanel.onSelectionChanged = { [weak self] in
+            guard let self else { return }
+            self.previewSourceSelectionChanged(self.rightPanel)
+        }
+        leftPanel.onDropRequest = { [weak self] urls, destination, copy in
+            self?.enqueueFileJob(type: copy ? .copy : .move, selected: urls, destination: destination)
+        }
+        rightPanel.onDropRequest = { [weak self] urls, destination, copy in
+            self?.enqueueFileJob(type: copy ? .copy : .move, selected: urls, destination: destination)
         }
 
         leftPanel.onDirectoryChanged = { [weak self] url in
@@ -1409,7 +1486,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
                 }
             } else if let chars = event.characters, !chars.isEmpty,
                       chars.unicodeScalars.allSatisfy({ scalar in
-                          scalar.value >= 0x20 && scalar.value != 0x7F
+                          scalar.value >= 0x21 && scalar.value != 0x7F
                               && !(scalar.value >= 0xF700 && scalar.value <= 0xF8FF)
                       }) {
                 panel.appendQuickFilter(chars)
@@ -1423,6 +1500,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             switch event.keyCode {
             case 36, 76: // Return / Enter
                 if openSelectedSidebarIfFocused() {
+                    return true
+                }
+            case 49: // Espacio — QuickLook (Ola 1)
+                if toggleQuickLookPreview() {
                     return true
                 }
             case 48: // Tab
@@ -1481,6 +1562,74 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         if leftPanel.isTableFirstResponder() { return leftPanel }
         if rightPanel.isTableFirstResponder() { return rightPanel }
         return nil
+    }
+
+    // MARK: - QuickLook (Ola 1)
+
+    /// Abre/cierra el panel de QuickLook para la selección del panel con foco.
+    private func toggleQuickLookPreview() -> Bool {
+        guard let source = panelOwningTableFirstResponder() ?? previewPanelSource else { return false }
+        guard !source.selectedURLs().isEmpty else { return false }
+        previewPanelSource = source
+
+        if QLPreviewPanel.sharedPreviewPanelExists(),
+           let panel = QLPreviewPanel.shared(), panel.isVisible {
+            panel.orderOut(nil)
+            return true
+        }
+        guard let panel = QLPreviewPanel.shared() else { return false }
+        panel.makeKeyAndOrderFront(nil)
+        return true
+    }
+
+    /// Refresca el preview cuando cambia la selección del panel que lo alimenta.
+    fileprivate func previewSourceSelectionChanged(_ source: FilePanelViewController) {
+        guard source === previewPanelSource,
+              QLPreviewPanel.sharedPreviewPanelExists(),
+              QLPreviewPanel.shared()?.isVisible == true else { return }
+        QLPreviewPanel.shared()?.reloadData()
+    }
+
+    override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel) -> Bool { true }
+
+    override func beginPreviewPanelControl(_ panel: QLPreviewPanel) {
+        panel.dataSource = self
+        panel.delegate = self
+        previewPanelSource = panelOwningTableFirstResponder() ?? activePanel
+    }
+
+    override func endPreviewPanelControl(_ panel: QLPreviewPanel) {
+        panel.dataSource = nil
+        panel.delegate = nil
+    }
+
+    @objc func numberOfPreviewItems(in panel: QLPreviewPanel) -> Int {
+        previewPanelSource?.selectedURLs().count ?? 0
+    }
+
+    @objc func previewPanel(_ panel: QLPreviewPanel, previewItemAt index: Int) -> QLPreviewItem {
+        let urls = previewPanelSource?.selectedURLs() ?? []
+        guard index >= 0, index < urls.count else { return NSURL(fileURLWithPath: "/") }
+        return urls[index] as NSURL
+    }
+
+    @objc func previewPanel(_ panel: QLPreviewPanel, handle event: NSEvent) -> Bool {
+        guard event.type == .keyDown else { return false }
+        switch event.keyCode {
+        case 49, 53: // Espacio / Esc cierran
+            panel.orderOut(nil)
+            return true
+        case 125: // ↓ — siguiente elemento
+            previewPanelSource?.moveSelection(by: 1)
+            panel.reloadData()
+            return true
+        case 126: // ↑ — anterior
+            previewPanelSource?.moveSelection(by: -1)
+            panel.reloadData()
+            return true
+        default:
+            return false
+        }
     }
 
     /// ¿Los modificadores del evento están exactamente en alguno de los conjuntos dados?
@@ -1872,6 +2021,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     var onActivate: (() -> Void)?
     var onStatus: ((String) -> Void)?
     var onDirectoryChanged: ((URL) -> Void)?
+    /// Ola 1 — cambios de selección (refresco del preview QuickLook).
+    var onSelectionChanged: (() -> Void)?
+    /// Ola 1 — drag & drop: (orígenes, destino, ¿copiar?).
+    var onDropRequest: (([URL], URL, Bool) -> Void)?
     var onPasteRequested: (() -> Void)?
     var onSearchWillStart: (() -> Void)?
     var onSearchDidFinish: (() -> Void)?
@@ -1922,6 +2075,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private let quickFilterHUD = NSVisualEffectView()
     private let quickFilterHUDLabel = NSTextField(labelWithString: "")
     private var quickFilterHUDHideWorkItem: DispatchWorkItem?
+    /// Ola 1 — estado vacío / sin coincidencias.
+    private let emptyStateLabel = NSTextField(labelWithString: "")
+    /// Ola 1 — breadcrumb clicable.
+    private let breadcrumbRow = NSStackView()
+    private var breadcrumbURLs: [URL] = []
     private var includeHiddenFiles = false
     private var isActivePanel = false
 
@@ -2440,6 +2598,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
         tableView.headerView = NSTableHeaderView(frame: .zero)
         tableView.usesAlternatingRowBackgroundColors = false
+        tableView.style = .inset
+        tableView.rowHeight = 22
         tableView.allowsMultipleSelection = true
         tableView.allowsEmptySelection = true
         tableView.delegate = self
@@ -2448,6 +2608,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tableView.target = self
         tableView.menu = makeContextMenu()
         tableView.setAccessibilityLabel("Contenido del panel \(side.rawValue)")
+        // Ola 1 — drag & drop: interior mueve (⌥ copia), desde fuera copia (⌘ mueve).
+        tableView.registerForDraggedTypes([.fileURL])
+        tableView.setDraggingSourceOperationMask([.move, .copy], forLocal: true)
+        tableView.setDraggingSourceOperationMask([.copy], forLocal: false)
 
         addColumn(id: "name", title: "Nombre", width: 180)
         addColumn(id: "size", title: "Tamaño", width: 65)
@@ -2483,6 +2647,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tabsRow.translatesAutoresizingMaskIntoConstraints = false
         tabsRow.addArrangedSubview(tabsControl)
         tabsRow.addArrangedSubview(NSView())
+        breadcrumbRow.orientation = .horizontal
+        breadcrumbRow.spacing = 2
+        breadcrumbRow.translatesAutoresizingMaskIntoConstraints = false
         flatToggleButton.setButtonType(.switch)
         flatToggleButton.title = "Aplanada"
         flatToggleButton.font = .systemFont(ofSize: 11)
@@ -2494,18 +2661,23 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tabsRow.addArrangedSubview(flatToggleButton)
 
         view.addSubview(header)
+        view.addSubview(breadcrumbRow)
         view.addSubview(tabsRow)
         view.addSubview(scrollView)
 
         configureQuickFilterHUD(above: scrollView)
+        configureEmptyState(over: scrollView)
 
         NSLayoutConstraint.activate([
             header.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
             header.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
             header.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
+            breadcrumbRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
+            breadcrumbRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            breadcrumbRow.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 4),
             tabsRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
             tabsRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
-            tabsRow.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 6),
+            tabsRow.topAnchor.constraint(equalTo: breadcrumbRow.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
             scrollView.topAnchor.constraint(equalTo: tabsRow.bottomAnchor, constant: 8),
@@ -2544,6 +2716,39 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             quickFilterHUDLabel.topAnchor.constraint(equalTo: quickFilterHUD.topAnchor, constant: 6),
             quickFilterHUDLabel.bottomAnchor.constraint(equalTo: quickFilterHUD.bottomAnchor, constant: -6)
         ])
+    }
+
+    private func configureEmptyState(over scrollView: NSScrollView) {
+        emptyStateLabel.font = .systemFont(ofSize: 12)
+        emptyStateLabel.textColor = .tertiaryLabelColor
+        emptyStateLabel.alignment = .center
+        emptyStateLabel.lineBreakMode = .byWordWrapping
+        emptyStateLabel.maximumNumberOfLines = 0
+        emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+        emptyStateLabel.isHidden = true
+        view.addSubview(emptyStateLabel)
+        NSLayoutConstraint.activate([
+            emptyStateLabel.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
+            emptyStateLabel.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
+            emptyStateLabel.leadingAnchor.constraint(greaterThanOrEqualTo: scrollView.leadingAnchor, constant: 12),
+            emptyStateLabel.trailingAnchor.constraint(lessThanOrEqualTo: scrollView.trailingAnchor, constant: -12)
+        ])
+    }
+
+    /// Ola 1 — mensaje según el motivo: filtro activo o carpeta vacía de verdad.
+    private func updateEmptyState() {
+        let filtered = !quickFilter.isEmpty || !searchQuery.isEmpty
+        emptyStateLabel.stringValue = filtered
+            ? "Sin coincidencias\nPrueba otro filtro o pulsa Esc"
+            : "Carpeta vacía\n⌘N para crear una carpeta"
+        emptyStateLabel.isHidden = !rows.isEmpty
+    }
+
+    /// Ola 1 — recarga una celda concreta (p. ej. cuando llega una miniatura).
+    private func reloadRow(forPath path: String, columnID: String) {
+        guard let index = rows.firstIndex(where: { $0.url.standardizedFileURL.path == path }) else { return }
+        guard let column = tableView.tableColumns.firstIndex(where: { $0.identifier.rawValue == columnID }) else { return }
+        tableView.reloadData(forRowIndexes: IndexSet(integer: index), columnIndexes: IndexSet(integer: column))
     }
 
     private func makeContextMenu() -> NSMenu {
@@ -2646,6 +2851,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         rows.removeAll(keepingCapacity: true)
         tableView.reloadData()
         rowCountLabel.stringValue = "0 elemento(s)"
+        emptyStateLabel.isHidden = true
 
         let token = loadToken
         let includeHidden = includeHiddenFiles
@@ -2745,6 +2951,49 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         ))
         titleLabel.attributedStringValue = attributed
         titleLabel.toolTip = url.path
+        updateBreadcrumb(for: url)
+    }
+
+    /// Ola 1 — breadcrumb clicable (clic en un segmento para saltar a esa carpeta).
+    private func updateBreadcrumb(for url: URL) {
+        for view in breadcrumbRow.arrangedSubviews {
+            breadcrumbRow.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        breadcrumbURLs.removeAll(keepingCapacity: true)
+        let components = url.standardizedFileURL.pathComponents
+        var accumulated = ""
+        for (index, component) in components.enumerated() {
+            if component == "/" {
+                accumulated = "/"
+            } else {
+                accumulated = (accumulated as NSString).appendingPathComponent(component)
+            }
+            let isLast = index == components.count - 1
+            let button = NSButton(title: component == "/" ? FileManager.default.displayName(atPath: "/") : component, target: self, action: #selector(breadcrumbClicked(_:)))
+            button.bezelStyle = .inline
+            button.controlSize = .small
+            button.font = .systemFont(ofSize: 11, weight: isLast ? .semibold : .regular)
+            button.toolTip = accumulated
+            button.isEnabled = !isLast
+            breadcrumbURLs.append(URL(fileURLWithPath: accumulated, isDirectory: true))
+            button.tag = breadcrumbURLs.count - 1
+            button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            button.lineBreakMode = .byTruncatingMiddle
+            breadcrumbRow.addArrangedSubview(button)
+            if !isLast {
+                let chevron = NSTextField(labelWithString: "›")
+                chevron.font = .systemFont(ofSize: 11)
+                chevron.textColor = .tertiaryLabelColor
+                breadcrumbRow.addArrangedSubview(chevron)
+            }
+        }
+    }
+
+    @objc private func breadcrumbClicked(_ sender: NSButton) {
+        guard sender.tag >= 0, sender.tag < breadcrumbURLs.count else { return }
+        activatePanel()
+        openPath(breadcrumbURLs[sender.tag].path)
     }
 
     /// Restaura el formato guardado de una carpeta (sin disparar guardados intermedios).
@@ -2816,6 +3065,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             rows.removeAll(keepingCapacity: true)
             tableView.reloadData()
             rowCountLabel.stringValue = "0 elemento(s)"
+            emptyStateLabel.isHidden = true
         }
 
         let token = loadToken
@@ -2962,6 +3212,73 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         rows.count
     }
 
+    // MARK: - Drag & drop (Ola 1)
+
+    func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> (any NSPasteboardWriting)? {
+        guard row >= 0, row < rows.count else { return nil }
+        return rows[row].url as NSURL
+    }
+
+    func tableView(
+        _ tableView: NSTableView,
+        validateDrop info: NSDraggingInfo,
+        proposedRow row: Int,
+        proposedDropOperation dropOperation: NSTableView.DropOperation
+    ) -> NSDragOperation {
+        let urls = draggedURLs(from: info)
+        guard !urls.isEmpty else { return [] }
+        if dropOperation == .on, row >= 0, row < rows.count, rows[row].isDirectory {
+            guard canDrop(urls, into: rows[row].url) else { return [] }
+            return preferredDropOperation(info)
+        }
+        // Fondo de la tabla: destino = carpeta del panel.
+        guard canDrop(urls, into: currentURL) else { return [] }
+        tableView.setDropRow(-1, dropOperation: .on)
+        return preferredDropOperation(info)
+    }
+
+    func tableView(
+        _ tableView: NSTableView,
+        acceptDrop info: NSDraggingInfo,
+        row: Int,
+        dropOperation: NSTableView.DropOperation
+    ) -> Bool {
+        let urls = draggedURLs(from: info)
+        guard !urls.isEmpty else { return false }
+        let target: URL = (row >= 0 && row < rows.count && rows[row].isDirectory) ? rows[row].url : currentURL
+        guard canDrop(urls, into: target) else { return false }
+        onDropRequest?(urls, target, preferredDropOperation(info) == .copy)
+        return true
+    }
+
+    private func draggedURLs(from info: NSDraggingInfo) -> [URL] {
+        let objects = info.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL]
+        return objects ?? []
+    }
+
+    /// Evita soltar una carpeta sobre sí misma o sobre su propio subárbol.
+    private func canDrop(_ urls: [URL], into target: URL) -> Bool {
+        let targetPath = target.standardizedFileURL.path
+        for url in urls {
+            let path = url.standardizedFileURL.path
+            if path == targetPath { return false }
+            if targetPath.hasPrefix(path + "/") { return false }
+        }
+        return true
+    }
+
+    /// Interior por defecto mueve (⌥ copia); desde fuera copia (⌘ mueve).
+    private func preferredDropOperation(_ info: NSDraggingInfo) -> NSDragOperation {
+        let isLocal = info.draggingSource is NSTableView
+        let flags = NSEvent.modifierFlags
+        if flags.contains(.option) { return .copy }
+        if flags.contains(.command) { return .move }
+        return isLocal ? .move : .copy
+    }
+
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard row < rows.count else { return nil }
         let item = rows[row]
@@ -3044,7 +3361,18 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             NSLayoutConstraint.activate([
                 label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 6)
             ])
-            icon.image = sharedFileIconCache.icon(for: item)
+            // Ola 1 — miniatura real (imagen/PDF/vídeo) con caché; si no, icono del sistema.
+            if !item.isDirectory, let thumbnail = sharedThumbnailCache.cached(for: item.url) {
+                icon.image = thumbnail
+            } else {
+                icon.image = sharedFileIconCache.icon(for: item)
+                if !item.isDirectory {
+                    let url = item.url
+                    sharedThumbnailCache.request(for: url) { [weak self] in
+                        self?.reloadRow(forPath: url.standardizedFileURL.path, columnID: "name")
+                    }
+                }
+            }
         } else {
             cell.imageView?.isHidden = true
             NSLayoutConstraint.activate([
@@ -3060,6 +3388,17 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             rootSelected = false
         }
         activatePanel()
+        onSelectionChanged?()
+    }
+
+    /// Ola 1 — mueve la selección (para navegar el preview QuickLook con las flechas).
+    func moveSelection(by delta: Int) {
+        guard !rows.isEmpty else { return }
+        let current = tableView.selectedRow
+        let base = current >= 0 ? current : (delta > 0 ? -1 : rows.count)
+        let next = max(0, min(rows.count - 1, base + delta))
+        tableView.selectRowIndexes(IndexSet(integer: next), byExtendingSelection: false)
+        tableView.scrollRowToVisible(next)
     }
 
     func tableView(_ tableView: NSTableView, sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]) {
@@ -3125,6 +3464,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         rowCountLabel.stringValue = "\(rows.count) elemento(s)"
             + (flatView ? " · aplanada" : "")
             + (quickFilter.isEmpty ? "" : " · filtro «\(quickFilter)»")
+        updateEmptyState()
     }
 
     private func startDeepSearch(query: String) {

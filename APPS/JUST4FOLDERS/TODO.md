@@ -63,6 +63,17 @@
   orden y ficheros ocultos — y se restaura al navegar de vuelta (`FolderFormatStore`, JSON con
   LRU de 500 carpetas; «Olvidar formato de esta carpeta» en el menú contextual). Temas: pendiente.
 
+## v2.0 — Ola 1 «explorador de verdad» (28-sep)
+
+- [x] Miniaturas reales (imagen/PDF/vídeo) con caché LRU y generación perezosa (`FileThumbnailCache`).
+- [x] QuickLook con Espacio (↑/↓ navegan el preview; se refresca al cambiar selección).
+- [x] Breadcrumb clicable bajo la cabecera de cada panel.
+- [x] Drag & drop: filas arrastrables; soltar en carpeta/panel/Finder; interior mueve (⌥ copia),
+  desde fuera copia (⌘ mueve), todo por la cola existente. *Falta prueba manual del gesto.*
+- [x] Pulido de lista (`.inset`, fila 22, sin rayas) + estados vacíos («Carpeta vacía · ⌘N»).
+- [ ] Hover por fila y Ola 2 (preview lateral, F-keys completas, columnas configurables,
+  historial con menú, progreso en panel, tabs completas).
+
 ## MVP-0 — Fundaciones
 
 - [x] Definir principios de arquitectura (AppKit-first + sandbox + copy engine).

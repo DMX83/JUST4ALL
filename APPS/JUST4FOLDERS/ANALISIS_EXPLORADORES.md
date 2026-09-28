@@ -73,15 +73,18 @@ los referentes del género, y convertirlo en un plan por olas. Honestidad por de
 
 ## 4) Plan por olas (impacto percibido / coste)
 
-### Ola 1 — «Parece un explorador de verdad» (visual + gestos básicos)
+### Ola 1 — «Parece un explorador de verdad» (visual + gestos básicos) — ✅ aplicada (28-sep)
 
-1. **Drag & drop** (arrastrar a carpetas/otro panel/Finder; recibir de Finder) con cola existente.
-2. **QuickLook con Espacio** (+ flechas para navegar el preview; Esc cierra).
-3. **Miniaturas de imagen/PDF** en vez de icono (QLThumbnailGenerator + caché LRU 512; fallback
-   icono). *Este cambio solo ya transforma la percepción.*
-4. **Pulido de lista**: cebra sutil, fila 24 pt, metadatos en gris 11, hairlines, hover suave.
-5. **Estado vacío** con mensaje + hint (⌘N nueva carpeta).
-6. **Breadcrumb** bajo el header (clic en cada segmento; se sincroniza con ⌘L).
+1. ✅ **Drag & drop** (arrastrar a carpetas/otro panel/Finder; recibir de Finder): interior mueve
+   (⌥ copia), desde fuera copia (⌘ mueve), con la cola existente. *Gesto pendiente de prueba manual.*
+2. ✅ **QuickLook con Espacio** (+ ↑/↓ para navegar el preview; Espacio/Esc cierran; se refresca
+   al cambiar la selección).
+3. ✅ **Miniaturas de imagen/PDF/vídeo** en la lista (QLThumbnailGenerator + caché LRU 512,
+   generación perezosa y recarga de celda al llegar).
+4. ✅ **Pulido de lista**: estilo `.inset`, fila 22 pt, sin rayas en filas vacías, metadatos
+   discretos. (Hover por fila: pendiente.)
+5. ✅ **Estado vacío** («Carpeta vacía · ⌘N» / «Sin coincidencias · Esc»).
+6. ✅ **Breadcrumb clicable** (Macintosh HD › … › carpeta actual, último segmento en negrita).
 
 ### Ola 2 — «Potencia sin fricción»
 
