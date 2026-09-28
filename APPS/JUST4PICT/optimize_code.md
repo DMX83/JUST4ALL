@@ -32,6 +32,13 @@ Especificar explícitamente `kCGImageSourceShouldCache: false` durante la creaci
     }
 ```
 
+### Estado
+
+✅ **Aplicado (28-sep)**: `pixelSize` usa `kCGImageSourceShouldCache: false`. El mismo patrón se
+extendió a `ImageAnalyzer.imagePixelSize(from:)` (lectura pura de metadatos) y a
+`OpenAIImageAdvisor.makeAnalysisImageDataURL` (solo se necesita el thumbnail de análisis, no la
+fuente completa en caché).
+
 ## 2. Optimización de Recursos en `ImageEnhancerDiagnosticsTests`
 
 **Ubicación:** `Tests/JUST4PICTTests/ImageEnhancerDiagnosticsTests.swift`
@@ -62,3 +69,12 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
     }
 }
 ```
+
+### Estado
+
+✅ **Aplicado (28-sep)**: `ImageEnhancerDiagnosticsTests.sharedDiagnosticContext` compartido para
+`averageRGBA`, `averageEdgeEnergy` y `faceUpperDetailRegion`. También se aplicó el mismo criterio a
+`LocalPhotoPipelineTests` (`sharedPipelineContext` en `makePipeline` y `averageRGBA`). Sin cambios
+de comportamiento: suite completa **71 tests, 0 fallos**; la suite de diagnóstico baja de ~28,9 s a
+~25,4 s al eliminar la creación repetida de contextos (los benchmarks largos siguen gated por
+variables de entorno).

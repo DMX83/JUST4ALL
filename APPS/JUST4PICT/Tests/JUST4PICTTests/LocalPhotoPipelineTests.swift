@@ -178,8 +178,11 @@ final class LocalPhotoPipelineTests: XCTestCase {
         XCTAssertGreaterThan(selectiveTextDelta, selectiveFlatDelta * 2.0)
     }
 
+    /// Optimización: contexto compartido en la suite; antes se creaba uno por llamada.
+    private static let sharedPipelineContext = CIContext(options: [.cacheIntermediates: false])
+
     private func makePipeline() -> LocalPhotoPipeline {
-        let context = CIContext()
+        let context = Self.sharedPipelineContext
         return LocalPhotoPipeline(context: context, upscaleEngine: UpscaleEngine(context: context))
     }
 
@@ -203,7 +206,7 @@ final class LocalPhotoPipelineTests: XCTestCase {
     }
 
     private func averageRGBA(for image: CIImage, crop: CGRect) throws -> (r: Double, g: Double, b: Double, a: Double) {
-        let context = CIContext()
+        let context = Self.sharedPipelineContext
         let extent = crop.integral
         let filter = CIFilter.areaAverage()
         filter.inputImage = image.cropped(to: extent)

@@ -128,7 +128,9 @@ final class OpenAIImageReconstructionService {
     }
 
     private func pixelSize(for inputURL: URL) -> CGSize {
-        guard let source = CGImageSourceCreateWithURL(inputURL as CFURL, nil),
+        // Optimización (optimize_code.md): solo se leen metadatos; sin decodificar ni cachear píxeles.
+        let options = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(inputURL as CFURL, options),
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let width = properties[kCGImagePropertyPixelWidth] as? CGFloat,
               let height = properties[kCGImagePropertyPixelHeight] as? CGFloat else {

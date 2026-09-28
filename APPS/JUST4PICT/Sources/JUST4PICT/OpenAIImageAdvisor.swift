@@ -210,7 +210,10 @@ final class OpenAIImageAdvisor {
 
     private static func makeAnalysisImageDataURL(inputURL: URL) throws -> String {
         let maxDimension = 1536
-        guard let source = CGImageSourceCreateWithURL(inputURL as CFURL, nil) else {
+        // Optimización (optimize_code.md): solo se necesita el thumbnail de análisis;
+        // no cachear la fuente completa.
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(inputURL as CFURL, sourceOptions) else {
             throw OpenAIAdvisorError.cannotPrepareImage(inputURL)
         }
 

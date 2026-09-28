@@ -8,6 +8,10 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
     private let aiDiagnosticEnvironmentKey = "JUST4PICT_RUN_AI_DIAGNOSTICS"
     private let upscaleDiagnosticEnvironmentKey = "JUST4PICT_RUN_UPSCALE_DIAGNOSTICS"
 
+    /// Optimización (optimize_code.md): un único contexto para toda la suite; antes se
+    /// creaba un `CIContext` nuevo en cada helper (compilación de shaders repetida).
+    private static let sharedDiagnosticContext = CIContext(options: [.cacheIntermediates: false])
+
     func testDetectsPortraitAndProducesMeasurableChangeForUserSample() throws {
         let inputURL = try primarySampleImageURL()
         guard FileManager.default.fileExists(atPath: inputURL.path) else {
@@ -1000,7 +1004,7 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
     }
 
     private func faceUpperDetailRegion(for url: URL) throws -> CGRect {
-        let analyzer = ImageAnalyzer(context: CIContext(options: [.cacheIntermediates: false]))
+        let analyzer = ImageAnalyzer(context: Self.sharedDiagnosticContext)
         let faces = analyzer.detectFaces(in: url)
         guard let face = faces.max(by: { $0.boundingBox.width * $0.boundingBox.height < $1.boundingBox.width * $1.boundingBox.height }) else {
             throw XCTSkip("No face detected in \(url.lastPathComponent)")
@@ -1087,7 +1091,7 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
         filter.inputImage = image
         filter.extent = sampleExtent
 
-        let context = CIContext(options: [.cacheIntermediates: false])
+        let context = Self.sharedDiagnosticContext
         var bitmap = [UInt8](repeating: 0, count: 4)
         context.render(
             filter.outputImage ?? image,
@@ -1134,7 +1138,7 @@ final class ImageEnhancerDiagnosticsTests: XCTestCase {
             )
         let edges = grayscale.applyingFilter("CIEdges", parameters: ["inputIntensity": 1.0])
 
-        let context = CIContext(options: [.cacheIntermediates: false])
+        let context = Self.sharedDiagnosticContext
         let filter = CIFilter.areaAverage()
         filter.inputImage = edges
         filter.extent = edges.extent.integral

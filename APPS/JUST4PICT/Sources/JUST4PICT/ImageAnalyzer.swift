@@ -214,7 +214,9 @@ final class ImageAnalyzer {
     }
 
     private func imagePixelSize(from inputURL: URL) -> CGSize? {
-        guard let source = CGImageSourceCreateWithURL(inputURL as CFURL, nil),
+        // Optimización (optimize_code.md): solo metadatos; evita decodificar la imagen completa.
+        let options = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(inputURL as CFURL, options),
               let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let width = props[kCGImagePropertyPixelWidth] as? CGFloat,
               let height = props[kCGImagePropertyPixelHeight] as? CGFloat
