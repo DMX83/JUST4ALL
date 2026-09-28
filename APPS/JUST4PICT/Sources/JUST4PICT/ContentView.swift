@@ -69,6 +69,10 @@ struct ContentView: View {
         AIResolutionEngine(advisor: openAIAdvisor, enhancer: enhancer)
     }
 
+    private var previewCoordinator: PreviewCoordinator {
+        PreviewCoordinator(processor: batchProcessor)
+    }
+
     init(
         initialFormat: OutputFormat = .preferredDefault,
         initialQuality: Double = OutputFormat.preferredQualityDefault
@@ -1312,12 +1316,13 @@ struct ContentView: View {
     }
 
     private func schedulePreviewRefresh() {
-        previewState.previewTask?.cancel()
-        let requestID = UUID()
-        previewState.previewRequestID = requestID
-        previewState.previewTask = Task {
-            await refreshPreview(requestID: requestID)
-        }
+        previewCoordinator.scheduleRefresh(
+            state: previewState,
+            aiState: aiState,
+            preset: preset,
+            mode: selectedMode,
+            log: { batchState.appendLog($0) }
+        )
     }
 
     @MainActor
@@ -1409,74 +1414,6 @@ struct ContentView: View {
         }
     }
 
-    @MainActor
-    private func refreshPreview(requestID: UUID) async {
-        guard let selectedPreviewURL = previewState.selectedPreviewURL else {
-            previewState.originalPreviewImage = nil
-            previewState.proPreviewImage = nil
-            previewState.aiPreviewImage = nil
-            previewState.previewNeedsRefresh = false
-            return
-        }
-
-        previewState.isGeneratingPreview = true
-
-        do {
-            guard let original = NSImage(contentsOf: selectedPreviewURL) else {
-                throw ImageEnhancerError.cannotLoadImage(selectedPreviewURL)
-            }
-            previewState.originalPreviewImage = original
-
-            let proPreview = try enhancer.enhancedPreviewImage(inputURL: selectedPreviewURL, preset: preset)
-            if Task.isCancelled || previewState.previewRequestID != requestID {
-                previewState.isGeneratingPreview = false
-                return
-            }
-            previewState.proPreviewImage = proPreview
-
-            if selectedMode == .reconstructAI {
-                let reconstructedPreview = try await openAIReconstruction.reconstructPreviewImage(
-                    inputURL: selectedPreviewURL,
-                    intent: batchProcessor.reconstructionIntent(
-                        for: selectedPreviewURL,
-                        preset: preset,
-                        sceneOverride: previewState.effectivePreviewScene
-                    )
-                )
-                if Task.isCancelled || previewState.previewRequestID != requestID {
-                    previewState.isGeneratingPreview = false
-                    return
-                }
-                previewState.aiPreviewImage = reconstructedPreview
-            } else if let aiTuningForRun = aiState.tuningForRun {
-                _ = batchProcessor.resolvedAIPrompt(for: selectedPreviewURL, preferredPrompt: aiState.promptHD)
-                let aiPreview = try enhancer.enhancedPreviewImage(
-                    inputURL: selectedPreviewURL,
-                    preset: preset,
-                    tuning: aiTuningForRun,
-                    faceRestoreStrength: aiState.recipeForRun?.faceRestore.flatMap { $0.enabled ? ($0.strength ?? 0.5) : nil },
-                    upscaleTargetLongSide: aiState.recipeForRun?.upscaleTargetLongSide,
-                    sceneOverride: aiState.recipeForRun?.mappedScene
-                )
-                if Task.isCancelled || previewState.previewRequestID != requestID {
-                    previewState.isGeneratingPreview = false
-                    return
-                }
-                previewState.aiPreviewImage = aiPreview
-            } else {
-                previewState.aiPreviewImage = nil
-            }
-            previewState.previewNeedsRefresh = false
-        } catch {
-            previewState.originalPreviewImage = nil
-            previewState.proPreviewImage = nil
-            previewState.aiPreviewImage = nil
-            appendLog("❌ Preview \(selectedPreviewURL.lastPathComponent): \(error.localizedDescription)")
-        }
-
-        previewState.isGeneratingPreview = false
-    }
-
     private func pickImages() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
@@ -1550,33 +1487,12 @@ struct ContentView: View {
 
     @MainActor
     private func preparePreviewForSelection() {
-        previewState.previewTask?.cancel()
-        previewState.previewNeedsRefresh = false
-        previewState.proPreviewImage = nil
-        previewState.aiPreviewImage = nil
-
-        guard let previewURL = previewState.selectedPreviewURL ?? inputFiles.first else {
-            previewState.originalPreviewImage = nil
-            previewState.effectivePreviewScene = nil
-            previewState.effectivePreviewPreset = .auto
-            return
-        }
-
-        if previewState.selectedPreviewURL == nil {
-            previewState.selectedPreviewURL = previewURL
-        }
-        previewState.originalPreviewImage = NSImage(contentsOf: previewURL)
-        previewState.effectivePreviewScene = enhancer.detectSceneType(inputURL: previewURL)
-        previewState.effectivePreviewPreset = enhancer.effectivePreset(for: preset, inputURL: previewURL)
-        previewState.previewNeedsRefresh = true
+        previewCoordinator.prepareForSelection(state: previewState, files: inputFiles, preset: preset)
     }
 
     @MainActor
     private func invalidateProcessedPreview() {
-        previewState.previewTask?.cancel()
-        previewState.proPreviewImage = nil
-        previewState.aiPreviewImage = nil
-        previewState.previewNeedsRefresh = previewState.selectedPreviewURL != nil || !inputFiles.isEmpty
+        previewCoordinator.invalidate(state: previewState, hasPendingInput: !inputFiles.isEmpty)
     }
 
     private func collectImages(in folder: URL) throws -> [URL] {
