@@ -271,6 +271,7 @@ final class SearchViewModel: ObservableObject {
         startSemanticBackfillIfNeeded()
         await refreshSemanticStatus()
         startContentBackfillIfNeeded()
+        await BackfillStatusModel.shared.refreshCounts()
     }
 
     /// Deja en el registro la configuración activa al arrancar.
@@ -301,6 +302,11 @@ final class SearchViewModel: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self, self.simulationMode != value else { return }
                 self.simulationMode = value
+            }
+        }
+        observe(.j4iRequestBackfillNow) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.runBackfillsNow()
             }
         }
         observe(.j4iSetPaused) { [weak self] note in
@@ -1159,9 +1165,12 @@ final class SearchViewModel: ObservableObject {
     private func startSemanticBackfillIfNeeded() {
         guard backfillTask == nil, let embedder = ensureEmbedder() else { return }
         lastBackfillKick = Date()
+        BackfillStatusModel.shared.isSemanticRunning = true
         backfillTask = Task { [weak self] in
             guard let self else { return }
             await self.runSemanticBackfill(embedder: embedder, maxBatches: Int.max)
+            BackfillStatusModel.shared.isSemanticRunning = false
+            await BackfillStatusModel.shared.refreshCounts()
             self.backfillTask = nil
         }
     }
@@ -1240,7 +1249,17 @@ final class SearchViewModel: ObservableObject {
     /// G7.3 — re-extracción de contenido: recupera el texto de documentos que quedaron sin él
     /// (p. ej. huérfanos de reindexados anteriores). Una pasada acotada por sesión, en segundo plano.
     private func startContentBackfillIfNeeded() {
+        startContentBackfill(manual: false)
+    }
+
+    /// Rellenos a petición desde Ajustes → Indexado («Rellenar ahora»).
+    func runBackfillsNow() {
+        startContentBackfill(manual: true)
+    }
+
+    private func startContentBackfill(manual: Bool) {
         guard contentBackfillTask == nil else { return }
+        BackfillStatusModel.shared.isContentRunning = true
         contentBackfillTask = Task { [weak self] in
             guard let self else { return }
             let swept = (try? await self.index.sweepOrphanContent()) ?? 0
@@ -1254,14 +1273,21 @@ final class SearchViewModel: ObservableObject {
             let outcome = await Task.detached(priority: .utility) {
                 await ContentBackfill.runOnce(index: SearchIndex.shared, limit: 400) { Task.isCancelled }
             }.value
+            BackfillStatusModel.shared.recordContentRun(outcome)
             if outcome.processed > 0 {
                 J4Log.info(.index, "Contenido re-extraído: \(outcome.extracted) texto(s) · \(outcome.empty) sin texto · \(outcome.missing) ausente(s).")
                 // Con textos nuevos, los vectores de contenido suben de calidad: rellena ya.
                 self.startSemanticBackfillIfNeeded()
             } else {
                 J4Log.debug(.index, "Contenido: nada pendiente de re-extraer.")
+                if manual {
+                    // A petición: aunque no hubiera textos nuevos, empuja los vectores pendientes.
+                    self.startSemanticBackfillIfNeeded()
+                }
             }
             await self.refreshSemanticStatus()
+            await BackfillStatusModel.shared.refreshCounts()
+            BackfillStatusModel.shared.isContentRunning = false
             self.contentBackfillTask = nil
         }
     }

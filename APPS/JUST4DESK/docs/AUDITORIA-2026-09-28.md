@@ -70,6 +70,7 @@ en tests** (deuda 5): la causa era que SwiftPM no define las variables de XCTest
 `J4ICoreTests` a `PACKAGES/J4SHARED` (**116** allí). El «211» de la sección 1 sumaba tests ya
 movidos. Estado global hoy: DESK 125 + J4SHARED 116 + FOLDERS 43 = **284 en verde**.
 
-**Deudas vivas**: DMG firmado/notarizado + Quick Action de Finder (N6 empaquetado; con licencia),
-**UI de estado de los rellenos** (contenido/vectores en Ajustes), accesibilidad/icono y
-densidad/animaciones (F15.x).
+**Deuda #3 resuelta (28-sep, tarde)**: Ajustes → Indexado muestra el estado de los rellenos
+(contenido/vectores, última pasada) con «Rellenar ahora»; validado en vivo (manual → semántica
+3950/3950). Deudas vivas: DMG firmado/notarizado + Quick Action (N6; firma con licencia),
+accesibilidad/icono y densidad/animaciones (F15.x).

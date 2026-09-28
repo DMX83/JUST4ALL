@@ -99,6 +99,11 @@
   (`NSClassFromString("XCTestCase")`) verificado por mtime/tamaño. Conteo de suite corregido:
   DESK **125** + J4SHARED **116** + FOLDERS 43 = **284 en verde** (los 211/215 previos incluían
   `J4ICoreTests`, movidos a J4SHARED en 19d3d5e).
+- (28-sep, tarde-2) **Rellenos visibles en Ajustes → Indexado**: tarjeta con contenido (con/sin
+  texto · pendientes), vectores (de N ficheros · con contenido), última pasada y «Rellenar ahora»
+  (`j4iRequestBackfillNow` → `SearchViewModel.runBackfillsNow()`; el manual empuja también
+  vectores). Estado compartido en `BackfillStatusModel` (app); `J4IIndex` gana `contentStats` y
+  `semanticTotals` (+3 tests). Validado en vivo: manual → semántica 3950/3950.
 - Pendiente: **QA manual del usuario** (DMG real + flujo end-to-end con documentos reales).
 
 ## Decisiones clave
@@ -707,6 +712,15 @@
   mtime/tamaño del log real durante `ContentBackfillTests` (antes crecía, ahora no).
 - Conteo corregido tras el refactor 19d3d5e: DESK **125** + J4SHARED **116** + FOLDERS 43 =
   **284 verdes** (los 211/215 previos contaban doble los `J4ICoreTests` movidos a `PACKAGES/J4SHARED`).
+
+### 2026-09-28 (tarde-2) — Rellenos del índice visibles en Ajustes
+
+- `BackfillStatusModel` (app) + tarjeta «Rellenos del índice» en Ajustes → Indexado con
+  «Rellenar ahora»; el manual re-ejecuta contenido y empuja la vectorización completa.
+- `J4IIndex`: `contentStats(extensions:)` y `semanticTotals()` (+3 tests en `ContentStatsTests`).
+- Validación en vivo: tarjeta con datos reales (340 con texto · 1 sin texto · 0 pendientes ·
+  3950/3950 vectores) y corrida manual completa desde el botón.
+- Suite: DESK 125 · J4SHARED 119 · FOLDERS 43 — 0 fallos.
 
 ## Lecciones y trampas
 

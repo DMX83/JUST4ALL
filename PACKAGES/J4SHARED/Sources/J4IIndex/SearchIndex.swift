@@ -400,6 +400,45 @@ public actor SearchIndex {
         return (embedded, files)
     }
 
+    /// G7.3 — conteos del relleno de contenido para la UI de estado (Ajustes → Indexado).
+    public struct ContentStats: Sendable, Equatable {
+        public let withText: Int64
+        public let attemptedEmpty: Int64
+        public let pending: Int64
+
+        public init(withText: Int64, attemptedEmpty: Int64, pending: Int64) {
+            self.withText = withText
+            self.attemptedEmpty = attemptedEmpty
+            self.pending = pending
+        }
+    }
+
+    public func contentStats(extensions: [String]) throws -> ContentStats {
+        try openIfNeeded()
+        let withText = try scalarInt64("SELECT COUNT(*) FROM doc_text WHERE length(trim(text)) > 0;", []) ?? 0
+        let attemptedEmpty = try scalarInt64("SELECT COUNT(*) FROM doc_text WHERE length(trim(text)) = 0;", []) ?? 0
+        var pending: Int64 = 0
+        if !extensions.isEmpty {
+            let placeholders = Array(repeating: "?", count: extensions.count).joined(separator: ",")
+            let sql = """
+            SELECT COUNT(*) FROM entries e
+            LEFT JOIN doc_text dt ON dt.entry_id = e.id
+            WHERE e.is_dir = 0 AND dt.entry_id IS NULL AND lower(e.ext) IN (\(placeholders));
+            """
+            pending = try scalarInt64(sql, extensions.map { .text($0) }) ?? 0
+        }
+        return ContentStats(withText: withText, attemptedEmpty: attemptedEmpty, pending: pending)
+    }
+
+    /// Totales de vectores (cualquier modelo): total, de contenido y ficheros indexados.
+    public func semanticTotals() throws -> (embedded: Int64, contentEmbedded: Int64, files: Int64) {
+        try openIfNeeded()
+        let embedded = try scalarInt64("SELECT COUNT(*) FROM embeddings;", []) ?? 0
+        let contentEmbedded = try scalarInt64("SELECT COUNT(*) FROM embeddings WHERE source = 'content';", []) ?? 0
+        let files = try scalarInt64("SELECT COUNT(*) FROM entries WHERE is_dir = 0;", []) ?? 0
+        return (embedded, contentEmbedded, files)
+    }
+
     /// Mejores aciertos por similitud semántica (producto punto; `queryVector` normalizado).
     /// Con `contentOnly` solo puntúan los vectores construidos con el texto del documento
     /// (los de nombre se reservan a otras funciones: en corpus cortos añaden más ruido que señal).

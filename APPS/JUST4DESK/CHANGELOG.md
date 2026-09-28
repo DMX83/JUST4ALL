@@ -8,6 +8,14 @@ Convención por version + build stamp:
 
 ## [Unreleased] — 2026-09-24
 
+### Added — Auditoría 28-sep (tarde): rellenos en Ajustes
+
+- Ajustes → Indexado: tarjeta **«Rellenos del índice»** — contenido (con/sin texto · pendientes),
+  vectores (de N ficheros · con contenido), última pasada de la sesión y botón **«Rellenar ahora»**
+  (re-extrae textos pendientes y vectoriza sin esperar al próximo arranque).
+- `J4IIndex`: `contentStats(extensions:)` y `semanticTotals()` (+3 tests).
+- `J4Log`: los tests ya no escriben en el registro real (guard para SwiftPM).
+
 ### Added
 
 - Scaffold inicial: paquete SPM con módulos `J4ICore`, `J4IIndex`, `J4IDocs`, `J4IAI`, `J4IFiling`

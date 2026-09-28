@@ -47,6 +47,7 @@ extension Notification.Name {
     static let j4iRequestOpenSettings = Notification.Name("j4i.requestOpenSettings")
     /// Ajustes → añadir carpeta al índice (sin object).
     static let j4iRequestAddRoot = Notification.Name("j4i.requestAddRoot")
+    static let j4iRequestBackfillNow = Notification.Name("j4i.requestBackfillNow")
     /// Ajustes → reindexar una carpeta (object: Int64 rootID).
     static let j4iRequestRootReindex = Notification.Name("j4i.requestRootReindex")
     /// Ajustes → quitar una carpeta del índice (object: Int64 rootID).

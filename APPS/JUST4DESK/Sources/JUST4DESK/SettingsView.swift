@@ -418,6 +418,9 @@ private struct IndexSettingsView: View {
                     .controlSize(.small)
                 }
                 .listStyle(.inset)
+                BackfillStatusCard()
+                    .padding(.horizontal, J4I.Space.m)
+                    .padding(.top, J4I.Space.s)
             }
             Divider()
             HStack(spacing: J4I.Space.s) {
@@ -433,6 +436,7 @@ private struct IndexSettingsView: View {
         .task {
             while !Task.isCancelled {
                 await reload()
+                await BackfillStatusModel.shared.refreshCounts()
                 try? await Task.sleep(for: .seconds(2))
             }
         }
@@ -461,6 +465,56 @@ private struct IndexSettingsView: View {
         case .crawling: return "indexando"
         case .ready: return "listo"
         case .failed: return "error"
+        }
+    }
+}
+
+// MARK: - Estado de los rellenos (auditoría 28-sep, deuda #3)
+
+private struct BackfillStatusCard: View {
+    @ObservedObject private var status = BackfillStatusModel.shared
+
+    var body: some View {
+        SettingsCard(title: "Rellenos del índice", systemImage: "arrow.triangle.2.circlepath") {
+            SettingsRow(
+                title: "Contenido",
+                subtitle: "Textos extraídos de documentos (PDF/OCR, docx, xlsx…)"
+            ) {
+                Text("\(status.counts.contentWithText) con texto · \(status.counts.contentAttemptedEmpty) sin texto · \(status.counts.contentPending) pendientes")
+                    .font(.system(size: 11.5))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            SettingsRow(
+                title: "Vectores",
+                subtitle: "Semántica local por documento (sin salir del Mac)"
+            ) {
+                Text("\(status.counts.embedded) de \(status.counts.files) ficheros · \(status.counts.embeddedContent) con contenido")
+                    .font(.system(size: 11.5))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            if let at = status.lastRunAt {
+                Text("Última pasada (esta sesión, \(at.formatted(date: .omitted, time: .shortened))): \(status.lastExtracted) extraídos · \(status.lastEmpty) sin texto · \(status.lastMissing) ausentes")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.tertiary)
+            }
+            HStack(spacing: J4I.Space.s) {
+                if status.isRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(status.isContentRunning ? "Rellenando contenido…" : "Vectorizando documentos…")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Rellenar ahora") {
+                    NotificationCenter.default.post(name: .j4iRequestBackfillNow, object: nil)
+                }
+                .controlSize(.small)
+                .disabled(status.isRunning)
+                .help("Re-extrae textos pendientes y vectoriza documentos sin esperar al próximo arranque")
+            }
         }
     }
 }
