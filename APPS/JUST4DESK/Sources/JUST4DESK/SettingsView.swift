@@ -523,6 +523,7 @@ private struct BackfillStatusCard: View {
 
 private struct AboutSettingsView: View {
     @State private var hasAIKey = false
+    @AppStorage("j4i.listDensity") private var listDensity: J4I.ListDensity = .comfortable
 
     var body: some View {
         ScrollView {
@@ -552,6 +553,21 @@ private struct AboutSettingsView: View {
                             .truncationMode(.middle)
                     }
                 }
+                SettingsCard(title: "Apariencia", systemImage: "rectangle.compress.vertical") {
+                    SettingsRow(
+                        title: "Densidad de las listas",
+                        subtitle: "Resultados de búsqueda, explorador y «Por revisar»"
+                    ) {
+                        Picker("", selection: $listDensity) {
+                            ForEach(J4I.ListDensity.allCases) { option in
+                                Text(option.label).tag(option)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                }
                 SettingsCard(title: "Atajos", systemImage: "keyboard") {
                     HStack(spacing: J4I.Space.l) {
                         KeycapBadge(keys: "⌘E", label: "Explorador")
@@ -576,6 +592,14 @@ private struct AboutSettingsView: View {
                         }
                     }
                     .controlSize(.small)
+                }
+                SettingsCard(title: "Créditos", systemImage: "person.2") {
+                    Text("Hecho por dmx83 · Motores compartidos J4SHARED (índice J4IIndex, núcleo J4ICore)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Text("Servidor MCP incluido para agentes (docs/MCP.md) · Icono provisional generado (28-sep)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(J4I.Space.l)

@@ -17,6 +17,8 @@ import J4IIndex
 struct ExplorerView: View {
     @StateObject private var model = ExplorerViewModel()
     @State private var moveRequest: MoveRequest?
+    @AppStorage("j4i.listDensity") private var listDensity: J4I.ListDensity = .comfortable
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Petición de «Mover a…» con buscador de destino (F13.0).
     private struct MoveRequest: Identifiable {
@@ -39,6 +41,7 @@ struct ExplorerView: View {
             }
         }
         .frame(minWidth: 760, minHeight: 480)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: model.currentPath)
         .background(WindowAccessor { window in
             model.attachWindow(window)
         })
@@ -275,11 +278,11 @@ struct ExplorerView: View {
             if let count = model.folderStats[node.id]?.fileCount {
                 Text("\(count)")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.leading, CGFloat(row.depth) * 12)
-        .padding(.vertical, 3)
+        .padding(.vertical, listDensity.scaled(3))
         .padding(.horizontal, 6)
         .background(
             RoundedRectangle(cornerRadius: J4I.Radius.small, style: .continuous)
@@ -292,6 +295,10 @@ struct ExplorerView: View {
         .contentShape(Rectangle())
         .onTapGesture { model.navigateToNode(node) }
         .hoverHighlight(cornerRadius: J4I.Radius.small, intensity: 0.05)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(node.entry.name), carpeta")
+        .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
+        .accessibilityAction { model.navigateToNode(node) }
         .contextMenu {
             Button("Abrir") { model.navigateToNode(node) }
             Button("Mostrar en Finder") { model.reveal(node.entry) }
@@ -355,14 +362,14 @@ struct ExplorerView: View {
                             if let modified = file.modifiedAt {
                                 Text(modified, format: .dateTime.day().month().year())
                                     .font(.caption)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.secondary)
                             }
                             Text(ByteCountFormatter.string(fromByteCount: file.sizeBytes, countStyle: .file))
                                 .font(.caption)
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(.secondary)
                                 .frame(width: 80, alignment: .trailing)
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, listDensity.scaled(2))
                         .padding(.horizontal, 6)
                         .background(
                             RoundedRectangle(cornerRadius: J4I.Radius.small, style: .continuous)
@@ -372,6 +379,10 @@ struct ExplorerView: View {
                         .onTapGesture(count: 2) { model.open(file) }
                         .onTapGesture { model.handleFileClick(file) }
                         .hoverHighlight(cornerRadius: J4I.Radius.small, intensity: 0.05)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(accessibilityLabel(for: file))
+                        .accessibilityAddTraits(model.selectedFileIDs.contains(file.id) ? [.isSelected] : [])
+                        .accessibilityAction { model.open(file) }
                         .contextMenu {
                             Button("Abrir") { model.open(file) }
                             Button("Mostrar en Finder") { model.reveal(file) }
@@ -389,6 +400,17 @@ struct ExplorerView: View {
                 .listStyle(.inset)
             }
         }
+    }
+
+    private func accessibilityLabel(for file: IndexEntry) -> String {
+        var parts = [file.name]
+        if file.sizeBytes > 0 {
+            parts.append(ByteCountFormatter.string(fromByteCount: file.sizeBytes, countStyle: .file))
+        }
+        if let modified = file.modifiedAt {
+            parts.append(modified.formatted(date: .abbreviated, time: .omitted))
+        }
+        return parts.joined(separator: ", ")
     }
 
     private var filesHeaderLabel: String {

@@ -29,6 +29,28 @@ enum J4I {
         static let large: CGFloat = 14
     }
 
+    // MARK: - Densidad de listas (F15.x)
+
+    /// Densidad configurable de las listas principales (búsqueda, explorador, «Por revisar»).
+    enum ListDensity: String, CaseIterable, Identifiable {
+        case comfortable
+        case compact
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .comfortable: return "Cómoda"
+            case .compact: return "Compacta"
+            }
+        }
+
+        /// Ajusta un padding vertical base (filas) a la densidad activa.
+        func scaled(_ base: CGFloat) -> CGFloat {
+            self == .comfortable ? base : max(1, base - 2)
+        }
+    }
+
     // MARK: - Colores
 
     /// Color de marca (índigo del sistema; se adapta a claro/oscuro).

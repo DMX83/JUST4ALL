@@ -48,6 +48,9 @@ struct ReviewView: View {
         }
     }
 
+    @AppStorage("j4i.listDensity") private var listDensity: J4I.ListDensity = .comfortable
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var content: some View {
         VStack(spacing: 0) {
             toolbar
@@ -64,6 +67,8 @@ struct ReviewView: View {
             Divider()
             statusBar
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: model.selection.isEmpty)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: model.items.count)
         .confirmationDialog(
             pendingSplitItem.map { "¿Desglosar «\($0.name)» y clasificar sus elementos por separado?" } ?? "",
             isPresented: Binding(
@@ -255,7 +260,7 @@ struct ReviewView: View {
                 .disabled(item.destination == nil)
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, listDensity.scaled(3))
         .hoverHighlight(intensity: 0.05)
         .tag(item.id)
         .contextMenu {

@@ -9,6 +9,8 @@ struct SearchResultRow: View {
     let terms: [String]
     let onOpen: () -> Void
 
+    @AppStorage("j4i.listDensity") private var listDensity: J4I.ListDensity = .comfortable
+
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
             Image(nsImage: ResultIconCache.icon(for: hit.entry))
@@ -67,14 +69,26 @@ struct SearchResultRow: View {
                 if let modified = hit.entry.modifiedAt {
                     Text(Self.dateText(modified))
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, listDensity.scaled(4))
         .hoverHighlight(cornerRadius: 7, intensity: 0.05)
         .contentShape(Rectangle())
         .onTapGesture(count: 2, perform: onOpen)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint("Doble clic para abrir")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { onOpen() }
+    }
+
+    private var accessibilityLabel: String {
+        if hit.entry.isDirectory {
+            return "\(hit.entry.name), carpeta"
+        }
+        return "\(hit.entry.name), \(Self.sizeText(hit.entry.sizeBytes))"
     }
 
     // MARK: - Formato

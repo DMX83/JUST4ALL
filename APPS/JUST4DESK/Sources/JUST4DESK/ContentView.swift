@@ -9,6 +9,7 @@ import J4IIndex
 /// filtros por tipo, scope por carpeta, búsqueda en contenido y acciones en menú contextual.
 /// Comparte el mismo `SearchViewModel` con «Inicio» (arranque idempotente).
 struct ContentView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var viewModel: SearchViewModel
     @State private var showLogViewer = false
     @State private var showRootMenu = false
@@ -143,7 +144,7 @@ struct ContentView: View {
                     radius: searchFocused ? 7 : 4,
                     y: 1
                 )
-                .animation(.easeOut(duration: 0.15), value: searchFocused)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: searchFocused)
             }
 
             if let label = viewModel.indexingLabel {

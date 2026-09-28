@@ -16,6 +16,7 @@ struct HomeView: View {
     @EnvironmentObject private var viewModel: SearchViewModel
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var showLogViewer = false
     @State private var pendingSuggestion: ProactiveSuggestion?
@@ -275,7 +276,7 @@ struct HomeView: View {
                 )
         )
         .shadow(color: omniFocused ? J4I.brand.opacity(0.18) : J4I.cardShadow, radius: omniFocused ? 7 : 4, y: 1)
-        .animation(.easeOut(duration: 0.15), value: omniFocused)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: omniFocused)
     }
 
     /// Enter: abre el primer resultado; sin resultados, abre la ventana «Buscar».
