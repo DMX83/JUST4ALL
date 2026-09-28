@@ -55,7 +55,9 @@
   «Deshacer última ordenación» (⌥⌘Z) que restaura los ficheros a su sitio.
 - [ ] Clasificación con IA (DeepSeek de DESK) como mejora de la propuesta por reglas.
 - [ ] Búsqueda semántica en el panel (embeddings del índice).
-- [ ] Folder formats (vista por carpeta) y temas.
+- [x] **Folder formats** (v2.0): cada carpeta recuerda su vista — aplanada, columna/dirección de
+  orden y ficheros ocultos — y se restaura al navegar de vuelta (`FolderFormatStore`, JSON con
+  LRU de 500 carpetas; «Olvidar formato de esta carpeta» en el menú contextual). Temas: pendiente.
 
 ## MVP-0 — Fundaciones
 

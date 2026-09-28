@@ -49,7 +49,7 @@ Leyenda: ✅ hecho · 🟡 en curso/parcial · 🔴 pendiente · ➕ ventaja nue
 | Visor / preview | 🟡 QuickLook fácil | ✅ QuickLook | integrar |
 | Labels/tags/ratings | ✅ etiquetas Finder **(v1.2)** | 🟡 (etiquetas Finder, G5.1) | color por fila + toggle |
 | Colores/grupos/estados | ✅ colores por etiqueta **(v1.2)** | — | grupos/estados pendientes |
-| Folder formats / temas | 🔴 | — | v2.0 (guardar estado por carpeta) |
+| Folder formats / temas | ✅ formats **(28-sep, v2.0)**; temas pendientes | — | aplanada + orden + ocultos por carpeta |
 | Toolbars/hotkeys configurables | 🟡 (toolbar fija) | — | v2.0 |
 | Scripting/extensibilidad | 🔴 | ➕ **MCP** (agentes) | ➕ Shortcuts/JXA/MCP > scripting propietario |
 | Cálculo de tamaños de carpeta | ✅ background **(v1.2)** | — | caché LRU + invalidación watcher |
@@ -100,6 +100,9 @@ IA + automatización por agentes**. Ese es el moat.
   ni borra), diario JSON y «Deshacer última ordenación» (⌥⌘Z). Sin IA todavía: reglas locales
   (nombre → extensión), el mismo fallback determinista de DESK.
 - Búsqueda **semántica** («los papeles del seguro del coche») y chat del archivo en el panel.
+- ✅ **Folder formats (28-sep):** cada carpeta recuerda su vista (aplanada, orden por columna y
+  ocultos) y se restaura al volver (`J4FOps.FolderFormatStore`, JSON con LRU de 500 carpetas);
+  «Olvidar formato de esta carpeta» en el menú contextual. Temas: pendiente.
 - **Folder formats** (vista por carpeta) y temas.
 - Toolbars/hotkeys configurables + **acciones MCP** (agentes de IA operando el gestor).
 - Quick Action de Finder / servicios del sistema (integración con el Finder de macOS).

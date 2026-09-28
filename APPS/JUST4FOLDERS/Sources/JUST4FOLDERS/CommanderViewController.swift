@@ -1900,6 +1900,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private let tagColorCache = NSCache<NSString, NSNumber>()
     /// v1.2 — carpetas cuyo tamaño se está calculando ya (evita peticiones repetidas).
     private var folderSizeRequests: Set<String> = []
+    /// v2.0 — formatos por carpeta (aplanada/orden/ocultos, estilo Directory Opus).
+    private let folderFormatStore = FolderFormatStore.shared
+    private var isRestoringFormat = false
+    private var didApplyInitialFormat = false
     private var includeHiddenFiles = false
     private var isActivePanel = false
 
@@ -2213,6 +2217,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     func setIncludeHidden(_ includeHidden: Bool) {
         guard includeHiddenFiles != includeHidden else { return }
         includeHiddenFiles = includeHidden
+        saveFormat()
         loadDirectory(currentURL, pushHistory: false)
     }
 
@@ -2486,6 +2491,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         menu.addItem(withTitle: "Renombrar en lote…", action: #selector(contextBatchRename), keyEquivalent: "")
         menu.addItem(withTitle: "Buscar duplicados…", action: #selector(contextFindDuplicates), keyEquivalent: "")
         menu.addItem(withTitle: "Ordenar esta carpeta…", action: #selector(contextOrderFolder), keyEquivalent: "")
+        menu.addItem(withTitle: "Olvidar formato de esta carpeta", action: #selector(contextForgetFolderFormat), keyEquivalent: "")
         for item in menu.items {
             item.target = self
         }
@@ -2505,6 +2511,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     private func loadDirectory(_ url: URL, pushHistory: Bool) {
+        // v2.0 — folder formats: al navegar (o en la primera carga) se restaura la vista guardada.
+        if url != currentURL || !didApplyInitialFormat {
+            didApplyInitialFormat = true
+            restoreFormat(for: url)
+        }
         if flatView {
             loadFlatView(url, pushHistory: pushHistory)
             return
@@ -2606,10 +2617,50 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             flatRows.removeAll(keepingCapacity: true)
             loadDirectory(currentURL, pushHistory: false)
         }
+        saveFormat()
     }
 
     @objc private func toggleFlatViewAction() {
         setFlatView(flatToggleButton.state == .on)
+    }
+
+    // MARK: - Folder formats (v2.0: recordar la vista por carpeta)
+
+    /// Restaura el formato guardado de una carpeta (sin disparar guardados intermedios).
+    private func restoreFormat(for url: URL) {
+        guard let format = folderFormatStore.format(for: url.standardizedFileURL.path) else { return }
+        isRestoringFormat = true
+        defer { isRestoringFormat = false }
+
+        sortColumn = format.sortColumn
+        ascending = format.ascending
+        tableView.sortDescriptors = [NSSortDescriptor(key: format.sortColumn, ascending: format.ascending)]
+        includeHiddenFiles = format.includeHidden
+        if flatView != format.flatView {
+            flatView = format.flatView
+            flatToggleButton.state = format.flatView ? .on : .off
+        }
+    }
+
+    /// Guarda el formato actual del panel para su carpeta (tras cambios del usuario).
+    private func saveFormat() {
+        guard !isRestoringFormat else { return }
+        folderFormatStore.set(
+            FolderFormat(
+                flatView: flatView,
+                sortColumn: sortColumn,
+                ascending: ascending,
+                includeHidden: includeHiddenFiles
+            ),
+            for: currentURL.standardizedFileURL.path
+        )
+    }
+
+    /// Olvida el formato guardado de la carpeta actual (menú contextual).
+    @objc private func contextForgetFolderFormat() {
+        activatePanel()
+        folderFormatStore.remove(for: currentURL.standardizedFileURL.path)
+        onStatus?("Formato olvidado para \(currentURL.path).")
     }
 
     /// Carga aplanada: consulta el índice (crawl cooperativo si la carpeta no está lista) y
@@ -2884,6 +2935,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         sortColumn = descriptor.key ?? "name"
         ascending = descriptor.ascending
         applySortAndReload()
+        saveFormat()
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
