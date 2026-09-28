@@ -13,7 +13,7 @@ import J4IIndex
 /// PDFKit + OCR de respaldo, texto plano, rtf y docx) y el mismo tope de texto indexado.
 public enum ContentBackfill {
     /// Extensiones con extractor local disponible.
-    public static let supportedExtensions: [String] = ["pdf", "txt", "md", "csv", "rtf", "docx"]
+    public static let supportedExtensions: [String] = ["pdf", "txt", "md", "csv", "rtf", "docx", "xlsx"]
 
     public struct Outcome: Sendable, Equatable {
         public let extracted: Int

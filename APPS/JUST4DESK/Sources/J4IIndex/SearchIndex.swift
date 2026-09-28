@@ -726,6 +726,31 @@ public actor SearchIndex {
         return hits
     }
 
+    /// N8 — Listado por filtros sin término de texto (`ext:pdf fecha:2026-09` a solas):
+    /// entradas que cumplen los filtros, las más recientes primero (fecha de modificación).
+    /// Sin MATCH: no hay término que buscar; el filtro es toda la consulta.
+    public func listByFilters(filters: IndexSearchFilters, limit: Int = 300) throws -> [IndexSearchHit] {
+        try openIfNeeded()
+        let filterParts = filterClauses(filters)
+        var sql = """
+        SELECT e.id, e.root_id, e.path, e.name, e.ext, e.is_dir, e.size_bytes, e.modified_ts, 0.0
+        FROM entries e
+        """
+        if !filterParts.clauses.isEmpty {
+            sql += " WHERE " + filterParts.clauses.joined(separator: " AND ")
+        }
+        sql += " ORDER BY COALESCE(e.modified_ts, 0) DESC, e.id DESC LIMIT ?;"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar el listado por filtros.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        try bind(stmt, filterParts.binds + [.int(Int64(max(1, min(limit, 5_000))))])
+        return try collectEntries(stmt).map {
+            IndexSearchHit(entry: $0.0, score: $0.1, matchedContent: false, contentSnippet: nil)
+        }
+    }
+
     private func queryEntries(match: String, filters: IndexSearchFilters, limit: Int) throws -> [(IndexEntry, Double)] {
         let filterParts = filterClauses(filters)
         var sql = """

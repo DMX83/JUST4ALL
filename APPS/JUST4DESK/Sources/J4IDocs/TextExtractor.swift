@@ -50,6 +50,14 @@ public enum TextExtractor {
                 usedOCR: false,
                 hasTextLayer: true
             )
+        case "xlsx":
+            guard let text = xlsxText(url: url) else { return nil }
+            return ExtractionResult(
+                text: String(text.prefix(maxCharacters)),
+                pageCount: nil,
+                usedOCR: false,
+                hasTextLayer: true
+            )
         case "png", "jpg", "jpeg", "heic", "heif", "tiff", "tif", "bmp", "gif", "webp":
             guard let text = ocrImage(url: url) else { return nil }
             return ExtractionResult(
@@ -165,6 +173,47 @@ public enum TextExtractor {
         text = text.replacingOccurrences(of: "&apos;", with: "'")
         text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return text.isEmpty ? nil : text
+    }
+
+    // MARK: - xlsx
+
+    /// Texto de un xlsx: cadenas compartidas (`sharedStrings.xml`) + textos en línea de la
+    /// primera hoja. Suficiente para la búsqueda por contenido (no reconstruye la tabla).
+    static func xlsxText(url: URL) -> String? {
+        var pieces: [String] = []
+        if let shared = shellUnzip(url: url, entry: "xl/sharedStrings.xml") {
+            pieces.append(contentsOf: textsFromXLSX(xml: shared))
+        }
+        if let sheet = shellUnzip(url: url, entry: "xl/worksheets/sheet1.xml") {
+            pieces.append(contentsOf: textsFromXLSX(xml: sheet))
+        }
+        let joined = pieces.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return joined.isEmpty ? nil : joined
+    }
+
+    /// Extrae el contenido de los elementos `<t>…</t>` (cadenas compartidas o en línea) y los
+    /// des-escapa. Cada texto queda en su propia línea.
+    static func textsFromXLSX(xml: String) -> [String] {
+        var results: [String] = []
+        guard let regex = try? NSRegularExpression(pattern: "<t[^>]*>(.*?)</t>", options: [.dotMatchesLineSeparators]) else {
+            return []
+        }
+        let ns = xml as NSString
+        for match in regex.matches(in: xml, range: NSRange(location: 0, length: ns.length)) {
+            guard match.numberOfRanges > 1 else { continue }
+            let text = unescapeXML(ns.substring(with: match.range(at: 1))).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty { results.append(text) }
+        }
+        return results
+    }
+
+    private static func unescapeXML(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&apos;", with: "'")
+            .replacingOccurrences(of: "&amp;", with: "&")
     }
 
     private static func shellUnzip(url: URL, entry: String) -> String? {

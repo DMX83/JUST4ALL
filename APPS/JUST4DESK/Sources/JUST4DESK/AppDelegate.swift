@@ -55,6 +55,15 @@ final class J4IAppDelegate: NSObject, NSApplicationDelegate {
                 J4Log.debug(.app, "Atajo ⇧⌘K: chat del archivo.")
                 NotificationCenter.default.post(name: .j4iOpenChat, object: nil)
                 return nil
+            case "z" where !flags.contains(.shift):
+                // N8 — ⌘Z global: deshacer el último archivado. Durante la edición de texto
+                // (campo de búsqueda, chat, registro) se deja pasar para conservar el undo nativo.
+                if event.window?.firstResponder is NSTextView {
+                    return event
+                }
+                J4Log.debug(.app, "Atajo ⌘Z: deshacer el último archivado.")
+                NotificationCenter.default.post(name: .j4iUndoLast, object: nil)
+                return nil
             case ",":
                 J4Log.debug(.app, "Atajo ⌘,: abrir ajustes.")
                 self.openSettings()

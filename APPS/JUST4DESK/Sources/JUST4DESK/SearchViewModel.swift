@@ -170,7 +170,8 @@ final class SearchViewModel: ObservableObject {
     }
 
     var highlightTerms: [String] {
-        trimmedQuery.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        // N8: los operadores (ext:, tipo:, fecha:) no son texto a resaltar.
+        SearchQueryParser.parse(trimmedQuery).text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
     }
 
     var totalIndexedEntries: Int64 {
@@ -364,6 +365,11 @@ final class SearchViewModel: ObservableObject {
             guard let files = note.object as? [URL], !files.isEmpty else { return }
             Task { @MainActor [weak self] in
                 self?.ingestSentFiles(files)
+            }
+        }
+        observe(.j4iUndoLast) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.undoLast()
             }
         }
     }
@@ -921,15 +927,22 @@ final class SearchViewModel: ObservableObject {
     /// Tope de ficheros por operación de etiquetado (seguridad y feedback acotado).
     static let tagFileLimit = 500
 
-    /// Ficheros de una colección (solo ficheros) para el etiquetado.
+    /// Ficheros de una colección (solo ficheros) para el etiquetado. N8: la consulta de la
+    /// colección admite los mismos operadores que el buscador (`ext:`/`tipo:`/`fecha:`).
     func collectionFiles(_ collection: SavedCollection, limit: Int = SearchViewModel.tagFileLimit) async -> [String] {
-        let request = IndexSearchRequest(
-            query: collection.query,
-            filters: IndexSearchFilters(),
-            limit: limit,
-            includeContent: false
-        )
-        let hits = (try? await index.search(request)) ?? []
+        let parsed = SearchQueryParser.parse(collection.query)
+        let term = parsed.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var filters = IndexSearchFilters()
+        filters.extensions = parsed.extensions
+        filters.modifiedAfter = parsed.modifiedAfter
+        filters.modifiedBefore = parsed.modifiedBefore
+        let hits: [IndexSearchHit]
+        if term.isEmpty {
+            hits = (try? await index.listByFilters(filters: filters, limit: limit)) ?? []
+        } else {
+            let request = IndexSearchRequest(query: term, filters: filters, limit: limit, includeContent: false)
+            hits = (try? await index.search(request)) ?? []
+        }
         return hits.filter { !$0.entry.isDirectory }.map(\.entry.path)
     }
 
@@ -977,6 +990,8 @@ final class SearchViewModel: ObservableObject {
     func undoLast() {
         if let last = activityEntries.first(where: { $0.isUndoable }) {
             undo(entry: last)
+        } else {
+            lastOutcomeMessage = "No hay ningún archivado reciente que deshacer."
         }
     }
 
@@ -1022,8 +1037,11 @@ final class SearchViewModel: ObservableObject {
     }
 
     private func performSearch() async {
-        let term = trimmedQuery
-        guard !term.isEmpty else {
+        // N8 — operadores `ext:` / `tipo:` / `fecha:`: se extraen del texto y generan filtros.
+        let raw = trimmedQuery
+        let parsed = SearchQueryParser.parse(raw)
+        let term = parsed.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !term.isEmpty || parsed.hasFilters else {
             hits = []
             isSearching = false
             return
@@ -1032,17 +1050,30 @@ final class SearchViewModel: ObservableObject {
         isSearching = true
         var filters = IndexSearchFilters()
         filters.rootID = selectedRootID
-        filters.extensions = selectedKind.extensions
+        // `ext:` pisa a los chips de tipo; `tipo:` se cruza con ellos (intersección).
+        if let operatorExtensions = parsed.extensions {
+            filters.extensions = selectedKind.extensions.map { $0.intersection(operatorExtensions) } ?? operatorExtensions
+        } else {
+            filters.extensions = selectedKind.extensions
+        }
         filters.directoriesOnly = directoriesOnly ? true : nil
-        let request = IndexSearchRequest(query: term, filters: filters, limit: 300, includeContent: searchInContent)
+        filters.modifiedAfter = parsed.modifiedAfter
+        filters.modifiedBefore = parsed.modifiedBefore
         let started = Date()
 
         do {
-            let results = try await index.search(request)
+            let results: [IndexSearchHit]
+            if term.isEmpty {
+                // Solo filtros (`ext:pdf fecha:2026-09`): listado por fecha de modificación.
+                results = try await index.listByFilters(filters: filters, limit: 300)
+            } else {
+                let request = IndexSearchRequest(query: term, filters: filters, limit: 300, includeContent: searchInContent)
+                results = try await index.search(request)
+            }
             guard !Task.isCancelled else { return }
             var merged = results
             var semanticCount = 0
-            if semanticSearchEnabled {
+            if semanticSearchEnabled, !term.isEmpty {
                 var extras: [IndexSearchHit] = []
                 if let embedder = ensureEmbedder(), let vector = await embedder.embedNormalized(term) {
                     extras += (try? await index.semanticHits(queryVector: vector, model: embedder.modelTag, limit: 8, filters: filters, contentOnly: true)) ?? []
@@ -1083,7 +1114,7 @@ final class SearchViewModel: ObservableObject {
             hits = merged
             let mode = searchInContent ? " (con contenido)" : ""
             let semanticNote = semanticCount > 0 ? " +\u{2009}\(semanticCount) por significado" : ""
-            J4Log.debug(.search, "«\(term)»\(mode)\(semanticNote) → \(merged.count) resultado(s) en \(Int(Date().timeIntervalSince(started) * 1000)) ms.")
+            J4Log.debug(.search, "«\(raw)»\(mode)\(semanticNote) → \(merged.count) resultado(s) en \(Int(Date().timeIntervalSince(started) * 1000)) ms.")
             if let current = selection, !merged.contains(where: { $0.entry.id == current }) {
                 selection = nil
             }
@@ -1092,7 +1123,7 @@ final class SearchViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
             hits = []
             lastErrorMessage = error.localizedDescription
-            J4Log.error(.search, "La búsqueda «\(term)» falló: \(error.localizedDescription)")
+            J4Log.error(.search, "La búsqueda «\(raw)» falló: \(error.localizedDescription)")
         }
         isSearching = false
     }

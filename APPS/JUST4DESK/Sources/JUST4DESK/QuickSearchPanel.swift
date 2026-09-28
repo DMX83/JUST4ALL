@@ -189,14 +189,24 @@ final class QuickSearchModel: ObservableObject {
     }
 
     func performSearch() async {
-        let term = trimmedQuery
-        guard !term.isEmpty else {
+        // N8 — operadores `ext:` / `tipo:` / `fecha:` también en el buscador rápido.
+        let parsed = SearchQueryParser.parse(trimmedQuery)
+        let term = parsed.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !term.isEmpty || parsed.hasFilters else {
             hits = []
             return
         }
-        let request = IndexSearchRequest(query: term, filters: IndexSearchFilters(), limit: 8, includeContent: false)
+        var filters = IndexSearchFilters()
+        filters.extensions = parsed.extensions
+        filters.modifiedAfter = parsed.modifiedAfter
+        filters.modifiedBefore = parsed.modifiedBefore
         do {
-            hits = try await index.search(request)
+            if term.isEmpty {
+                hits = try await index.listByFilters(filters: filters, limit: 8)
+            } else {
+                let request = IndexSearchRequest(query: term, filters: filters, limit: 8, includeContent: false)
+                hits = try await index.search(request)
+            }
             errorMessage = nil
         } catch {
             hits = []

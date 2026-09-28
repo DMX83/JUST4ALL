@@ -13,6 +13,8 @@ struct ContentView: View {
     @State private var showLogViewer = false
     @State private var showRootMenu = false
     @State private var saveCollection = false
+    /// N8 — vista rápida (barra espaciadora) también en los resultados de búsqueda.
+    @State private var quickLookMonitor = QuickLookSpaceMonitor()
     @Environment(\.openWindow) private var openWindow
     @FocusState private var searchFocused: Bool
 
@@ -26,6 +28,17 @@ struct ContentView: View {
             statusBar
         }
         .frame(minWidth: 860, minHeight: 560)
+        .background(WindowAccessor { window in
+            quickLookMonitor.window = window
+            quickLookMonitor.install()
+        })
+        .onChange(of: viewModel.selection) { _, _ in quickLookSync() }
+        .onChange(of: viewModel.hits) { _, _ in quickLookSync() }
+        .onDisappear {
+            quickLookMonitor.uninstall()
+            quickLookMonitor.urls = []
+            QuickLookController.shared.close()
+        }
         .task {
             await viewModel.start()
             searchFocused = true
@@ -37,6 +50,36 @@ struct ContentView: View {
             CollectionEditorSheet(defaultQuery: viewModel.trimmedQuery) { name, query in
                 viewModel.addCollection(name: name, query: query)
             }
+        }
+    }
+
+    // MARK: - Vista rápida (QuickLook)
+
+    private var quickLookURLs: [URL] {
+        guard let hit = viewModel.selectedHit, !hit.entry.isDirectory else { return [] }
+        return [URL(fileURLWithPath: hit.entry.path)]
+    }
+
+    /// Alterna la vista rápida del resultado indicado (o de la selección actual).
+    private func quickLookToggle(for hit: IndexSearchHit? = nil) {
+        var urls = quickLookURLs
+        if let hit, !hit.entry.isDirectory {
+            urls = [URL(fileURLWithPath: hit.entry.path)]
+        }
+        guard !urls.isEmpty else { return }
+        quickLookMonitor.urls = urls
+        QuickLookController.shared.toggle(urls: urls)
+    }
+
+    /// Mantiene sincronizado el monitor (barra espaciadora) y el panel abierto con la selección.
+    private func quickLookSync() {
+        let urls = quickLookURLs
+        quickLookMonitor.urls = urls
+        guard QuickLookController.shared.isVisible else { return }
+        if urls.isEmpty {
+            QuickLookController.shared.close()
+        } else {
+            QuickLookController.shared.setURLs(urls)
         }
     }
 
@@ -54,6 +97,7 @@ struct ContentView: View {
                         .textFieldStyle(.plain)
                         .font(.system(size: 16))
                         .focused($searchFocused)
+                        .help("Operadores: ext:pdf, tipo:vídeo, fecha:2026-09")
                         .onSubmit { viewModel.openSelectedOrFirst() }
                     if viewModel.isSearching {
                         ProgressView()
@@ -268,6 +312,7 @@ struct ContentView: View {
                     .contextMenu {
                         Button("Abrir") { viewModel.open(hit) }
                         Button("Mostrar en Finder") { viewModel.reveal(hit) }
+                        Button("Vista rápida (Espacio)") { quickLookToggle(for: hit) }
                         Divider()
                         Button("Copiar ruta") { viewModel.copyPath(hit) }
                     }
@@ -300,6 +345,9 @@ struct ContentView: View {
                 KeycapBadge(keys: "⌘L", label: "Registro")
             }
             .padding(.top, 2)
+            Text("Filtros en el campo: ext:pdf · tipo:vídeo · fecha:2026-09")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
             HStack(spacing: J4I.Space.s) {
                 StatusPill(
                     systemImage: "square.stack.3d.up",
@@ -371,6 +419,13 @@ struct ContentView: View {
                     disabled: viewModel.selectedHit == nil
                 ) {
                     viewModel.revealSelected()
+                }
+                GhostIconButton(
+                    systemImage: "eye",
+                    help: "Vista rápida del resultado seleccionado (Espacio)",
+                    disabled: quickLookURLs.isEmpty
+                ) {
+                    quickLookToggle()
                 }
                 GhostIconButton(
                     systemImage: "arrow.up.forward.app",

@@ -17,6 +17,15 @@ final class DocumentAnalysisTests: XCTestCase {
         XCTAssertEqual(text, "Hola mundo\nFactura & recibo")
     }
 
+    func testXLSXStringsToText() {
+        // N8 — cadenas compartidas e ítems enriquecidos (<r><t>) de un xlsx, con des-escapado.
+        let xml = """
+        <sst><si><t>Factura 2026-004</t></si><si><r><t>NIF: </t></r><r><t>12345678Z</t></r></si><si><t xml:space="preserve">Importe &amp; IVA </t></si></sst>
+        """
+        let pieces = TextExtractor.textsFromXLSX(xml: xml)
+        XCTAssertEqual(pieces, ["Factura 2026-004", "NIF:", "12345678Z", "Importe & IVA"])
+    }
+
     func testTextExtractorReadsPlainText() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("j4i-\(UUID().uuidString).txt")
         defer { try? FileManager.default.removeItem(at: url) }
