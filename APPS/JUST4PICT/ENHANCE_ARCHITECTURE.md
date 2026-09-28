@@ -30,7 +30,7 @@ Situacion del producto ahora:
 - `ImageEnhancer` ya centraliza un `CIContext` compartido e inyecta esa dependencia a analisis, pipeline local, upscale y aislamiento de producto
 - la politica de exportacion ya queda centralizada en `ImageExportWriter`, usada tanto por `PRO` como por `Reconstruir IA`
 - `ContentView` sigue siendo el punto principal de orquestacion UI, pero ya no duplica tanto manejo de logs/resultados de batch y arranque de estado como en fases anteriores
-- el dominio de batch vive en `BatchItemProcessor` (ejecucion por item + intent de reconstruccion), el de IA en `AIResolutionEngine` (cache + asesor + planner + fallback local) y el naming de salida versionado en `OutputPathResolver`; lightbox y before/after se movieron a `PreviewComponents`; la orquestacion de preview (prepare/schedule/refresh/invalidate) vive en `PreviewCoordinator`
+- el dominio de batch vive en `BatchItemProcessor` (ejecucion por item + intent de reconstruccion), el de IA en `AIResolutionEngine` (cache + asesor + planner + fallback local) y el naming de salida versionado en `OutputPathResolver`; lightbox y before/after se movieron a `PreviewComponents`; la orquestacion de preview (prepare/schedule/refresh/invalidate) vive en `PreviewCoordinator`; la cola de entrada en `InputQueueViewModel` y los registros de resultado/historial en `BatchOutcomeRecorder`
 - existe una primera pasada de afinado visual en evaluacion sobre `LocalPhotoPipeline`:
   - balance de blancos adaptativo
   - curva tonal por escena

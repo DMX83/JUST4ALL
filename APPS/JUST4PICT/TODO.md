@@ -16,7 +16,7 @@ El backlog historico del MVP queda en `ROADMAP_V1.md` y `JUST4PICT_POSTMVP_CHECK
 
 ## Prioridad alta
 
-- [ ] **Refactor UI/orquestacion:** dividir `ContentView.swift` en view-models y componentes de dominio para batch, preview e IA. **Fase 1 (28-sep):** extraídos `BatchItemProcessor` (ejecucion por item + intent), `AIResolutionEngine` (cache/asesor/planner/fallback), `OutputPathResolver` (naming versionado, +4 tests) y `PreviewComponents` (lightbox y before/after). **Fase 2 (28-sep):** orquestacion de preview movida a `PreviewCoordinator` (prepare/schedule/refresh/invalidate, +4 tests de integracion con muestra del repo). `ContentView` pasa de 2262 a ~1714 lineas. Pendiente: estado restante de la vista (cola de entrada, acciones de modo, registros/historial).
+- [x] **Refactor UI/orquestacion:** `ContentView.swift` dividido en view-models y dominio (fases 1-3, 28-sep): `BatchItemProcessor`, `AIResolutionEngine`, `OutputPathResolver`, `PreviewComponents`, `PreviewCoordinator`, `InputQueueViewModel` y `BatchOutcomeRecorder`; 2262 → ~1645 lineas (+13 tests nuevos). En la vista quedan solo el glue de estado (acciones de modo), los paneles AppKit y el layout.
 - [x] **Test por escena de sharpen selectivo:** cubiertos casos de paisaje con bruma, detalle vegetal y texto denso en `LocalPhotoPipelineTests`.
 - [ ] **Validacion visual final de retrato:** cerrar revision manual de ojos/cejas en muestras reales adicionales.
 - [ ] **Firma y notarizacion:** preparar release firmada cuando exista cuenta Apple Developer.

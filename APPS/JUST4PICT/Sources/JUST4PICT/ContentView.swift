@@ -38,13 +38,12 @@ private final class OutputSettings: ObservableObject {
 }
 
 struct ContentView: View {
-    @State private var inputFiles: [URL] = []
-    @State private var outputDirectory: URL?
     @State private var preset: EnhancementPreset = .auto
     @StateObject private var outputSettings: OutputSettings
     @StateObject private var batchState = BatchStateViewModel()
     @StateObject private var aiState = AIResolutionViewModel()
     @StateObject private var previewState = PreviewStateViewModel()
+    @StateObject private var inputQueue = InputQueueViewModel()
     @State private var statusMessage = "Selecciona imágenes para iniciar"
     @State private var historyEntries: [PictHistoryEntry] = []
     @State private var isAnalyzingWithAI = false
@@ -58,7 +57,10 @@ struct ContentView: View {
     private let historyStore = PictHistoryStore()
     private let openAIAdvisor = OpenAIImageAdvisor()
     private let openAIReconstruction = OpenAIImageReconstructionService()
-    private let supportedExtensions: Set<String> = ["jpg", "jpeg", "png", "heic", "heif", "webp", "tif", "tiff", "bmp", "gif"]
+
+    /// Vistas ligeras sobre el estado de la cola (el estado real vive en `InputQueueViewModel`).
+    private var inputFiles: [URL] { inputQueue.files }
+    private var outputDirectory: URL? { inputQueue.outputDirectory }
 
     /// Orquestadores de dominio (sin estado propio: el estado vive en los view-models).
     private var batchProcessor: BatchItemProcessor {
@@ -71,6 +73,10 @@ struct ContentView: View {
 
     private var previewCoordinator: PreviewCoordinator {
         PreviewCoordinator(processor: batchProcessor)
+    }
+
+    private var outcomeRecorder: BatchOutcomeRecorder {
+        BatchOutcomeRecorder(historyStore: historyStore, enhancer: enhancer)
     }
 
     init(
@@ -894,7 +900,7 @@ struct ContentView: View {
 
     private func clearAll() {
         batchState.clearAll()
-        inputFiles.removeAll()
+        inputQueue.clear()
         outputSettings.resetToQualityDefaults()
         previewState.selectedPreviewURL = nil
         previewState.originalPreviewImage = nil
@@ -924,25 +930,19 @@ struct ContentView: View {
         totalCount: Int,
         retry: Bool = false
     ) {
-        batchState.batchResults[inputURL] = BatchItemResult(status: .success, outputURL: outputURL, errorMessage: nil, mode: mode)
-        historyEntries = historyStore.prepend(
-            current: historyEntries,
-            inputFileName: inputURL.lastPathComponent,
+        historyEntries = outcomeRecorder.recordSuccess(
+            inputURL: inputURL,
             outputURL: outputURL,
-            preset: sourcePreset,
-            effectiveAutoDecision: historyAutoDecision(for: inputURL, sourcePreset: sourcePreset, resolution: resolution),
-            format: resolution.format,
-            aiSuggestedPreset: resolution.aiSuggestedPreset,
-            aiSuggestedQuality: resolution.aiSuggestedQuality,
-            aiReason: resolution.aiReason,
-            aiTuningSummary: aiTuningSummary(resolution.aiTuning),
-            aiPrompt: resolution.aiPrompt,
-            storeFullPrompt: storeFullAIPromptInHistory
+            mode: mode,
+            sourcePreset: sourcePreset,
+            resolution: resolution,
+            totalCount: totalCount,
+            retry: retry,
+            history: historyEntries,
+            storeFullPrompt: storeFullAIPromptInHistory,
+            batchState: batchState,
+            log: { batchState.appendLog($0) }
         )
-        let fallbackSuffix = resolution.usedFallback ? " (fallback local)" : ""
-        let retryPrefix = retry ? "Reintento " : ""
-        appendLog("\(modeLogPrefix(mode)) ✅ \(retryPrefix)\(inputURL.lastPathComponent) → \(outputURL.lastPathComponent)\(fallbackSuffix)")
-        batchState.recomputeCounters(total: totalCount)
     }
 
     private func recordFailedRun(
@@ -952,25 +952,15 @@ struct ContentView: View {
         totalCount: Int,
         retry: Bool = false
     ) {
-        batchState.batchResults[inputURL] = BatchItemResult(status: .failed, outputURL: nil, errorMessage: error.localizedDescription, mode: mode)
-        let retryPrefix = retry ? "Reintento " : ""
-        appendLog("\(modeLogPrefix(mode)) ❌ \(retryPrefix)\(inputURL.lastPathComponent): \(error.localizedDescription)")
-        batchState.recomputeCounters(total: totalCount)
-    }
-
-    private func historyAutoDecision(
-        for inputURL: URL,
-        sourcePreset: EnhancementPreset,
-        resolution: AIRunResolution
-    ) -> String? {
-        guard sourcePreset == .auto else { return nil }
-
-        if let scene = resolution.recipe?.mappedScene {
-            return autoDecisionLabel(for: scene)
-        }
-
-        let detectedScene = enhancer.detectSceneType(inputURL: inputURL)
-        return autoDecisionLabel(for: detectedScene)
+        outcomeRecorder.recordFailure(
+            inputURL: inputURL,
+            mode: mode,
+            error: error,
+            totalCount: totalCount,
+            retry: retry,
+            batchState: batchState,
+            log: { batchState.appendLog($0) }
+        )
     }
 
     private func processBatch() {
@@ -1165,8 +1155,7 @@ struct ContentView: View {
     }
 
     private func shouldShowRetryButton(for file: URL) -> Bool {
-        guard let result = batchState.batchResults[file] else { return false }
-        return result.status == .failed && !batchState.isProcessing
+        batchState.canRetry(file)
     }
 
     @ViewBuilder
@@ -1198,17 +1187,6 @@ struct ContentView: View {
             .background(modeBadgeColor(mode).opacity(0.14))
             .foregroundColor(modeBadgeColor(mode))
             .clipShape(Capsule())
-    }
-
-    private func modeLogPrefix(_ mode: EnhancementMode) -> String {
-        switch mode {
-        case .local:
-            return "[PRO]"
-        case .ai:
-            return "[IA]"
-        case .reconstructAI:
-            return "[IA-R]"
-        }
     }
 
     private func modeBadgeLabel(_ mode: EnhancementMode) -> String {
@@ -1437,7 +1415,7 @@ struct ContentView: View {
         guard panel.runModal() == .OK, let folder = panel.url else { return }
 
         do {
-            let urls = try collectImages(in: folder)
+            let urls = try inputQueue.collectImages(in: folder)
             mergeInputFiles(urls)
             if previewState.selectedPreviewURL == nil {
                 previewState.selectedPreviewURL = inputFiles.first
@@ -1454,28 +1432,19 @@ struct ContentView: View {
         panel.allowsMultipleSelection = false
 
         guard panel.runModal() == .OK else { return }
-        outputDirectory = panel.url
+        inputQueue.outputDirectory = panel.url
     }
 
     private func mergeInputFiles(_ files: [URL]) {
-        let normalized = files
-            .filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
-            .map { $0.standardizedFileURL }
+        let accepted = inputQueue.merge(files)
+        guard accepted > 0 else { return }
 
-        var current = Set(inputFiles.map(\.standardizedFileURL))
-        for file in normalized where !current.contains(file) {
-            inputFiles.append(file)
-            current.insert(file)
+        statusMessage = "\(inputQueue.files.count) imágenes en cola"
+        if previewState.selectedPreviewURL == nil {
+            previewState.selectedPreviewURL = inputQueue.files.first
         }
-
-        if !normalized.isEmpty {
-            statusMessage = "\(inputFiles.count) imágenes en cola"
-            if previewState.selectedPreviewURL == nil {
-                previewState.selectedPreviewURL = inputFiles.first
-            }
-            preparePreviewForSelection()
-            logAutoPreviewDecisionIfNeeded()
-        }
+        preparePreviewForSelection()
+        logAutoPreviewDecisionIfNeeded()
     }
 
     private func logAutoPreviewDecisionIfNeeded() {
@@ -1493,31 +1462,6 @@ struct ContentView: View {
     @MainActor
     private func invalidateProcessedPreview() {
         previewCoordinator.invalidate(state: previewState, hasPendingInput: !inputFiles.isEmpty)
-    }
-
-    private func collectImages(in folder: URL) throws -> [URL] {
-        guard let enumerator = FileManager.default.enumerator(
-            at: folder,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles]
-        ) else {
-            return []
-        }
-
-        var result: [URL] = []
-        for case let url as URL in enumerator {
-            let values = try url.resourceValues(forKeys: [.isRegularFileKey])
-            guard values.isRegularFile == true else { continue }
-            if supportedExtensions.contains(url.pathExtension.lowercased()) {
-                result.append(url)
-            }
-        }
-        return result
-    }
-
-    private func aiTuningSummary(_ tuning: AIEnhancementTuning?) -> String? {
-        guard let tuning else { return nil }
-        return "sombras \(Int(tuning.shadowAmount * 100)), luces \(Int(tuning.highlightAmount * 100)), vibrance \(Int(tuning.vibrance * 100)), nitidez \(Int(tuning.sharpen * 100))"
     }
 
     private var proPreviewSummary: String {
@@ -1601,20 +1545,7 @@ struct ContentView: View {
     }
 
     private func autoDecisionLabel(for scene: ImageEnhancer.SceneType?) -> String {
-        switch scene {
-        case .portrait:
-            return "Retrato"
-        case .document:
-            return "Documento"
-        case .landscape:
-            return "Paisaje"
-        case .ecommerce:
-            return "Ecommerce"
-        case .darkPhoto:
-            return "Foto oscura"
-        case .generic, .none:
-            return "General"
-        }
+        scene?.displayLabel ?? "General"
     }
 
     private func aiRecipeSummary(_ recipe: EnhancementRecipe) -> String {

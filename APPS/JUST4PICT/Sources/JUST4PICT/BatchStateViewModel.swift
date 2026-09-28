@@ -99,4 +99,9 @@ final class BatchStateViewModel: ObservableObject {
 
         progress = total > 0 ? Double(terminal) / Double(total) : 0
     }
+
+    func canRetry(_ file: URL) -> Bool {
+        guard let result = batchResults[file] else { return false }
+        return result.status == .failed && !isProcessing
+    }
 }
