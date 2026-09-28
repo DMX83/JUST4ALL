@@ -92,6 +92,6 @@ FilingExecutor (mkdirs + move, colisiones -1) + journal (undo) + doc_text al ín
 
 ## Dependencias
 
-- Local: `APPS/JUST4FOLDERS` (productos `J4FFileSystem`, `J4FOps`) vía `.package(path:)`.
+- Local: `PACKAGES/J4SHARED` (motores compartidos: `J4ICore`/`J4IIndex` + `J4FCore`/`J4FFileSystem`) vía `.package(path:)`.
   Los library products se añadieron en su `Package.swift` (F0).
 - Red (opcional): DeepSeek API (`https://api.deepseek.com`, `deepseek-flash`).

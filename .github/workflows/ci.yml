@@ -7,11 +7,13 @@ on:
     paths:
       - "APPS/JUST4DESK/**"
       - "APPS/JUST4FOLDERS/**"
+      - "PACKAGES/J4SHARED/**"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "APPS/JUST4DESK/**"
       - "APPS/JUST4FOLDERS/**"
+      - "PACKAGES/J4SHARED/**"
       - ".github/workflows/ci.yml"
   workflow_dispatch: {}
 
@@ -29,10 +31,22 @@ jobs:
           swift --version
           xcodebuild -version
 
+      - name: Tests (PACKAGES/J4SHARED)
+        working-directory: PACKAGES/J4SHARED
+        run: swift test
+
       - name: Build (APPS/JUST4DESK)
         working-directory: APPS/JUST4DESK
         run: swift build
 
       - name: Tests (APPS/JUST4DESK)
         working-directory: APPS/JUST4DESK
+        run: swift test
+
+      - name: Build (APPS/JUST4FOLDERS)
+        working-directory: APPS/JUST4FOLDERS
+        run: swift build
+
+      - name: Tests (APPS/JUST4FOLDERS)
+        working-directory: APPS/JUST4FOLDERS
         run: swift test

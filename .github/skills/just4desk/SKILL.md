@@ -21,16 +21,17 @@ actividad, estado, accesos) + **buscador instantáneo** (omnibox ⌘K en Inicio 
 
 | Módulo | Ruta | Qué vive aquí |
 |---|---|---|
-| `J4ICore` | `Sources/J4ICore` | Modelos, `Taxonomy`, `FilingProposal`, plantilla/saneado de nombres, `FilingPlanner` |
-| `J4IIndex` | `Sources/J4IIndex` | Índice SQLite FTS5, crawler, ingesta FSEvents, query API |
+| `J4ICore` | `PACKAGES/J4SHARED/Sources/J4ICore` | Modelos, `Taxonomy`, `FilingProposal`, plantilla/saneado de nombres, `FilingPlanner` |
+| `J4IIndex` | `PACKAGES/J4SHARED/Sources/J4IIndex` | Índice SQLite FTS5, crawler, ingesta FSEvents, query API |
 | `J4IDocs` | `Sources/J4IDocs` | PDFKit, Vision OCR, txt/md/rtf, docx/xlsx, regex de metadatos |
 | `J4IAI` | `Sources/J4IAI` | `DeepSeekClient`, `DeepSeekFilingAdvisor`, cache por hash |
 | `J4IFiling` | `Sources/J4IFiling` | Ejecución mkdirs+move (J4FOps), journal+undo, «sin clasificar», simulación |
 | `J4IMCP` / `JUST4DESKMCP` | `Sources/J4IMCP`, `Sources/JUST4DESKMCP` | Servidor MCP local (stdio, solo lectura) para agentes: `buscar_archivos` / `leer_documento` (ver `docs/MCP.md`) |
 | `JUST4DESK` | `Sources/JUST4DESK` | App SwiftUI: **Inicio** (`HomeView`), ventana «Buscar», explorador, revisión, ajustes |
 
-Dependencia local: `APPS/JUST4FOLDERS` (`.package(path: "../JUST4FOLDERS")`, productos
-`J4FFileSystem`/`J4FOps`; los library products se añadieron en F0).
+Dependencia local: `PACKAGES/J4SHARED` (`.package(path: "../../PACKAGES/J4SHARED")`) con los
+motores `J4ICore`/`J4IIndex` (y `J4FCore`/`J4FFileSystem`, de origen JUST4FOLDERS). JUST4FOLDERS
+consume `J4IIndex` para su búsqueda (v1.1).
 
 ## Comandos
 

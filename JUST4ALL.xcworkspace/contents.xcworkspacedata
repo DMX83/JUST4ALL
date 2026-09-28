@@ -12,4 +12,6 @@
   </FileRef>
   <FileRef location="group:APPS/JUST4DESK">
   </FileRef>
+  <FileRef location="group:PACKAGES/J4SHARED">
+  </FileRef>
 </Workspace>
