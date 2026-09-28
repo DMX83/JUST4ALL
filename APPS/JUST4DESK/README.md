@@ -1,5 +1,7 @@
 # JUST4DESK (macOS)
 
+[![CI](https://github.com/DMX83/JUST4ALL/actions/workflows/ci.yml/badge.svg)](https://github.com/DMX83/JUST4ALL/actions/workflows/ci.yml)
+
 App nativa macOS en SwiftUI que une dos herramientas:
 
 1. **Buscador instantáneo** tipo "Everything": índice local (SQLite FTS5) actualizado por
@@ -57,6 +59,13 @@ App nativa macOS en SwiftUI que une dos herramientas:
 - **F12.0 — Tokens reales + conocimiento local: completada** (contador de tokens por llamada en
   Ajustes → IA; la app aprende de la IA y de tus correcciones —extensiones y palabras de carpeta— y
   clasifica sin gastar tokens lo ya aprendido).
+- **G1–G7 — Centro de control y evolución: completadas** (Inicio con bandeja de decisiones y omnibox
+  ⌘K; sugerencias proactivas con undo; pantalla Reglas ⌘G; menú de barra + ⌥Espacio; colecciones con
+  etiquetas Finder opt-in; archivo en frío + informe semanal; búsqueda semántica, «Chat del archivo»
+  ⇧⌘K y servidor MCP para agentes — detalle en `MEMORY.md`/`CHANGELOG.md`).
+- **N5/N7/N8/N9 — Lote de uso diario: completado** (avisos del sistema al archivar; panel
+  **Estadísticas** ⌘T; **⌘Z** deshace el último archivado; operadores de búsqueda `ext:`/`tipo:`/`fecha:`;
+  extracción de **xlsx**; vista rápida con la barra espaciadora en «Buscar»; **CI** en GitHub Actions).
 - Pendiente: QA manual del usuario (DMG real + flujo end-to-end con documentos reales).
 
 Sigue el avance en `TODO.md`; las decisiones y el histórico viven en `MEMORY.md`.
@@ -77,6 +86,9 @@ swift run
 O bien `./scripts/run.sh`: compila si hace falta, relanza la app **desacoplada de la terminal**
 (sobrevive al cierre del terminal) y deja la salida en `/tmp/j4i-app-stdio.log`.
 
+CI: cada push/PR que toque `APPS/JUST4DESK` (o su dependencia `APPS/JUST4FOLDERS`) compila y pasa
+la suite en GitHub Actions (`.github/workflows/ci.yml`, runner macOS 14).
+
 ## Primeros pasos
 
 1. Primer arranque: la app pide **carpeta raíz** (sugerencia `~/JUST4DESK`; se crea el árbol de
@@ -95,6 +107,14 @@ múltiple (⌘/mayús-clic) con orden y filtro, propiedades a la derecha (con du
 Acciones: **Mover a…** (con buscador de destino —puedes crear categorías al momento— y undo en Actividad) y **Mover a la papelera** (reversible; el archivado
 automático nunca borra). Con ficheros seleccionados, la **barra espaciadora** abre la vista previa.
 5. **Ajustes** (⌘A o ⌘,): carpetas de organización/entrada, modo simulación, pausa, indexado y diagnóstico.
+
+## Consejos de búsqueda
+
+- Filtros en el propio campo: `ext:pdf`, `tipo:vídeo` (documentos / imagenes / audio / video /
+  comprimidos — con alias y sin acentos), `fecha:2026-09` (año, mes o día). Combinables:
+  `recibo ext:pdf fecha:2026 tipo:documentos` (`ext:` y `tipo:` juntos = intersección).
+- **⌘Z** deshace el último archivado desde cualquier ventana; **Espacio** abre la vista rápida del
+  resultado seleccionado (también en «Buscar»); **⌘T** abre las estadísticas; **⇧⌘K** el chat del archivo.
 
 ## Build DMG
 

@@ -331,6 +331,18 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
 - [x] G7.4: reindexado conservador — el «Reindexar» conserva textos/vectores (snapshot + re-vinculado
   por ruta) y hay mantenimiento post-crawl. Suite 211. Evidencias en `docs/design/G7/`.
 
+## N5–N9 — Lote de uso diario — completada (salvo N6)
+
+- [x] **N5** — Avisos del sistema al archivar («X → Y»), con interruptor en Ajustes (solo con bundle).
+- [x] **N8** — ⌘Z global (deshacer el último archivado), operadores `ext:`/`tipo:`/`fecha:`
+  (buscador, omnibox y colecciones), extracción **xlsx** y vista rápida (barra espaciadora) en
+  los resultados de búsqueda.
+- [x] **N7** — Panel «Estadísticas» (⌘T): journal con fuente (esquema v5), archivados/día,
+  deshechos («%»), fuentes de decisión y uso de IA; barrido de vectores huérfanos.
+- [x] **N9** — CI (GitHub Actions): build + tests por push/PR en `APPS/JUST4DESK`.
+- [ ] **N6** — Empaquetado real (DMG + sandbox + Quick Action de Finder; las notificaciones ya
+  llegan con el bundle, N5).
+
 ## Referencias
 
 - Propuestas de mejora priorizadas (candidatas, sin aprobar): `MEJORAS.md`

@@ -647,3 +647,22 @@ Convención por version + build stamp:
   etiqueta y tras «Quitar etiqueta» el xattr desaparece; reversión completa también sobre
   «Trading» (98 → 0). Capturas en `docs/design/G5.1/`.
 - +4 tests (`FinderTagsTests`); suite **215** (214 + 1 skip).
+
+### Added/Changed — N5/N7/N8/N9 (lote de uso diario) (28-sep)
+
+- **N5 — Avisos del sistema**: al archivar se muestra ««X» → «Y»» (`UNUserNotificationCenter`;
+  interruptor «Avisar al archivar» en Ajustes → Organización; solo con bundle `.app`; +2 tests).
+- **N8 — Menores de uso diario**: `⌘Z` global deshace el último archivado (el monitor deja pasar
+  la tecla mientras se edita texto); **operadores de búsqueda** `ext:` / `tipo:` / `fecha:` en la
+  ventana Buscar, el omnibox y las colecciones (`SearchQueryParser` + `SearchIndex.listByFilters`;
+  `ext:`+`tipo:` = intersección; `fecha:` por año/mes/día); extracción de **xlsx** (cadenas
+  compartidas + textos en línea; incluido en el backfill); **vista rápida con la barra espaciadora**
+  en los resultados de búsqueda (monitor compartido con el explorador); +9 tests.
+- **N7 — Panel de estadísticas (⌘T)**: archivados / por revisar / deshechos (con %) del periodo
+  (14/30/90 días), desglose por **fuente de decisión** (esquema v5: columna `source` en
+  `ops_journal`; IA/reglas/conocimiento/manual), actividad por día y uso de IA; barrido de
+  **vectores huérfanos** (79 limpiados al arrancar; venían del incidente del reindexado). +6 tests
+  (incluye migración v4→v5 sobre una base real).
+- **N9 — CI**: `.github/workflows/ci.yml` (GitHub Actions, runner macOS 14): `swift build` +
+  `swift test` en push/PR que toquen `APPS/JUST4DESK`/`APPS/JUST4FOLDERS`.
+- Suite: **231** (230 + 1 skip). Captura del panel en `docs/design/N7/`.

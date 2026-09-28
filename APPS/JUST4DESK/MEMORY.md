@@ -14,7 +14,7 @@
 
 ## Estado actual
 
-- Fecha: 2026-09-25
+- Fecha: 2026-09-28
 - Fase: **F7.1 completada** — sobre F3–F6, F6.1 y F7 (registro en vivo, análisis «lite» por
   nombre/extensión, taxonomía ampliada, cola acotada): + ventana de **Ajustes (⌘,)** con
   organización/indexado/diagnóstico, comandos en el menú **Ver** con atajos visibles (⌘E explorador,
@@ -669,6 +669,19 @@
   etiqueta). Validado en vivo de punta a punta: «QA Etiqueta» → 1 fichero (mdls/mdfind lo ven;
   tras quitar, xattr eliminado) y reversión completa de «Trading» (98 → 0). Suite 215
   (214 + 1 skip; +4 tests). Capturas `docs/design/G5.1/`.
+- N5–N9 (28-sep): **lote de uso diario** — (a) **N5** avisos del sistema al archivar
+  (`FilingNotifier`; solo con bundle `.app`; interruptor en Ajustes → Organización). (b) **N8**:
+  ⌘Z global deshace el último archivado (el monitor de atajos no captura mientras se edita texto),
+  operadores `ext:`/`tipo:`/`fecha:` (parser propio en J4IIndex; `ext:`+`tipo:` = intersección;
+  listado por filtros sin texto en buscador, omnibox y colecciones), extracción de **xlsx**
+  (sharedStrings + textos en línea, también en el backfill) y **QuickLook con la barra espaciadora**
+  en los resultados de «Buscar» (monitor compartido con el explorador). (c) **N7**: ventana
+  «Estadísticas» ⌘T sobre el journal enriquecido (**esquema v5**: columna `source`;
+  migración v4→v5 probada con test) con archivados/por revisar/deshechos (%), fuentes de decisión,
+  actividad por día y uso de IA; **barrido de vectores huérfanos** (79 limpiados al arrancar;
+  restos del incidente del reindexado — los textos ya se barrían, los vectores no).
+  (d) **N9**: CI en GitHub Actions (`.github/workflows/ci.yml`, macos-14). Suite **231**
+  (230 + 1 skip; +16 tests desde G5.1). Captura en `docs/design/N7/`.
 
 ## Lecciones y trampas
 
@@ -688,6 +701,9 @@
 - La estrategia de una carpeta (entera vs desglosada) es una decisión de CONTEXTO (nombres
   relacionados vs cajón): la responde la IA (`mode`); el desglose hereda todas las salvaguardas
   (lote único de undo, cáscara en origen, sin borrar) y los hijos siguen la lógica completa de unidad.
+- SwiftUI: si `body` acumula demasiados modificadores/hojas, el type-checker revienta («unable to
+  type-check this expression in reasonable time») — extraer a propiedades o métodos separados
+  (pasó en `HomeView` con N7 y antes con el diálogo de G5.1).
 - Toolchain (este Mac, 2026-09): Xcode instalado pero con licencia sin aceptar; el CLT no trae XCTest
   ni Swift Testing → `swift test` requiere el toolchain de Xcode (con licencia aceptada).
 - FTS5: `-` y otros separadores en la query pueden romper el MATCH (p. ej. `informe-2026*` no matchea).
@@ -753,10 +769,10 @@
 - **QA manual del usuario** (bloqueante para cerrar el MVP): DMG real con `./scripts/build_dmg.sh` y flujo
   end-to-end con documentos reales (soltar PDFs en la carpeta de entrada → archivado → undo);
   revisar el registro en vivo (⌘L) para validar las decisiones de clasificación.
-- Post-MVP: cap diario de llamadas DeepSeek + métricas; renombrar y drag & drop en el explorador;
-  xlsx; imágenes reales para `Assets/JUST4DESK/` del hub.
-- Mapa de mejoras priorizado (propuestas candidatas, sin aprobar): `MEJORAS.md` — pendiente de la
-  elección del usuario para convertirlas en fases.
+- Post-MVP: cap diario de llamadas DeepSeek + métricas ✅ (N1); xlsx ✅ (N8); pendientes: renombrar
+  y drag & drop en el explorador; imágenes reales para `Assets/JUST4DESK/` del hub.
+- Mapa de mejoras priorizado: `MEJORAS.md` — N1–N4 y el lote N5/N7/N8/N9 implementados (28-sep);
+  **N6 (DMG real + sandbox + Quick Action de Finder) pendiente** — es el siguiente hito grande.
 - Decidir en F5 si el primer arranque propone activar el modo simulación (recomendado) o arranca en automático directo.
 
 ## Dependencias externas

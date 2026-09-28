@@ -173,9 +173,10 @@ clasificar sin gastar tokens lo ya aprendido.**
 - Lista de carpetas vigiladas (p. ej. `~/Descargas` + `~/Downloads`), misma semántica de unidades.
 - *Motivo*: el objetivo declarado incluye la otra carpeta real del usuario (~385 elementos intactos).
 
-### N5. Presencia en macOS — 1–2 días
-- MenuBarExtra (estado, pausa, buscar) + atajo global ⌥Espacio + **notificaciones** («X archivado
-  en Y»), que ahora tienen sentido con la IA viva. (Punto 5 del mapa original; sigue pendiente.)
+### N5. Presencia en macOS — ✅ (28-sep; queda la Quick Action con el DMG)
+- MenuBarExtra (estado, pausa, buscar) + atajo global ⌥Espacio: hechos en G4. **Notificaciones**
+  («X archivado en Y»): implementadas en N5 (interruptor en Ajustes → Organización). La Quick
+  Action de Finder llega con el empaquetado (N6).
 
 ### N6. Empaquetado real (DMG + sandbox) — 1–2 días
 - `build_dmg.sh` end-to-end: **security-scoped bookmarks** para las carpetas elegidas (el sandbox no
@@ -183,17 +184,17 @@ clasificar sin gastar tokens lo ya aprendido.**
   haya cuenta Apple.
 - *Motivo*: hoy solo se usa en dev vía `scripts/run.sh`; esto es el paso a «app de verdad».
 
-### N7. Panel de estadísticas y afinado — 1 día
+### N7. Panel de estadísticas y afinado — ✅ (28-sep)
 - Archivados/día, % IA vs reglas vs cuarentena, llamadas IA, % undo; datos ya en `ops_journal`/`J4Log`.
 - *Motivo*: con N1, permite decidir cuándo afinar la skill y cuánto cuesta; cierra el ciclo
   «afinar nosotros».
 
-### N8. Menores de uso diario — 1 día (lote)
+### N8. Menores de uso diario — ✅ (28-sep)
 - ⌘Z global = deshacer el último archivado (el journal ya lo soporta).
 - Operadores de búsqueda: `ext:pdf`, `tipo:vídeo`, `fecha:2026-09`.
 - xlsx en extracción (docx ya va) y QuickLook también en resultados de búsqueda.
 
-### N9. CI — 0,5 día
+### N9. CI — ✅ (28-sep)
 - Build + tests por push (hoy validación manual con `scripts/qa_smoke.sh`).
 
 *Orden sugerido: **N1 → N2 → N3** (IA bajo control y ciclo cerrado) → N4/N6 según prioridad →
