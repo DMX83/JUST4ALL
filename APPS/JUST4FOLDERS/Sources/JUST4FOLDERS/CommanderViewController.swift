@@ -405,13 +405,15 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
         let addLocationButton = NSButton(title: "Añadir ubicación", target: self, action: #selector(addAuthorizedLocation))
         addLocationButton.bezelStyle = .rounded
+        addLocationButton.controlSize = .small
         addLocationButton.font = .systemFont(ofSize: 11)
-        addLocationButton.setAccessibilityLabel("Autorizar ubicacion para sandbox")
+        addLocationButton.setAccessibilityLabel("Autorizar ubicación para el sandbox")
 
         let infoCurrentButton = NSButton(title: "Info de carpeta", target: self, action: #selector(showCurrentDirectoryInfo))
         infoCurrentButton.bezelStyle = .rounded
+        infoCurrentButton.controlSize = .small
         infoCurrentButton.font = .systemFont(ofSize: 11)
-        infoCurrentButton.setAccessibilityLabel("Mostrar informacion de carpeta actual")
+        infoCurrentButton.setAccessibilityLabel("Mostrar información de la carpeta actual")
 
         directoryTree.headerView = nil
         directoryTree.selectionHighlightStyle = .regular
@@ -434,9 +436,13 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         treeScroll.translatesAutoresizingMaskIntoConstraints = false
         treeScroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 380).isActive = true
 
+        let sidebarActions = NSStackView(views: [addLocationButton, infoCurrentButton])
+        sidebarActions.orientation = .horizontal
+        sidebarActions.spacing = 6
+        sidebarActions.distribution = .fillEqually
+
         container.addArrangedSubview(header)
-        container.addArrangedSubview(addLocationButton)
-        container.addArrangedSubview(infoCurrentButton)
+        container.addArrangedSubview(sidebarActions)
         container.addArrangedSubview(treeScroll)
 
         return container
@@ -1624,7 +1630,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             ToolbarID.back, ToolbarID.forward, ToolbarID.home, .flexibleSpace,
             ToolbarID.newTab, ToolbarID.copy, ToolbarID.move, ToolbarID.delete,
             ToolbarID.mkdir, ToolbarID.rename, ToolbarID.deletePermanent,
-            .flexibleSpace, ToolbarID.refresh, ToolbarID.infoCurrent, ToolbarID.tasks, ToolbarID.diagnostics, ToolbarID.addLocation, ToolbarID.search
+            .flexibleSpace, ToolbarID.refresh, ToolbarID.infoCurrent, .space,
+            ToolbarID.tasks, ToolbarID.diagnostics, .space, ToolbarID.addLocation, ToolbarID.search
         ]
     }
 
@@ -2459,7 +2466,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
         let header = NSStackView()
         header.orientation = .horizontal
+        header.spacing = 8
         header.translatesAutoresizingMaskIntoConstraints = false
+        // P3 diseño — jerarquía: carpeta protagonista y contador discreto a la derecha.
+        titleLabel.lineBreakMode = .byTruncatingMiddle
+        rowCountLabel.font = .systemFont(ofSize: 11)
+        rowCountLabel.textColor = .secondaryLabelColor
+        rowCountLabel.setContentHuggingPriority(.required, for: .horizontal)
         header.addArrangedSubview(titleLabel)
         header.addArrangedSubview(NSView())
         header.addArrangedSubview(rowCountLabel)
@@ -2562,10 +2575,22 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         menu.addItem(withTitle: "Eliminar (Papelera)", action: #selector(contextDeleteToTrash), keyEquivalent: "")
         menu.addItem(withTitle: "Eliminar definitivamente", action: #selector(contextDeletePermanent), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Renombrar en lote…", action: #selector(contextBatchRename), keyEquivalent: "")
-        menu.addItem(withTitle: "Buscar duplicados…", action: #selector(contextFindDuplicates), keyEquivalent: "")
-        menu.addItem(withTitle: "Ordenar esta carpeta…", action: #selector(contextOrderFolder), keyEquivalent: "")
-        menu.addItem(withTitle: "Olvidar formato de esta carpeta", action: #selector(contextForgetFolderFormat), keyEquivalent: "")
+        // P3 diseño — las utilidades viven en un submenú «Herramientas».
+        let toolsItem = NSMenuItem(title: "Herramientas", action: nil, keyEquivalent: "")
+        let toolsMenu = NSMenu(title: "Herramientas")
+        let toolEntries: [(title: String, action: Selector)] = [
+            ("Renombrar en lote…", #selector(contextBatchRename)),
+            ("Buscar duplicados…", #selector(contextFindDuplicates)),
+            ("Ordenar esta carpeta…", #selector(contextOrderFolder)),
+            ("Olvidar formato de esta carpeta", #selector(contextForgetFolderFormat))
+        ]
+        for entry in toolEntries {
+            let item = NSMenuItem(title: entry.title, action: entry.action, keyEquivalent: "")
+            item.target = self
+            toolsMenu.addItem(item)
+        }
+        toolsItem.submenu = toolsMenu
+        menu.addItem(toolsItem)
         for item in menu.items {
             item.target = self
         }
@@ -2615,7 +2640,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
         refreshTabsControl()
         onDirectoryChanged?(url)
-        titleLabel.stringValue = "Panel \(side.rawValue) — \(url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent)"
+        updateHeaderTitle(for: url)
         onStatus?("Cargando \(url.path)...")
         allRows.removeAll(keepingCapacity: true)
         rows.removeAll(keepingCapacity: true)
@@ -2701,6 +2726,27 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     // MARK: - Folder formats (v2.0: recordar la vista por carpeta)
 
+    /// P3 diseño — cabecera: carpeta protagonista (negrita) y ruta padre en secundario.
+    private func updateHeaderTitle(for url: URL) {
+        let name = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
+        let attributed = NSMutableAttributedString(
+            string: name,
+            attributes: [
+                .foregroundColor: NSColor.labelColor,
+                .font: NSFont.systemFont(ofSize: 12, weight: .semibold)
+            ]
+        )
+        attributed.append(NSAttributedString(
+            string: "   " + url.deletingLastPathComponent().path,
+            attributes: [
+                .foregroundColor: NSColor.tertiaryLabelColor,
+                .font: NSFont.systemFont(ofSize: 11)
+            ]
+        ))
+        titleLabel.attributedStringValue = attributed
+        titleLabel.toolTip = url.path
+    }
+
     /// Restaura el formato guardado de una carpeta (sin disparar guardados intermedios).
     private func restoreFormat(for url: URL) {
         guard let format = folderFormatStore.format(for: url.standardizedFileURL.path) else { return }
@@ -2764,8 +2810,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
         refreshTabsControl()
         onDirectoryChanged?(url)
-        let name = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
-        titleLabel.stringValue = "Panel \(side.rawValue) — \(name)"
+        updateHeaderTitle(for: url)
         if !silent {
             onStatus?("Aplanando \(url.path)…")
             rows.removeAll(keepingCapacity: true)

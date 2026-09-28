@@ -107,5 +107,18 @@ con cifras a la derecha, estado con origen y copy corregido.
 
 Validado en vivo: filtro activo + fila seleccionada + etiqueta roja, todo legible a la vez.
 
-*(Fuera de alcance: temas, iconografía a medida, i18n completa, accesibilidad formal.
-Pendientes P3: toolbar/menú contextual, jerarquía del header, sidebar.)*
+### Seguimiento (P3, misma fecha)
+
+9. ✅ **Toolbar agrupada**: separadores entre grupos (actualizar/info · tareas/diagnóstico ·
+   ubicación · búsqueda) y título compacto (`.unifiedCompact`).
+10. ✅ **Menú contextual**: las utilidades pasan a «Herramientas ▸» (renombrar en lote, duplicados,
+    ordenar, olvidar formato); el menú raíz queda más corto.
+11. ✅ **Sidebar**: «Añadir ubicación» e «Info de carpeta» comparten una única fila compacta
+    (controlSize small); el árbol gana altura.
+12. ✅ **Jerarquía del header**: «**carpeta** ruta-padre» (nombre en negrita, ruta en terciario,
+    tooltip con la ruta completa) y contador discreto a la derecha.
+
+Validado en vivo (captura): toolbar con separadores, título compacto, header jerárquico y sidebar
+en una fila. Único punto sin acción: sheets vs ventanas auxiliares (decisión de uso).
+
+*(Fuera de alcance: temas, iconografía a medida, i18n completa, accesibilidad formal.)*

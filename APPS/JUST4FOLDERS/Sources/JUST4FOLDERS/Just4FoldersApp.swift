@@ -52,7 +52,7 @@ struct Just4FoldersApp: App {
             ContentView()
         }
         .windowStyle(.titleBar)
-        .windowToolbarStyle(.unified)
+        .windowToolbarStyle(.unifiedCompact)
         Settings {
             SettingsView()
         }
