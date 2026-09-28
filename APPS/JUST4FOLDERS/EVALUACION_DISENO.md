@@ -85,14 +85,19 @@ liberaría altura para el árbol.
 Título «Panel Izquierdo — carpeta»: la carpeta debería ser protagonista (nombre en negrita, ruta
 en secundario) y el contador un dato discreto a la derecha.
 
-## Quick wins (una sesión, orden sugerido)
+## Quick wins — ✅ aplicados (28-sep)
 
-1. Columnas por defecto + alineación derecha del tamaño + autoresizing uniforme.
-2. Prioridades del split para que los paneles estiren.
-3. Prefijo de panel en la barra de estado.
-4. Copy con tildes + «Ir» + «elementos» unificado.
-5. Chip única de «aplanada».
-6. Persistir el divisor.
+1. ✅ Columnas por defecto (180/65/100/80) + tamaño alineado a la derecha + autoresizing uniforme.
+2. ✅ Paneles: `setHoldingPriority(.defaultLow)` ambos + ancho mínimo 220 → estiran con la ventana.
+3. ✅ Prefijo de panel en la barra de estado («IZQ · …» / «DER · …»).
+4. ✅ Copy: tildes («Árbol», «Añadir ubicación», «Tamaño», «vacío»…), «Ir» en vez de «Go»,
+   «elemento(s)» unificado.
+5. ✅ Chip única de «aplanada» (fuera del título, solo en el contador).
+6. ✅ Divisor persistente vía `autosaveName` en ambos splits (paneles y cuerpo/sidebar).
+
+Validado en vivo con la ventana maximizada: los dos paneles llenan el ancho, columnas visibles
+con cifras a la derecha, estado con origen y copy corregido.
 
 *(Fuera de alcance de esta evaluación: temas, iconografía a medida, i18n completa,
-accesibilidad formal.)*
+accesibilidad formal. Pendientes P2/P3 restantes: HUD del filtro rápido, contraste de etiquetas
+en selección, toolbar/menú contextual, jerarquía del header.)*

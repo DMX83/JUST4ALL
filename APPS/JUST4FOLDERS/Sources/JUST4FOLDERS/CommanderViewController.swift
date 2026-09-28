@@ -316,7 +316,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
         activeIndicatorLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         activeIndicatorLabel.setAccessibilityLabel("Panel activo")
-        pathField.placeholderString = "Ruta (Cmd+L)"
+        pathField.placeholderString = "Ruta (⌘L)"
         pathField.isEditable = true
         pathField.isSelectable = true
         pathField.isBezeled = true
@@ -333,7 +333,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         volumeWarningLabel.isHidden = true
         volumeWarningLabel.setAccessibilityLabel("Advertencia de volumen")
 
-        let pathGoButton = NSButton(title: "Go", target: self, action: #selector(commitPathField))
+        let pathGoButton = NSButton(title: "Ir", target: self, action: #selector(commitPathField))
         pathGoButton.bezelStyle = .rounded
         pathGoButton.setAccessibilityLabel("Ir a la ruta")
 
@@ -345,11 +345,17 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         panelsSplit.translatesAutoresizingMaskIntoConstraints = false
         panelsSplit.isVertical = true
         panelsSplit.dividerStyle = .thin
+        // Diseño (v2.0): los paneles estiran con la ventana y el divisor se recuerda.
+        panelsSplit.setHoldingPriority(.defaultLow, forSubviewAt: 0)
+        panelsSplit.setHoldingPriority(.defaultLow, forSubviewAt: 1)
+        panelsSplit.autosaveName = "j4f.split.panels"
 
         addChild(leftPanel)
         addChild(rightPanel)
         panelsSplit.addArrangedSubview(leftPanel.view)
         panelsSplit.addArrangedSubview(rightPanel.view)
+        leftPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
+        rightPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
 
         let sidebarView = makeSidebarView()
 
@@ -360,6 +366,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         bodySplit.addArrangedSubview(sidebarView)
         bodySplit.addArrangedSubview(panelsSplit)
         sidebarView.widthAnchor.constraint(equalToConstant: 250).isActive = true
+        bodySplit.autosaveName = "j4f.split.body"
 
         let container = NSStackView()
         container.orientation = .vertical
@@ -393,15 +400,15 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         container.layer?.borderWidth = 1
         container.layer?.borderColor = NSColor.separatorColor.cgColor
 
-        let header = NSTextField(labelWithString: "Arbol")
+        let header = NSTextField(labelWithString: "Árbol")
         header.font = .systemFont(ofSize: 12, weight: .semibold)
 
-        let addLocationButton = NSButton(title: "Anadir ubicacion", target: self, action: #selector(addAuthorizedLocation))
+        let addLocationButton = NSButton(title: "Añadir ubicación", target: self, action: #selector(addAuthorizedLocation))
         addLocationButton.bezelStyle = .rounded
         addLocationButton.font = .systemFont(ofSize: 11)
         addLocationButton.setAccessibilityLabel("Autorizar ubicacion para sandbox")
 
-        let infoCurrentButton = NSButton(title: "Info carpeta actual", target: self, action: #selector(showCurrentDirectoryInfo))
+        let infoCurrentButton = NSButton(title: "Info de carpeta", target: self, action: #selector(showCurrentDirectoryInfo))
         infoCurrentButton.bezelStyle = .rounded
         infoCurrentButton.font = .systemFont(ofSize: 11)
         infoCurrentButton.setAccessibilityLabel("Mostrar informacion de carpeta actual")
@@ -478,11 +485,11 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
 
         leftPanel.onStatus = { [weak self] text in
-            self?.statusLabel.stringValue = text
+            self?.statusLabel.stringValue = "IZQ · \(text)"
             self?.updatePathFieldFromActivePanel()
         }
         rightPanel.onStatus = { [weak self] text in
-            self?.statusLabel.stringValue = text
+            self?.statusLabel.stringValue = "DER · \(text)"
             self?.updatePathFieldFromActivePanel()
         }
 
@@ -631,7 +638,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     @objc private func renameSelection() {
         let selected = activePanel.selectedURLs()
         guard selected.count == 1, let source = selected.first else {
-            statusLabel.stringValue = "Selecciona un unico elemento para renombrar."
+            statusLabel.stringValue = "Selecciona un único elemento para renombrar en lote."
             NSSound.beep()
             return
         }
@@ -1479,7 +1486,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private func pasteItemsFromClipboardToActivePanel() {
         let urls = clipboardFileURLs()
         guard !urls.isEmpty else {
-            statusLabel.stringValue = "No hay rutas validas en portapapeles para pegar."
+            statusLabel.stringValue = "No hay rutas válidas en portapapeles para pegar."
             NSSound.beep()
             return
         }
@@ -1489,7 +1496,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             return
         }
         enqueueFileJob(type: .copy, selected: urls, destination: activePanel.currentDirectoryURL)
-        statusLabel.stringValue = "Pegando \(urls.count) item(s) en panel \(activeSide.rawValue)..."
+        statusLabel.stringValue = "Pegando \(urls.count) elemento(s) en panel \(activeSide.rawValue)..."
     }
 
     private func clipboardFileURLs() -> [URL] {
@@ -1527,7 +1534,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     private func runSystemCopy(sources: [URL], destination: URL) {
-        statusLabel.stringValue = "Copiando \(sources.count) item(s) en mismo volumen con copia del sistema..."
+        statusLabel.stringValue = "Copiando \(sources.count) elemento(s) en mismo volumen con copia del sistema..."
         let fm = FileManager.default
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -1968,7 +1975,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue else {
-            onStatus?("Ruta invalida o no es carpeta: \(clean)")
+            onStatus?("Ruta inválida o no es carpeta: \(clean)")
             NSSound.beep()
             return
         }
@@ -1978,7 +1985,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     func openURL(_ url: URL) {
         let normalized = url.standardizedFileURL
         guard isDirectory(normalized) else {
-            onStatus?("Ruta invalida o no es carpeta: \(url.path)")
+            onStatus?("Ruta inválida o no es carpeta: \(url.path)")
             NSSound.beep()
             return
         }
@@ -2164,7 +2171,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     func createDirectory(named name: String) throws {
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty else { throw NSError(domain: "JUST4FOLDERS", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Nombre de carpeta vacio."]) }
+        guard !clean.isEmpty else { throw NSError(domain: "JUST4FOLDERS", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Nombre de carpeta vacío."]) }
         let target = currentURL.appendingPathComponent(clean, isDirectory: true)
         try FileManager.default.createDirectory(at: target, withIntermediateDirectories: false)
         loadDirectory(currentURL, pushHistory: false)
@@ -2173,7 +2180,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     func renameSelected(to newName: String) throws {
         let selected = selectedURLs()
         guard selected.count == 1, let source = selected.first else {
-            throw NSError(domain: "JUST4FOLDERS", code: 1002, userInfo: [NSLocalizedDescriptionKey: "Selecciona un unico elemento para renombrar."])
+            throw NSError(domain: "JUST4FOLDERS", code: 1002, userInfo: [NSLocalizedDescriptionKey: "Selecciona un único elemento para renombrar."])
         }
         try renameItem(at: source, to: newName)
     }
@@ -2181,7 +2188,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     func renameItem(at source: URL, to newName: String) throws {
         let clean = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else {
-            throw NSError(domain: "JUST4FOLDERS", code: 1003, userInfo: [NSLocalizedDescriptionKey: "Nuevo nombre vacio."])
+            throw NSError(domain: "JUST4FOLDERS", code: 1003, userInfo: [NSLocalizedDescriptionKey: "Nuevo nombre vacío."])
         }
         let destination = source.deletingLastPathComponent().appendingPathComponent(clean, isDirectory: isDirectory(source))
         if source.standardizedFileURL.path == destination.standardizedFileURL.path {
@@ -2399,10 +2406,12 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tableView.menu = makeContextMenu()
         tableView.setAccessibilityLabel("Contenido del panel \(side.rawValue)")
 
-        addColumn(id: "name", title: "Nombre", width: 280)
-        addColumn(id: "size", title: "Tamano", width: 100)
-        addColumn(id: "modified", title: "Modificado", width: 140)
-        addColumn(id: "type", title: "Tipo", width: 120)
+        addColumn(id: "name", title: "Nombre", width: 180)
+        addColumn(id: "size", title: "Tamaño", width: 65)
+        addColumn(id: "modified", title: "Modificado", width: 100)
+        addColumn(id: "type", title: "Tipo", width: 80)
+        // Diseño (v2.0): las columnas caben y se reparten el ancho del panel entre todas.
+        tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
 
         tableView.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
 
@@ -2466,8 +2475,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         menu.addItem(withTitle: "Abrir en Finder", action: #selector(contextOpenInFinder), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Copiar ruta", action: #selector(contextCopyPath), keyEquivalent: "")
-        menu.addItem(withTitle: "Pegar item", action: #selector(contextPasteItems), keyEquivalent: "")
-        menu.addItem(withTitle: "Informacion", action: #selector(contextShowInfo), keyEquivalent: "")
+        menu.addItem(withTitle: "Pegar", action: #selector(contextPasteItems), keyEquivalent: "")
+        menu.addItem(withTitle: "Información", action: #selector(contextShowInfo), keyEquivalent: "")
         let tagsItem = NSMenuItem(title: "Etiquetas", action: nil, keyEquivalent: "")
         let tagsMenu = NSMenu(title: "Etiquetas")
         for (name, _) in Self.tagPalette {
@@ -2545,7 +2554,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         allRows.removeAll(keepingCapacity: true)
         rows.removeAll(keepingCapacity: true)
         tableView.reloadData()
-        rowCountLabel.stringValue = "0 items"
+        rowCountLabel.stringValue = "0 elemento(s)"
 
         let token = loadToken
         let includeHidden = includeHiddenFiles
@@ -2689,12 +2698,12 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         refreshTabsControl()
         onDirectoryChanged?(url)
         let name = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
-        titleLabel.stringValue = "Panel \(side.rawValue) — \(name) · aplanada"
+        titleLabel.stringValue = "Panel \(side.rawValue) — \(name)"
         if !silent {
             onStatus?("Aplanando \(url.path)…")
             rows.removeAll(keepingCapacity: true)
             tableView.reloadData()
-            rowCountLabel.stringValue = "0 items"
+            rowCountLabel.stringValue = "0 elemento(s)"
         }
 
         let token = loadToken
@@ -2879,6 +2888,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             ])
         }
 
+        label.alignment = columnId == "size" ? .right : .left
         label.stringValue = text
         label.lineBreakMode = .byTruncatingMiddle
         if columnId == "name", let tagColor = Self.tagColor(forIndex: tagColorIndex(for: item.url)) {
@@ -2990,7 +3000,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 tableView.selectRowIndexes(indexes, byExtendingSelection: false)
             }
         }
-        rowCountLabel.stringValue = "\(rows.count) items"
+        rowCountLabel.stringValue = "\(rows.count) elemento(s)"
             + (flatView ? " · aplanada" : "")
             + (quickFilter.isEmpty ? "" : " · filtro «\(quickFilter)»")
     }
@@ -3355,9 +3365,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         do {
             let pasted = try pasteItemsFromClipboard()
             if pasted > 0 {
-                onStatus?("Pegados \(pasted) item(s).")
+                onStatus?("Pegados \(pasted) elemento(s).")
             } else {
-                onStatus?("No hay rutas validas para pegar.")
+                onStatus?("No hay rutas válidas para pegar.")
             }
         } catch {
             onStatus?("No se pudo pegar: \(error.localizedDescription)")

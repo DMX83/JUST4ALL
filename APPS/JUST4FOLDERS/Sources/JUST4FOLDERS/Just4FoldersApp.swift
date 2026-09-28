@@ -57,7 +57,7 @@ struct Just4FoldersApp: App {
             SettingsView()
         }
         .commands {
-            CommandMenu("Navegacion") {
+            CommandMenu("Navegación") {
                 Button("Ir a ruta") {
                     NotificationCenter.default.post(name: .j4fFocusPathBar, object: nil)
                 }
