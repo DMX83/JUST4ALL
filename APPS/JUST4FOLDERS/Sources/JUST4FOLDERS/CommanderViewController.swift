@@ -169,6 +169,20 @@ private final class FileThumbnailCache {
 
 private let sharedThumbnailCache = FileThumbnailCache()
 
+/// Ola 3 — fila con hover sutil (no se dibuja sobre la seleccionada).
+private final class HoverRowView: NSTableRowView {
+    var hovered = false {
+        didSet { if hovered != oldValue { needsDisplay = true } }
+    }
+
+    override func drawBackground(in dirtyRect: NSRect) {
+        super.drawBackground(in: dirtyRect)
+        guard hovered, !isSelected else { return }
+        NSColor.selectedContentBackgroundColor.withAlphaComponent(0.10).setFill()
+        NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 1), xRadius: 4, yRadius: 4).fill()
+    }
+}
+
 final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSearchFieldDelegate, NSControlTextEditingDelegate, NSTableViewDataSource, NSTableViewDelegate, NSOutlineViewDataSource, NSOutlineViewDelegate, NSToolbarItemValidation, QLPreviewPanelDataSource, QLPreviewPanelDelegate, NSMenuDelegate {
     private enum ToolbarID {
         static let root = NSToolbar.Identifier("j4f.toolbar.main")
@@ -207,6 +221,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private var duplicatesWindow: DuplicatesWindowController?
     /// v2.0 — ventana de «Ordenar esta carpeta» (una a la vez).
     private var orderingWindow: OrderingWindowController?
+    /// Ola 3 — paleta de comandos (⌘K).
+    private var commandPalette: CommandPaletteWindowController?
     /// Ola 1 — panel que alimenta el QuickLook (Espacio).
     private weak var previewPanelSource: FilePanelViewController?
     /// Ola 2 — vista previa lateral (⌥⌘P) y progreso de trabajos en la ventana.
@@ -282,6 +298,114 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NotificationCenter.default.addObserver(self, selector: #selector(onRenameTabRequested), name: .j4fRenameTab, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onMoveTabLeftRequested), name: .j4fMoveTabLeft, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onMoveTabRightRequested), name: .j4fMoveTabRight, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onOpenCommandPaletteRequested), name: .j4fCommandPalette, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onWorkspaceSaveRequested), name: .j4fWorkspaceSave, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onRestoreLastWorkspaceRequested), name: .j4fWorkspaceRestoreLast, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onWorkspaceRestoreRequested(_:)), name: .j4fWorkspaceRestore, object: nil)
+    }
+
+    // MARK: - Paleta de comandos (Ola 3)
+
+    @objc private func onOpenCommandPaletteRequested() {
+        openCommandPalette()
+    }
+
+    func openCommandPalette() {
+        commandPalette?.close()
+        let commands: [CommandPaletteWindowController.Command] = [
+            .init(title: "Nueva carpeta", hint: "F7") { [weak self] in self?.createDirectory() },
+            .init(title: "Nueva pestaña", hint: "⌘T") { [weak self] in self?.newTab() },
+            .init(title: "Duplicar pestaña", hint: "⌥⌘T") { [weak self] in self?.onDuplicateTabRequested() },
+            .init(title: "Renombrar pestaña…", hint: "⌥⌘R") { [weak self] in self?.onRenameTabRequested() },
+            .init(title: "Cerrar pestaña", hint: "⌘W") { [weak self] in self?.closeTabOrWindow() },
+            .init(title: "Ir a ruta…", hint: "⌘L") { NotificationCenter.default.post(name: .j4fFocusPathBar, object: nil) },
+            .init(title: "Ir al Home", hint: "") { [weak self] in self?.goHome() },
+            .init(title: "Atrás", hint: "") { [weak self] in self?.goBack() },
+            .init(title: "Adelante", hint: "") { [weak self] in self?.goForward() },
+            .init(title: "Copiar al otro panel", hint: "F5") { [weak self] in self?.copySelection() },
+            .init(title: "Mover al otro panel", hint: "F6") { [weak self] in self?.moveSelection() },
+            .init(title: "Renombrar elemento", hint: "F2") { [weak self] in self?.renameSelection() },
+            .init(title: "Enviar a la Papelera", hint: "F8") { [weak self] in self?.deleteSelection() },
+            .init(title: "QuickLook (vista rápida)", hint: "Espacio · F3") { [weak self] in _ = self?.toggleQuickLookPreview() },
+            .init(title: "Vista aplanada", hint: "⌥⌘F") { [weak self] in self?.onToggleFlatViewRequested() },
+            .init(title: "Vista previa lateral", hint: "⌥⌘P") { [weak self] in self?.onTogglePreviewRequested() },
+            .init(title: "Renombrar en lote…", hint: "⇧⌘R") { [weak self] in self?.onBatchRenameRequested() },
+            .init(title: "Buscar duplicados…", hint: "⇧⌘D") { [weak self] in self?.onFindDuplicatesRequested() },
+            .init(title: "Ordenar esta carpeta…", hint: "⌥⌘O") { [weak self] in self?.onOrderFolderRequested() },
+            .init(title: "Deshacer última ordenación", hint: "⌥⌘Z") { [weak self] in self?.onUndoOrderingRequested() },
+            .init(title: "Guardar workspace…", hint: "⌥⌘S") { [weak self] in self?.onWorkspaceSaveRequested() },
+            .init(title: "Restaurar último workspace", hint: "⌥⌘L") { [weak self] in self?.restoreLastWorkspace() },
+            .init(title: "Seleccionar todo", hint: "⌘A") { [weak self] in self?.activePanel.selectAllItems() }
+        ]
+        let controller = CommandPaletteWindowController(commands: commands)
+        controller.onClose = { [weak self] in self?.commandPalette = nil }
+        commandPalette = controller
+        controller.present()
+    }
+
+    // MARK: - Workspaces (Ola 3)
+
+    @objc private func onWorkspaceSaveRequested() {
+        let alert = NSAlert()
+        alert.messageText = "Guardar workspace"
+        alert.informativeText = "Guarda pestañas, pestaña activa y vista previa de ambos paneles."
+        alert.addButton(withTitle: "Guardar")
+        alert.addButton(withTitle: "Cancelar")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
+        field.placeholderString = "Nombre del workspace"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        saveWorkspace(named: field.stringValue)
+    }
+
+    private func saveWorkspace(named name: String) {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else {
+            statusLabel.stringValue = "Nombre de workspace vacío."
+            NSSound.beep()
+            return
+        }
+        let workspace = Workspace(
+            name: clean,
+            left: leftPanel.workspaceSnapshot(),
+            right: rightPanel.workspaceSnapshot(),
+            previewPaneVisible: previewPaneVisible
+        )
+        WorkspaceStore.shared.save(workspace)
+        UserDefaults.standard.set(clean, forKey: "j4f.lastWorkspace")
+        statusLabel.stringValue = "Workspace «\(clean)» guardado."
+    }
+
+    @objc private func onWorkspaceRestoreRequested(_ notification: Notification) {
+        guard let name = notification.userInfo?["name"] as? String else { return }
+        restoreWorkspace(named: name)
+    }
+
+    @objc private func onRestoreLastWorkspaceRequested() {
+        restoreLastWorkspace()
+    }
+
+    private func restoreLastWorkspace() {
+        guard let name = UserDefaults.standard.string(forKey: "j4f.lastWorkspace"),
+              WorkspaceStore.shared.workspace(named: name) != nil else {
+            statusLabel.stringValue = "No hay ningún workspace guardado."
+            NSSound.beep()
+            return
+        }
+        restoreWorkspace(named: name)
+    }
+
+    private func restoreWorkspace(named name: String) {
+        guard let workspace = WorkspaceStore.shared.workspace(named: name) else { return }
+        leftPanel.restoreWorkspace(workspace.left)
+        rightPanel.restoreWorkspace(workspace.right)
+        previewPaneVisible = workspace.previewPaneVisible
+        previewPane.isHidden = !previewPaneVisible
+        UserDefaults.standard.set(previewPaneVisible, forKey: "j4f.previewPaneVisible")
+        UserDefaults.standard.set(name, forKey: "j4f.lastWorkspace")
+        updatePreviewPane()
+        statusLabel.stringValue = "Workspace «\(name)» restaurado."
     }
 
     /// Ola 2 — vista previa lateral (menu Navegación, ⌥⌘P).
@@ -2306,6 +2430,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     /// Ola 1 — breadcrumb clicable.
     private let breadcrumbRow = NSStackView()
     private var breadcrumbURLs: [URL] = []
+    /// Ola 3 — hover por fila y submenú de workspaces.
+    private var hoveredRow = -1
+    private weak var contextMenu: NSMenu?
+    private var hoverMonitor: Any?
     private var includeHiddenFiles = false
     private var isActivePanel = false
 
@@ -2332,6 +2460,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         pendingSearchWorkItem?.cancel()
         pendingFlatRefreshWorkItem?.cancel()
         quickFilterHUDHideWorkItem?.cancel()
+        if let hoverMonitor {
+            NSEvent.removeMonitor(hoverMonitor)
+        }
     }
 
     override func loadView() {
@@ -2846,6 +2977,27 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         refreshTabsControl()
     }
 
+    // MARK: - Workspaces (Ola 3)
+
+    func workspaceSnapshot() -> PanelWorkspace {
+        PanelWorkspace(
+            tabs: tabURLs.map { $0.standardizedFileURL.path },
+            activeIndex: max(0, min(activeTabIndex, tabURLs.count - 1))
+        )
+    }
+
+    func restoreWorkspace(_ snapshot: PanelWorkspace) {
+        let urls = snapshot.tabs.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        guard !urls.isEmpty else { return }
+        tabURLs = urls
+        tabCustomTitles = Array(repeating: nil, count: urls.count)
+        activeTabIndex = max(0, min(snapshot.activeIndex, urls.count - 1))
+        historyBack.removeAll()
+        historyForward.removeAll()
+        refreshTabsControl()
+        loadDirectory(urls[activeTabIndex], pushHistory: false)
+    }
+
     // MARK: - Historial con menú (Ola 2)
 
     func backHistoryURLs() -> [URL] {
@@ -2917,6 +3069,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tableView.registerForDraggedTypes([.fileURL])
         tableView.setDraggingSourceOperationMask([.move, .copy], forLocal: true)
         tableView.setDraggingSourceOperationMask([.copy], forLocal: false)
+        // Ola 3 — hover por fila (monitor local; se retira en deinit).
+        hoverMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .mouseExited]) { [weak self] event in
+            self?.handleHoverEvent(event)
+            return event
+        }
 
         addColumn(id: "name", title: "Nombre", width: 180)
         addColumn(id: "size", title: "Tamaño", width: 65)
@@ -3060,6 +3217,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private func makeContextMenu() -> NSMenu {
         let menu = NSMenu(title: "Acciones")
         menu.delegate = self
+        contextMenu = menu
         menu.addItem(withTitle: "Abrir", action: #selector(openSelected), keyEquivalent: "")
         menu.addItem(withTitle: "Abrir en Finder", action: #selector(contextOpenInFinder), keyEquivalent: "")
         menu.addItem(.separator())
@@ -3102,6 +3260,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
         toolsItem.submenu = toolsMenu
         menu.addItem(toolsItem)
+        // Ola 3 — workspaces (el submenú se reconstruye en menuNeedsUpdate).
+        let workspacesItem = NSMenuItem(title: "Workspaces", action: nil, keyEquivalent: "")
+        workspacesItem.submenu = NSMenu(title: "Workspaces")
+        menu.addItem(workspacesItem)
         for item in menu.items {
             item.target = self
         }
@@ -3156,12 +3318,48 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
-        guard menu === tableView.headerView?.menu else { return }
-        for item in menu.items {
-            guard let id = item.representedObject as? String,
-                  let column = tableView.tableColumns.first(where: { $0.identifier.rawValue == id }) else { continue }
-            item.state = column.isHidden ? .off : .on
+        if menu === tableView.headerView?.menu {
+            for item in menu.items {
+                guard let id = item.representedObject as? String,
+                      let column = tableView.tableColumns.first(where: { $0.identifier.rawValue == id }) else { continue }
+                item.state = column.isHidden ? .off : .on
+            }
+            return
         }
+        if menu === contextMenu {
+            rebuildWorkspacesSubmenu(in: menu)
+        }
+    }
+
+    /// Ola 3 — lista los workspaces guardados dentro del menú contextual.
+    private func rebuildWorkspacesSubmenu(in menu: NSMenu) {
+        guard let item = menu.item(withTitle: "Workspaces") else { return }
+        let submenu = NSMenu(title: "Workspaces")
+        let workspaces = WorkspaceStore.shared.all()
+        for workspace in workspaces {
+            let entry = NSMenuItem(title: workspace.name, action: #selector(contextRestoreWorkspace(_:)), keyEquivalent: "")
+            entry.target = self
+            entry.representedObject = workspace.name
+            submenu.addItem(entry)
+        }
+        if !workspaces.isEmpty {
+            submenu.addItem(.separator())
+        }
+        let save = NSMenuItem(title: "Guardar workspace actual…", action: #selector(contextSaveWorkspace), keyEquivalent: "")
+        save.target = self
+        submenu.addItem(save)
+        item.submenu = submenu
+    }
+
+    @objc private func contextSaveWorkspace() {
+        activatePanel()
+        NotificationCenter.default.post(name: .j4fWorkspaceSave, object: nil)
+    }
+
+    @objc private func contextRestoreWorkspace(_ sender: NSMenuItem) {
+        guard let name = sender.representedObject as? String else { return }
+        activatePanel()
+        NotificationCenter.default.post(name: .j4fWorkspaceRestore, object: nil, userInfo: ["name": name])
     }
 
     private func addColumn(id: String, title: String, width: CGFloat) {
@@ -3643,6 +3841,35 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         if flags.contains(.option) { return .copy }
         if flags.contains(.command) { return .move }
         return isLocal ? .move : .copy
+    }
+
+    // MARK: - Hover por fila (Ola 3)
+
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        HoverRowView()
+    }
+
+    private func handleHoverEvent(_ event: NSEvent) {
+        guard event.window === view.window, event.type == .mouseMoved else {
+            updateHoveredRow(-1)
+            return
+        }
+        let local = tableView.convert(event.locationInWindow, from: nil)
+        guard tableView.bounds.contains(local) else {
+            updateHoveredRow(-1)
+            return
+        }
+        updateHoveredRow(tableView.row(at: local))
+    }
+
+    private func updateHoveredRow(_ index: Int) {
+        guard hoveredRow != index else { return }
+        hoveredRow = index
+        for row in 0..<rows.count {
+            if let view = tableView.rowView(atRow: row, makeIfNecessary: false) as? HoverRowView {
+                view.hovered = (row == index)
+            }
+        }
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {

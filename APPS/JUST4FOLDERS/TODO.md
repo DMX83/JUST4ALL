@@ -84,6 +84,14 @@
 - [x] Pestañas completas: duplicar (⌥⌘T), renombrar (⌥⌘R: nombre o dejar vacío) y mover (⌥⌘←/→).
 - [ ] Hover por fila (cosmético) y Ola 3 (paleta ⌘K, árbol por panel, galería, workspaces).
 
+## v2.0 — Ola 3 «ADN propio» (en marcha, 28-sep)
+
+- [x] Paleta de comandos ⌘K (buscador de acciones con teclas; 23 comandos).
+- [x] Workspaces: guardar (⌥⌘S) y restaurar (⌥⌘L / contextual «Workspaces ▸») pestañas, activo
+  y vista previa de ambos paneles (`WorkspaceStore` JSON; 2 tests).
+- [x] Hover por fila (sutil, fuera de la selección).
+- [ ] Árbol por panel, galería/mosaico y atajos configurables.
+
 ## MVP-0 — Fundaciones
 
 - [x] Definir principios de arquitectura (AppKit-first + sandbox + copy engine).

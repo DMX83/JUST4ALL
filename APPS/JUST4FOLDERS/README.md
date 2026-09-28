@@ -67,6 +67,8 @@ swift run
   completan la fila de teclas, **columnas configurables** (cabecera; recordadas por carpeta),
   **historial con menu** en Atras/Adelante, **progreso en la ventana** y **pestañas completas**
   (duplicar ⌥⌘T, renombrar ⌥⌘R, mover ⌥⌘←/→).
+- Ola 3 (**v2.0**): **paleta de comandos ⌘K** y **workspaces** (⌥⌘S guardar / ⌥⌘L restaurar:
+  pestañas, activo y preview de ambos paneles), más hover por fila.
 - Folder formats (**v2.0**): cada carpeta recuerda su vista (aplanada, orden, ocultos) y se restaura
   al volver; «Olvidar formato de esta carpeta» en el menu contextual.
 - Sidebar con ubicaciones autorizadas, favoritos y recientes.

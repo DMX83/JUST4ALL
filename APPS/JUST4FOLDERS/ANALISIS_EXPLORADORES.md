@@ -103,13 +103,17 @@ los referentes del género, y convertirlo en un plan por olas. Honestidad por de
 Validado en vivo: preview lateral con foto real, pestaña duplicada y toolbar nueva. *Hover por
 fila: pendiente (cosmético).*
 
-### Ola 3 — «ADN propio»
+### Ola 3 — «ADN propio» — 🟡 en marcha (28-sep)
 
-13. **Paleta de comandos ⌘K** (buscar acciones, no solo ficheros).
-14. **Árbol por panel** (columna lateral colapsable, como Opus/TC).
-15. **Galería/mosaico** para carpetas de fotos + tamaño de miniatura ajustable.
-16. **Workspaces** (QSpace-style): conjuntos de paneles/tabs guardados.
-17. **Atajos configurables** + export/import.
+13. ✅ **Paleta de comandos ⌘K**: busca acciones (título + teclas), ↑/↓ navegan, Enter ejecuta,
+    Esc cierra; 23 comandos de toda la app.
+14. ⏳ **Árbol por panel** (columna lateral colapsable, como Opus/TC) — pendiente.
+15. ⏳ **Galería/mosaico** para fotos + tamaño de miniatura ajustable — pendiente.
+16. ✅ **Workspaces** (QSpace-style): guarda pestañas/activo/preview de ambos paneles con nombre;
+    restaurar desde el menú, el contextual (Workspaces ▸) o la paleta.
+17. ⏳ **Atajos configurables** + export/import — pendiente.
+
+Extra ✅: **hover por fila** sutil (no se dibuja sobre la fila seleccionada).
 
 ## 5) Matriz resumida (lo que importa)
 

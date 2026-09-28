@@ -48,6 +48,11 @@ extension Notification.Name {
     static let j4fRenameTab = Notification.Name("j4f.renameTab")
     static let j4fMoveTabLeft = Notification.Name("j4f.moveTabLeft")
     static let j4fMoveTabRight = Notification.Name("j4f.moveTabRight")
+    /// Ola 3 — paleta de comandos (⌘K) y workspaces.
+    static let j4fCommandPalette = Notification.Name("j4f.commandPalette")
+    static let j4fWorkspaceSave = Notification.Name("j4f.workspaceSave")
+    static let j4fWorkspaceRestoreLast = Notification.Name("j4f.workspaceRestoreLast")
+    static let j4fWorkspaceRestore = Notification.Name("j4f.workspaceRestore")
 }
 
 @main
@@ -78,6 +83,11 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fTogglePreview, object: nil)
                 }
                 .keyboardShortcut("p", modifiers: [.command, .option])
+                Divider()
+                Button("Paleta de comandos") {
+                    NotificationCenter.default.post(name: .j4fCommandPalette, object: nil)
+                }
+                .keyboardShortcut("k", modifiers: .command)
                 Menu("Pestañas") {
                     Button("Duplicar pestaña") {
                         NotificationCenter.default.post(name: .j4fDuplicateTab, object: nil)
@@ -116,6 +126,15 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fUndoOrdering, object: nil)
                 }
                 .keyboardShortcut("z", modifiers: [.command, .option])
+                Divider()
+                Button("Guardar workspace…") {
+                    NotificationCenter.default.post(name: .j4fWorkspaceSave, object: nil)
+                }
+                .keyboardShortcut("s", modifiers: [.command, .option])
+                Button("Restaurar último workspace") {
+                    NotificationCenter.default.post(name: .j4fWorkspaceRestoreLast, object: nil)
+                }
+                .keyboardShortcut("l", modifiers: [.command, .option])
             }
         }
     }
