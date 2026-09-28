@@ -149,7 +149,8 @@ public final class FilingCoordinator: @unchecked Sendable {
                     sourcePath: standardized.path,
                     destinationPath: simulated.path,
                     categoryPath: plan.categoryRelativePath,
-                    action: "simulate"
+                    action: "simulate",
+                    source: plan.source.rawValue
                 )
                 await storeCache(hash: profile.contentHash, profile: profile, proposal: proposal)
                 return Outcome(
@@ -176,7 +177,8 @@ public final class FilingCoordinator: @unchecked Sendable {
                 sourcePath: standardized.path,
                 destinationPath: result.destinationURL.path,
                 categoryPath: result.categoryRelativePath,
-                action: action
+                action: action,
+                source: plan.source.rawValue
             )
             await storeCache(hash: profile.contentHash, profile: profile, proposal: proposal)
             try? await index.updateCachedFiledPath(hash: profile.contentHash, filedPath: result.destinationURL.path)
@@ -429,7 +431,8 @@ public final class FilingCoordinator: @unchecked Sendable {
                 sourcePath: standardized.path,
                 destinationPath: simulated.path,
                 categoryPath: plan.categoryRelativePath,
-                action: "simulate"
+                action: "simulate",
+                source: plan.source.rawValue
             )
             return Outcome(
                 sourcePath: standardized.path,
@@ -456,7 +459,8 @@ public final class FilingCoordinator: @unchecked Sendable {
                 sourcePath: standardized.path,
                 destinationPath: result.destinationURL.path,
                 categoryPath: result.categoryRelativePath,
-                action: action
+                action: action,
+                source: plan.source.rawValue
             )
             if let root = try? await index.rootID(containing: standardized.path) {
                 _ = try? await index.removeEntries(rootID: root.id, paths: [standardized.path])
@@ -586,7 +590,8 @@ public final class FilingCoordinator: @unchecked Sendable {
                 sourcePath: standardized.path,
                 destinationPath: result.destinationURL.path,
                 categoryPath: result.categoryRelativePath,
-                action: "move"
+                action: "move",
+                source: "manual"
             )
             if let root = try? await index.rootID(containing: standardized.path) {
                 _ = try? await index.removeEntries(rootID: root.id, paths: [standardized.path])
@@ -675,7 +680,8 @@ public final class FilingCoordinator: @unchecked Sendable {
                 sourcePath: path,
                 destinationPath: result.destinationURL.path,
                 categoryPath: result.categoryRelativePath,
-                action: "cold"
+                action: "cold",
+                source: "manual"
             )
             // Repunta la caché de duplicados y mueve la entrada del índice al nuevo sitio
             // (reciclando el texto extraído para no perder la búsqueda por contenido).

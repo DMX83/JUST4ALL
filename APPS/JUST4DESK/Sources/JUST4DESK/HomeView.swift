@@ -53,6 +53,12 @@ struct HomeView: View {
     }
 
     var body: some View {
+        withNotificationHandlers(sheetAttachedContent)
+    }
+
+    /// Cuerpo base (con hojas, alertas y diálogos). Separado del `body` para que el
+    /// type-checker no tipo-compruebe toda la cadena junta (lección de G5.1 y N7).
+    private var sheetAttachedContent: some View {
         VStack(spacing: 0) {
             header
             Divider()
@@ -146,7 +152,13 @@ struct HomeView: View {
         .sheet(isPresented: $showWeeklyReport) {
             WeeklyReportSheet(viewModel: viewModel)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .j4iShowLogViewer)) { _ in
+    }
+
+    /// N7 — puente de notificaciones y comandos (cada canal abre su ventana o ajusta el
+    /// estado). Vive en un método aparte para no recargar `body` (límite del type-checker).
+    private func withNotificationHandlers<Content: View>(_ content: Content) -> some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: .j4iShowLogViewer)) { _ in
             showLogViewer = true
         }
         .onReceive(NotificationCenter.default.publisher(for: .j4iOpenExplorer)) { _ in
@@ -160,6 +172,9 @@ struct HomeView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .j4iOpenChat)) { _ in
             openWindow(id: "chat")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .j4iOpenStats)) { _ in
+            openWindow(id: "stats")
         }
         .onReceive(NotificationCenter.default.publisher(for: .j4iOpenSearch)) { note in
             if let query = note.object as? String, !query.isEmpty {
@@ -774,6 +789,9 @@ struct HomeView: View {
                     }
                     shortcutButton("Chat", icon: "text.bubble", keys: "⇧⌘K") {
                         openWindow(id: "chat")
+                    }
+                    shortcutButton("Estadísticas", icon: "chart.bar.xaxis", keys: "⌘T") {
+                        openWindow(id: "stats")
                     }
                 }
             }

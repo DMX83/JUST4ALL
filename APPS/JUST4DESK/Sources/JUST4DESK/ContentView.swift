@@ -51,6 +51,9 @@ struct ContentView: View {
                 viewModel.addCollection(name: name, query: query)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .j4iOpenStats)) { _ in
+            openWindow(id: "stats")
+        }
     }
 
     // MARK: - Vista rápida (QuickLook)

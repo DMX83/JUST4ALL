@@ -15,7 +15,7 @@ import SQLite3
 public actor SearchIndex {
     public static let shared = SearchIndex()
 
-    public static let schemaVersion: Int32 = 4
+    public static let schemaVersion: Int32 = 5
 
     private let dbURL: URL
     private var db: OpaquePointer?
@@ -588,6 +588,19 @@ public actor SearchIndex {
         return Int(removed)
     }
 
+    /// Borra vectores de entradas que ya no existen (higiene: archivados en frío/movidos sin
+    /// pasar por el índice dejaban el contador de vectores por encima del de ficheros).
+    @discardableResult
+    public func sweepOrphanEmbeddings() throws -> Int {
+        try openIfNeeded()
+        let removed = try scalarInt64("SELECT COUNT(*) FROM embeddings WHERE entry_id NOT IN (SELECT id FROM entries);", []) ?? 0
+        if removed > 0 {
+            try exec("DELETE FROM embeddings WHERE entry_id NOT IN (SELECT id FROM entries);")
+            embeddingCache = nil
+        }
+        return Int(removed)
+    }
+
     // MARK: - Reindexado conservador (G7.4)
 
     /// Copia a tablas temporales el texto y los vectores de un root antes de un reindexado
@@ -1003,13 +1016,14 @@ public actor SearchIndex {
         destinationPath: String,
         categoryPath: String,
         action: String,
-        state: String = "applied"
+        state: String = "applied",
+        source: String? = nil
     ) throws -> Int64 {
         try openIfNeeded()
         try exec(
             """
-            INSERT INTO ops_journal(ts, batch_id, src_path, dst_path, category_path, action, state)
-            VALUES(?, ?, ?, ?, ?, ?, ?);
+            INSERT INTO ops_journal(ts, batch_id, src_path, dst_path, category_path, action, state, source)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?);
             """,
             [
                 .double(Date().timeIntervalSince1970),
@@ -1018,7 +1032,8 @@ public actor SearchIndex {
                 .text(destinationPath),
                 .text(categoryPath),
                 .text(action),
-                .text(state)
+                .text(state),
+                source.map { SQLBind.text($0) } ?? .null
             ]
         )
         return sqlite3_last_insert_rowid(db)
@@ -1026,7 +1041,7 @@ public actor SearchIndex {
 
     public func journalRecent(limit: Int = 50) throws -> [JournalEntry] {
         try openIfNeeded()
-        let sql = "SELECT id, ts, batch_id, src_path, dst_path, category_path, action, state, undone_ts FROM ops_journal ORDER BY id DESC LIMIT ?;"
+        let sql = "SELECT id, ts, batch_id, src_path, dst_path, category_path, action, state, undone_ts, source FROM ops_journal ORDER BY id DESC LIMIT ?;"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
             throw sqliteError("No se pudo preparar consulta del journal.")
@@ -1043,7 +1058,7 @@ public actor SearchIndex {
     /// Entradas del journal dentro de un rango temporal (informe semanal, G6).
     public func journalEntries(since: Date, until: Date = Date(), limit: Int = 5000) throws -> [JournalEntry] {
         try openIfNeeded()
-        let sql = "SELECT id, ts, batch_id, src_path, dst_path, category_path, action, state, undone_ts FROM ops_journal WHERE ts >= ? AND ts <= ? ORDER BY id DESC LIMIT ?;"
+        let sql = "SELECT id, ts, batch_id, src_path, dst_path, category_path, action, state, undone_ts, source FROM ops_journal WHERE ts >= ? AND ts <= ? ORDER BY id DESC LIMIT ?;"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
             throw sqliteError("No se pudo preparar la consulta del journal por rango.")
@@ -1059,7 +1074,7 @@ public actor SearchIndex {
 
     public func journalEntry(id: Int64) throws -> JournalEntry? {
         try openIfNeeded()
-        let sql = "SELECT id, ts, batch_id, src_path, dst_path, category_path, action, state, undone_ts FROM ops_journal WHERE id = ? LIMIT 1;"
+        let sql = "SELECT id, ts, batch_id, src_path, dst_path, category_path, action, state, undone_ts, source FROM ops_journal WHERE id = ? LIMIT 1;"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
             throw sqliteError("No se pudo preparar consulta del journal.")
@@ -1087,6 +1102,117 @@ public actor SearchIndex {
         return columnText(stmt, 0)
     }
 
+    /// N7 — Resumen del journal para el panel de estadísticas (por rango y por día).
+    public struct JournalStats: Sendable, Equatable {
+        public struct DayCount: Sendable, Equatable {
+            /// Día local en formato `yyyy-MM-dd`.
+            public let dayKey: String
+            public let archived: Int
+            public let quarantined: Int
+
+            public init(dayKey: String, archived: Int, quarantined: Int) {
+                self.dayKey = dayKey
+                self.archived = archived
+                self.quarantined = quarantined
+            }
+        }
+
+        public let archived: Int        // action = move
+        public let quarantined: Int     // action = quarantine
+        public let cold: Int            // action = cold
+        public let simulated: Int       // action = simulate
+        public let undone: Int          // state = undone (cualquier acción)
+        public let bySource: [String: Int]  // fuente de decisión → (move + quarantine)
+        public let days: [DayCount]
+
+        public init(
+            archived: Int,
+            quarantined: Int,
+            cold: Int,
+            simulated: Int,
+            undone: Int,
+            bySource: [String: Int],
+            days: [DayCount]
+        ) {
+            self.archived = archived
+            self.quarantined = quarantined
+            self.cold = cold
+            self.simulated = simulated
+            self.undone = undone
+            self.bySource = bySource
+            self.days = days
+        }
+    }
+
+    /// Agregados del journal dentro del rango dado (el panel de N7 lo llama al cambiar de rango).
+    public func journalStats(since: Date, until: Date = Date()) throws -> JournalStats {
+        try openIfNeeded()
+        let range: [SQLBind] = [.double(since.timeIntervalSince1970), .double(until.timeIntervalSince1970)]
+
+        func count(_ condition: String) throws -> Int {
+            let value = try scalarInt64("SELECT COUNT(*) FROM ops_journal WHERE ts >= ? AND ts <= ? AND \(condition);", range) ?? 0
+            return Int(value)
+        }
+
+        let archived = try count("action = 'move'")
+        let quarantined = try count("action = 'quarantine'")
+        let cold = try count("action = 'cold'")
+        let simulated = try count("action = 'simulate'")
+        let undone = try count("state = 'undone'")
+
+        var bySource: [String: Int] = [:]
+        var stmt: OpaquePointer?
+        let sourceSQL = """
+        SELECT COALESCE(NULLIF(source, ''), '(sin dato)'), COUNT(*)
+        FROM ops_journal
+        WHERE ts >= ? AND ts <= ? AND action IN ('move', 'quarantine')
+        GROUP BY 1 ORDER BY 2 DESC;
+        """
+        guard sqlite3_prepare_v2(db, sourceSQL, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar las fuentes del journal.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        try bind(stmt, range)
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            bySource[columnText(stmt, 0) ?? "?"] = Int(sqlite3_column_int64(stmt, 1))
+        }
+
+        var days: [JournalStats.DayCount] = []
+        var dayStmt: OpaquePointer?
+        let daySQL = """
+        SELECT strftime('%Y-%m-%d', ts, 'unixepoch', 'localtime') AS day,
+               SUM(CASE WHEN action = 'move' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN action = 'quarantine' THEN 1 ELSE 0 END)
+        FROM ops_journal
+        WHERE ts >= ? AND ts <= ?
+        GROUP BY day ORDER BY day ASC;
+        """
+        guard sqlite3_prepare_v2(db, daySQL, -1, &dayStmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar la actividad por día.")
+        }
+        defer { sqlite3_finalize(dayStmt) }
+        try bind(dayStmt, range)
+        while sqlite3_step(dayStmt) == SQLITE_ROW {
+            days.append(
+                JournalStats.DayCount(
+                    dayKey: columnText(dayStmt, 0) ?? "",
+                    archived: Int(sqlite3_column_int64(dayStmt, 1)),
+                    quarantined: Int(sqlite3_column_int64(dayStmt, 2))
+                )
+            )
+        }
+
+        return JournalStats(
+            archived: archived,
+            quarantined: quarantined,
+            cold: cold,
+            simulated: simulated,
+            undone: undone,
+            bySource: bySource,
+            days: days
+        )
+    }
+
     private func makeJournalEntry(from stmt: OpaquePointer?) -> JournalEntry {
         let undoneAt = sqlite3_column_type(stmt, 8) == SQLITE_NULL
             ? nil
@@ -1100,7 +1226,8 @@ public actor SearchIndex {
             categoryPath: columnText(stmt, 5) ?? "",
             action: columnText(stmt, 6) ?? "",
             state: columnText(stmt, 7) ?? "applied",
-            undoneAt: undoneAt
+            undoneAt: undoneAt,
+            source: columnText(stmt, 9)
         )
     }
 
@@ -1227,6 +1354,9 @@ public actor SearchIndex {
         if version < 4 {
             try applySchemaV4()
         }
+        if version < 5 {
+            try applySchemaV5()
+        }
         if version != Int64(Self.schemaVersion) {
             try exec("PRAGMA user_version = \(Self.schemaVersion);")
         }
@@ -1340,7 +1470,8 @@ public actor SearchIndex {
                 category_path TEXT NOT NULL,
                 action TEXT NOT NULL,
                 state TEXT NOT NULL DEFAULT 'applied',
-                undone_ts REAL
+                undone_ts REAL,
+                source TEXT
             );
             """
         )
@@ -1366,6 +1497,27 @@ public actor SearchIndex {
         )
         // Barrido de vectores huérfanos (entradas que ya no existen; p. ej. de antes del esquema).
         try exec("DELETE FROM embeddings WHERE entry_id NOT IN (SELECT id FROM entries);")
+    }
+
+    /// v5 (N7): columna `source` en `ops_journal` (ai/rules/knowledge/fallback/manual) para el
+    /// panel de estadísticas y el afinado del clasificador. Los registros anteriores quedan NULL.
+    private func applySchemaV5() throws {
+        let exists = try columnExists(table: "ops_journal", column: "source")
+        if !exists {
+            try exec("ALTER TABLE ops_journal ADD COLUMN source TEXT;")
+        }
+    }
+
+    private func columnExists(table: String, column: String) throws -> Bool {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "PRAGMA table_info(\(table));", -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo inspeccionar la tabla \(table).")
+        }
+        defer { sqlite3_finalize(stmt) }
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if columnText(stmt, 1) == column { return true }
+        }
+        return false
     }
 
     // MARK: - Internals: helpers

@@ -55,6 +55,10 @@ struct Just4DeskApp: App {
                     NotificationCenter.default.post(name: .j4iOpenChat, object: nil)
                 }
                 .keyboardShortcut("k", modifiers: [.command, .shift])
+                Button("Estadísticas") {
+                    NotificationCenter.default.post(name: .j4iOpenStats, object: nil)
+                }
+                .keyboardShortcut("t", modifiers: .command)
                 Button("Ajustes de IA") {
                     SettingsTabRouter.pendingTab = "ai"
                     NotificationCenter.default.post(name: .j4iOpenAISettings, object: nil)
@@ -105,6 +109,13 @@ struct Just4DeskApp: App {
                 .tint(J4I.brand)
         }
         .defaultSize(width: 720, height: 560)
+
+        Window("Estadísticas", id: "stats") {
+            StatsView()
+                .environmentObject(engine)
+                .tint(J4I.brand)
+        }
+        .defaultSize(width: 700, height: 620)
 
         MenuBarExtra {
             MenuBarContent()

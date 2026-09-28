@@ -1247,6 +1247,10 @@ final class SearchViewModel: ObservableObject {
             if swept > 0 {
                 J4Log.info(.index, "Contenido: \(swept) fila(s) de texto huérfana(s) limpiadas (histórico).")
             }
+            let sweptVectors = (try? await self.index.sweepOrphanEmbeddings()) ?? 0
+            if sweptVectors > 0 {
+                J4Log.info(.index, "Contenido: \(sweptVectors) vector(es) huérfano(s) limpiados (histórico).")
+            }
             let outcome = await Task.detached(priority: .utility) {
                 await ContentBackfill.runOnce(index: SearchIndex.shared, limit: 400) { Task.isCancelled }
             }.value

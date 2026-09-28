@@ -133,6 +133,8 @@ public struct JournalEntry: Sendable, Equatable, Identifiable {
     public let action: String
     public let state: String
     public let undoneAt: Date?
+    /// N7 — fuente de la decisión (ai/rules/knowledge/fallback/manual); `nil` en registros previos.
+    public let source: String?
 
     public var fileName: String {
         (destinationPath as NSString).lastPathComponent

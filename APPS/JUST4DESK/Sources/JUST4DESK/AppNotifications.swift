@@ -19,6 +19,8 @@ extension Notification.Name {
     static let j4iOpenChat = Notification.Name("j4i.openChat")
     /// N8 — ⌘Z global: deshacer el último archivado (lo emite el monitor de atajos).
     static let j4iUndoLast = Notification.Name("j4i.undoLast")
+    /// N7 — abrir la ventana «Estadísticas» (comando de menú ⌘T).
+    static let j4iOpenStats = Notification.Name("j4i.openStats")
     /// Ficheros «enviados a JUST4DESK» desde el Finder (drop en el icono del Dock; object: [URL]).
     static let j4iIngestFiles = Notification.Name("j4i.ingestFiles")
     /// La configuración de archivado ha cambiado (la emite `SearchViewModel`; la escuchan Ajustes/explorador).
