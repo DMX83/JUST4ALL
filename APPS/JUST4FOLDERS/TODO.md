@@ -12,8 +12,9 @@
   ajustar al contenido; el marcado de «anchos del usuario» solo con arrastre real.
 - [x] **Estilos visuales en Ajustes ▸ Apariencia** (Esmeralda/Océano/Amatista/Grafito/Sistema),
   aplicados en vivo.
-- [x] **Modo de un solo panel** (⌘\\, menú Navegación, paleta; persistente): solo se ve el panel
-  activo; Tab alterna izquierdo/derecho; las columnas se reajustan al cambiar de modo.
+- [x] **Modo de un solo panel** (**botón en la barra de herramientas**, ⌘\\, menú Navegación,
+  paleta; persistente): solo se ve el panel activo; Tab alterna izquierdo/derecho; las columnas
+  se reajustan al cambiar de modo.
 - [x] **Fixes de layout**: el pathEditField con autoresizing envenenaba el solver (contenido no
   llenaba la ventana); refit de columnas tras asentarse; limpieza de anchos guardados envenenados.
 - [ ] Menor conocido: la última columna («Tipo») puede recortar un carácter si el ancho queda

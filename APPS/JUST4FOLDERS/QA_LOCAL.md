@@ -32,9 +32,9 @@
 - [x] Layout a prueba de balas: ventana llena con ambos paneles completos (Nombre/Tamaño/
   Modificado/Tipo) y sin conflictos del solver (los conflictos de AppKit, si los hay, van al
   log unificado, no a stderr).
-- [x] Modo de un solo panel (⌘\\): ciclo completo con capturas — solo el activo; Tab alterna
-  izq/der; persistencia confirmada al relanzar la app; vuelta a dual con reajuste automatico de
-  columnas.
+- [x] Modo de un solo panel (⌘\\ o **botón de la barra de herramientas**): ciclo completo con
+  capturas — clic 2→1 y 1→2, solo el activo, Tab alterna izq/der, persistencia confirmada al
+  relanzar la app y vuelta a dual con reajuste automatico de columnas.
 - [x] Estilos visuales en vivo: cambio a Oceano reflejado al instante (chip, toggles, sidebar);
   restaurado a Esmeralda.
 - [x] Comprobado en el mismo ciclo: barra de direccion por panel (atras/adelante + edicion),

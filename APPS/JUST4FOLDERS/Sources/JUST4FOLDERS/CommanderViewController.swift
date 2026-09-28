@@ -337,6 +337,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         static let back = NSToolbarItem.Identifier("j4f.toolbar.back")
         static let forward = NSToolbarItem.Identifier("j4f.toolbar.forward")
         static let home = NSToolbarItem.Identifier("j4f.toolbar.home")
+        /// v2.2b — alterna 2 paneles ⇄ 1 panel (botón de la barra de herramientas).
+        static let panelMode = NSToolbarItem.Identifier("j4f.toolbar.panelMode")
         static let newTab = NSToolbarItem.Identifier("j4f.toolbar.newTab")
         static let copy = NSToolbarItem.Identifier("j4f.toolbar.copy")
         static let move = NSToolbarItem.Identifier("j4f.toolbar.move")
@@ -409,6 +411,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private var leftPanelMinWidth: NSLayoutConstraint?
     private var rightPanelMinWidth: NSLayoutConstraint?
     static let singlePanelModeKey = "j4f.singlePanelMode"
+    /// v2.2b — botón de la barra de herramientas que alterna 2 paneles ⇄ 1 panel.
+    private weak var panelModeToolbarItem: NSToolbarItem?
+    private weak var panelModeToolbarButton: NSButton?
 
     private let activeIndicatorLabel = NSTextField(labelWithString: "IZQ")
     /// v2.1 — split raíz (autocuración de divisorias).
@@ -592,9 +597,32 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         singlePanelMode.toggle()
         UserDefaults.standard.set(singlePanelMode, forKey: Self.singlePanelModeKey)
         applyPanelMode()
+        updatePanelModeToolbarItem()
         statusLabel.stringValue = singlePanelMode
             ? "Modo de un solo panel — Tab alterna entre izquierdo y derecho."
             : "Modo commander: dos paneles."
+    }
+
+    /// v2.2b — el icono del botón muestra el reparto actual y el tooltip la acción
+    /// (mismo criterio que el ítem del menú Navegación y la paleta).
+    private var panelModeSymbolName: String {
+        singlePanelMode ? "rectangle" : "rectangle.split.2x1"
+    }
+
+    private var panelModeTooltip: String {
+        singlePanelMode ? "Usar dos paneles (⌘\\)" : "Usar un solo panel (⌘\\)"
+    }
+
+    /// v2.2b — refresca el botón tras cualquier cambio de modo (⌘\\, menú Navegación, paleta o
+    /// el propio botón).
+    private func updatePanelModeToolbarItem() {
+        panelModeToolbarButton?.image = NSImage(
+            systemSymbolName: panelModeSymbolName,
+            accessibilityDescription: "Alternar uno o dos paneles"
+        )
+        panelModeToolbarButton?.toolTip = panelModeTooltip
+        panelModeToolbarItem?.label = singlePanelMode ? "Usar dos paneles" : "Usar un solo panel"
+        panelModeToolbarItem?.toolTip = panelModeTooltip
     }
 
     /// v2.2 — muestra solo el panel activo. Los mínimos de 220pt del panel oculto se desactivan
@@ -996,6 +1024,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         // v2.2 — modo de un solo panel (persistente): solo se ve el panel activo; Tab alterna.
         singlePanelMode = UserDefaults.standard.bool(forKey: Self.singlePanelModeKey)
         applyPanelMode()
+        updatePanelModeToolbarItem()
     }
 
     private func makeSidebarView() -> NSView {
@@ -2894,7 +2923,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
-            ToolbarID.back, ToolbarID.forward, ToolbarID.home, .flexibleSpace,
+            ToolbarID.back, ToolbarID.forward, ToolbarID.home, ToolbarID.panelMode, .flexibleSpace,
             ToolbarID.newTab, ToolbarID.copy, ToolbarID.move, ToolbarID.delete,
             ToolbarID.mkdir, ToolbarID.rename, ToolbarID.deletePermanent,
             .flexibleSpace, ToolbarID.refresh, .space,
@@ -2943,6 +2972,23 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             item.image = NSImage(systemSymbolName: "house", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(goHome)
+        case ToolbarID.panelMode:
+            item.label = singlePanelMode ? "Usar dos paneles" : "Usar un solo panel"
+            item.toolTip = panelModeTooltip
+            let panelModeButton = NSButton(
+                image: NSImage(
+                    systemSymbolName: panelModeSymbolName,
+                    accessibilityDescription: "Alternar uno o dos paneles"
+                ) ?? NSImage(),
+                target: self,
+                action: #selector(onToggleSinglePanelRequested)
+            )
+            panelModeButton.bezelStyle = .toolbar
+            panelModeButton.toolTip = panelModeTooltip
+            panelModeButton.setAccessibilityLabel("Alternar uno o dos paneles")
+            item.view = panelModeButton
+            panelModeToolbarItem = item
+            panelModeToolbarButton = panelModeButton
         case ToolbarID.newTab:
             item.label = "New Tab"
             item.toolTip = "Nueva tab (Cmd+T)"
