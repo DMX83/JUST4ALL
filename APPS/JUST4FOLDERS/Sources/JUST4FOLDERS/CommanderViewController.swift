@@ -184,6 +184,13 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         scheduleCooperativeIndexing()
         NotificationCenter.default.addObserver(self, selector: #selector(focusPathBar), name: .j4fFocusPathBar, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onPreferencesChanged), name: .j4fPreferencesChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onToggleFlatViewRequested), name: .j4fToggleFlatView, object: nil)
+    }
+
+    /// v1.2 — alterna la vista aplanada del panel activo (menú Navegación, ⌥⌘F).
+    @objc private func onToggleFlatViewRequested() {
+        activePanel.setFlatView(!activePanel.flatViewActive)
+        statusLabel.stringValue = activePanel.flatViewActive ? "Vista aplanada activada." : "Vista normal."
     }
 
     override func viewDidAppear() {
@@ -1727,8 +1734,14 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private let rowCountLabel = NSTextField(labelWithString: "")
     private let tabsControl = NSSegmentedControl()
     private let indexedSearch = IndexedSearchService.shared
+    private let flatToggleButton = NSButton()
 
     private var allRows: [FileRow] = []
+    /// v1.2 — vista aplanada: cuando está activa, `flatRows` (índice) es la fuente.
+    private var flatView = false
+    private var flatRows: [FileRow] = []
+    private var flatLoading = false
+    private var pendingFlatRefreshWorkItem: DispatchWorkItem?
     private var rows: [FileRow] = []
     private var searchRows: [FileRow] = []
     private var loadTask: Task<Void, Never>?
@@ -1771,6 +1784,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         searchTask?.cancel()
         pendingRefreshWorkItem?.cancel()
         pendingSearchWorkItem?.cancel()
+        pendingFlatRefreshWorkItem?.cancel()
     }
 
     override func loadView() {
@@ -1946,6 +1960,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     func refreshForChangedPaths(_ changedPaths: [String]) {
         guard !changedPaths.isEmpty else { return }
+        if flatView {
+            // La fuente es el índice: re-consulta (con debounce) tras refrescar el índice.
+            scheduleFlatViewRefresh()
+            return
+        }
 
         let normalizedRoot = currentURL.standardizedFileURL.path
         var needsFullReload = false
@@ -2132,6 +2151,15 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tabsRow.translatesAutoresizingMaskIntoConstraints = false
         tabsRow.addArrangedSubview(tabsControl)
         tabsRow.addArrangedSubview(NSView())
+        flatToggleButton.setButtonType(.switch)
+        flatToggleButton.title = "Aplanada"
+        flatToggleButton.font = .systemFont(ofSize: 11)
+        flatToggleButton.controlSize = .small
+        flatToggleButton.target = self
+        flatToggleButton.action = #selector(toggleFlatViewAction)
+        flatToggleButton.toolTip = "Vista aplanada: todos los ficheros del subárbol (vía índice, sin recorrer carpetas)"
+        flatToggleButton.setAccessibilityLabel("Vista aplanada del panel \(side.rawValue)")
+        tabsRow.addArrangedSubview(flatToggleButton)
 
         view.addSubview(header)
         view.addSubview(tabsRow)
@@ -2190,6 +2218,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     private func loadDirectory(_ url: URL, pushHistory: Bool) {
+        if flatView {
+            loadFlatView(url, pushHistory: pushHistory)
+            return
+        }
+        flatLoading = false
         loadTask?.cancel()
         searchTask?.cancel()
         pendingRefreshWorkItem?.cancel()
@@ -2265,6 +2298,124 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 }
             }
         }
+    }
+
+    // MARK: - Vista aplanada (v1.2, «flat view» estilo Directory Opus)
+
+    /// ¿Está activa la vista aplanada en este panel?
+    var flatViewActive: Bool { flatView }
+
+    /// Activa/desactiva la vista aplanada (fuente: índice FTS5; muestra los ficheros del subárbol).
+    func setFlatView(_ enabled: Bool) {
+        guard flatView != enabled else { return }
+        flatView = enabled
+        flatToggleButton.state = enabled ? .on : .off
+        pendingFlatRefreshWorkItem?.cancel()
+        if enabled {
+            onStatus?("Vista aplanada activada — indexando si hace falta…")
+            loadFlatView(currentURL, pushHistory: false)
+        } else {
+            flatRows.removeAll(keepingCapacity: true)
+            loadDirectory(currentURL, pushHistory: false)
+        }
+    }
+
+    @objc private func toggleFlatViewAction() {
+        setFlatView(flatToggleButton.state == .on)
+    }
+
+    /// Carga aplanada: consulta el índice (crawl cooperativo si la carpeta no está lista) y
+    /// muestra todos los ficheros del subárbol; la columna «Tipo» pasa a ser la ruta relativa.
+    /// Con `silent` (refresco del watcher) se conserva el contenido actual hasta tener el nuevo
+    /// (sin parpadeos ni «0 items»).
+    private func loadFlatView(_ url: URL, pushHistory: Bool, silent: Bool = false) {
+        flatLoading = true
+        loadTask?.cancel()
+        searchTask?.cancel()
+        pendingRefreshWorkItem?.cancel()
+        pendingSearchWorkItem?.cancel()
+        pendingFlatRefreshWorkItem?.cancel()
+        loadToken = UUID()
+
+        if pushHistory, url != currentURL {
+            historyBack.append(currentURL)
+            historyForward.removeAll()
+        }
+        currentURL = url
+        rootSelected = false
+        if activeTabIndex < tabURLs.count {
+            tabURLs[activeTabIndex] = url
+        }
+        refreshTabsControl()
+        onDirectoryChanged?(url)
+        let name = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
+        titleLabel.stringValue = "Panel \(side.rawValue) — \(name) · aplanada"
+        if !silent {
+            onStatus?("Aplanando \(url.path)…")
+            rows.removeAll(keepingCapacity: true)
+            tableView.reloadData()
+            rowCountLabel.stringValue = "0 items"
+        }
+
+        let token = loadToken
+        let includeHidden = includeHiddenFiles
+        loadTask = Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+            do {
+                let hits = try await self.indexedSearch.flatEntriesPreparing(under: url, includeHidden: includeHidden)
+                guard !Task.isCancelled else { return }
+                let mapped = hits.map { hit in
+                    FileRow(
+                        url: URL(fileURLWithPath: hit.path),
+                        name: hit.name,
+                        isDirectory: hit.isDirectory,
+                        sizeBytes: hit.isDirectory ? nil : hit.sizeBytes,
+                        modifiedDate: hit.modifiedTimeInterval > 0 ? Date(timeIntervalSince1970: hit.modifiedTimeInterval) : nil,
+                        typeDescription: Self.relativeDirectory(of: hit.path, under: url.path)
+                    )
+                }
+                await MainActor.run {
+                    guard self.loadToken == token else { return }
+                    self.flatLoading = false
+                    self.flatRows = mapped
+                    self.applySortAndReload()
+                    let capped = mapped.count >= 50000 ? " (límite de vista alcanzado)" : ""
+                    self.onStatus?("Vista aplanada: \(mapped.count) fichero(s) bajo \(url.path)\(capped)")
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    guard self.loadToken == token else { return }
+                    self.flatLoading = false
+                    self.onStatus?("No se pudo aplanar: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// Ruta relativa de la carpeta contenedora de `path` bajo `root` («·» si es la raíz).
+    nonisolated static func relativeDirectory(of path: String, under root: String) -> String {
+        let directory = (path as NSString).deletingLastPathComponent
+        guard directory.count > root.count, directory.hasPrefix(root) else { return "·" }
+        let relative = String(directory.dropFirst(root.count + 1))
+        return relative.isEmpty ? "·" : relative
+    }
+
+    private func scheduleFlatViewRefresh() {
+        pendingFlatRefreshWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.flatView else { return }
+            if self.flatLoading {
+                // Hay una carga aplanada en vuelo: no la cancelamos (evita livelock con el
+                // watcher); reintentamos en cuanto termine.
+                self.scheduleFlatViewRefresh()
+                return
+            }
+            self.loadFlatView(self.currentURL, pushHistory: false, silent: true)
+        }
+        pendingFlatRefreshWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
     }
 
     private func buildRow(for url: URL) -> FileRow? {
@@ -2410,7 +2561,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     private func applySortAndReload() {
         let selectedPaths = Set(selectedURLs().map { $0.standardizedFileURL.path })
-        let filtered: [FileRow] = searchQuery.isEmpty ? allRows : searchRows
+        let base = flatView ? flatRows : allRows
+        let filtered: [FileRow] = searchQuery.isEmpty ? base : searchRows
 
         rows = filtered.sorted { lhs, rhs in
             let result: ComparisonResult
@@ -2443,7 +2595,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 tableView.selectRowIndexes(indexes, byExtendingSelection: false)
             }
         }
-        rowCountLabel.stringValue = "\(rows.count) items"
+        rowCountLabel.stringValue = flatView ? "\(rows.count) items · aplanada" : "\(rows.count) items"
     }
 
     private func startDeepSearch(query: String) {
@@ -2465,7 +2617,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         let maxMatches = 5000
         let allowIndexLookup = true
 
-        let quickRows = allRows.filter { row in
+        let baseRows = flatView ? flatRows : allRows
+        let quickRows = baseRows.filter { row in
             let normalizedName = Self.normalizedSearchText(row.name)
             return terms.allSatisfy { normalizedName.contains($0) }
         }

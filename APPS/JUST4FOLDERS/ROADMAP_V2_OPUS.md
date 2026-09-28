@@ -41,7 +41,7 @@ Leyenda: ✅ hecho · 🟡 en curso/parcial · 🔴 pendiente · ➕ ventaja nue
 | Doble panel + árboles + pestañas | 🟡 (commander en curso) | — | v1.0 |
 | Cola de operaciones con progreso | 🟡 (J4FOps listo; UI parcial) | — | motor propio |
 | **Búsqueda instantánea** | ✅ **v1.1 (28-sep)**: J4IIndex compartido | ✅ FTS5 | ➕ Opus depende de Everything; nosotros lo tenemos |
-| Flat view filtrado en vivo | 🔴 | — | propuesto v1.2 |
+| Flat view filtrado en vivo | ✅ **(28-sep, v1.2)** | — | botón «Aplanada» por panel + ⌥⌘F |
 | Batch rename (regex/macros) | 🔴 | — | propuesto v1.2 |
 | Duplicados | 🔴 | ✅ (hash, G2) | compartible |
 | Sync / comparar carpetas | 🔴 | — | v2.x, solo si se pide |
@@ -75,8 +75,12 @@ IA + automatización por agentes**. Ese es el moat.
 - Pendiente de campo: validación con árboles reales enormes + timeout/feedback fino en la UI.
 
 ### v1.2 — «Fiel a Opus» (barato y muy visible)
-- **Flat view:** botón «aplanar» por panel = búsqueda por prefijo de ruta sobre J4IIndex
-  (ya soportado con `pathPrefix`) con filtro incremental en vivo.
+- ✅ **Flat view (28-sep):** botón «Aplanada» por panel (y ⌥⌘F en el menú Navegación) que lista
+  de inmediato los ficheros del subárbol desde el índice — nuevo `SearchIndex.listByPathPrefix`
+  (recorrido del índice único de `entries.path`: milisegundos con 300k+ entradas), columna
+  «Tipo» = ruta relativa, filtro incremental en vivo y refresco silencioso por watcher.
+  De paso, motor: `removeEntries` por lotes (antes 5 DELETE por path; el replay de FSEvents
+  saturaba el actor y bloqueaba búsquedas) y refresh del watcher coalescido + troceado.
 - **Filtro rápido de panel** (teclas: escribir filtra la lista actual; Esc limpia).
 - **Batch rename** con regex + previsualización (debajo: motor de rename de J4FOps).
 - **Colores/etiquetas de estado** por fila (reusar etiquetas Finder de J4ICore: `FinderTags`).

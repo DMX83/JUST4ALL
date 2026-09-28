@@ -90,4 +90,65 @@ final class SearchOperatorsTests: XCTestCase {
         let september = try await index.listByFilters(filters: dateFilters)
         XCTAssertEqual(september.map(\.entry.name).sorted(), ["factura-sep.pdf", "foto-sep.jpg"], "solo los modificados en septiembre")
     }
+
+    func testListByFiltersHonorsPathPrefixAndFilesOnly() async throws {
+        // Flat view (v1.2 de JUST4FOLDERS): listar solo los ficheros de un subárbol.
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("j4i-flat-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
+        let rootPath = tempDir.appendingPathComponent("rootA", isDirectory: true).path
+        let root = try await index.addRoot(path: rootPath)
+        try await index.upsertEntries(rootID: root.id, [
+            IndexEntryWrite(path: "\(rootPath)/sub1/a.pdf", isDirectory: false, sizeBytes: 1, modifiedAt: Date()),
+            IndexEntryWrite(path: "\(rootPath)/sub1/b.txt", isDirectory: false, sizeBytes: 1, modifiedAt: Date()),
+            IndexEntryWrite(path: "\(rootPath)/sub2/c.pdf", isDirectory: false, sizeBytes: 1, modifiedAt: Date()),
+            IndexEntryWrite(path: "\(rootPath)/sub1/dir", isDirectory: true, sizeBytes: 0, modifiedAt: Date())
+        ])
+
+        var filters = IndexSearchFilters()
+        filters.pathPrefix = "\(rootPath)/sub1"
+        filters.directoriesOnly = false
+        let hits = try await index.listByFilters(filters: filters)
+        XCTAssertEqual(
+            hits.map(\.entry.name).sorted(),
+            ["a.pdf", "b.txt"],
+            "solo ficheros del subárbol (sin carpetas ni hermanos)"
+        )
+    }
+
+    func testListByPathPrefixReturnsSubtreeFilesInPathOrder() async throws {
+        // Flat view (v1.2 de JUST4FOLDERS): recorrido rápido del índice por rango de path.
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("j4i-prefix-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let index = SearchIndex(databaseURL: tempDir.appendingPathComponent("index.sqlite"))
+        let rootPath = tempDir.appendingPathComponent("rootB", isDirectory: true).path
+        let root = try await index.addRoot(path: rootPath)
+        try await index.upsertEntries(rootID: root.id, [
+            IndexEntryWrite(path: "\(rootPath)/b/a.txt", isDirectory: false, sizeBytes: 1, modifiedAt: Date()),
+            IndexEntryWrite(path: "\(rootPath)/a/z.pdf", isDirectory: false, sizeBytes: 1, modifiedAt: Date()),
+            IndexEntryWrite(path: "\(rootPath)/a/sub/m.pyc", isDirectory: false, sizeBytes: 1, modifiedAt: Date()),
+            IndexEntryWrite(path: "\(rootPath)/a/sub", isDirectory: true, sizeBytes: 0, modifiedAt: Date()),
+            IndexEntryWrite(path: "\(rootPath)/otro.txt", isDirectory: false, sizeBytes: 1, modifiedAt: Date())
+        ])
+
+        let subtree = try await index.listByPathPrefix("\(rootPath)/a")
+        XCTAssertEqual(
+            subtree.map(\.entry.path),
+            ["\(rootPath)/a/sub/m.pyc", "\(rootPath)/a/z.pdf"],
+            "solo ficheros (sin la carpeta) y en orden por ruta"
+        )
+
+        let rootSelf = try await index.listByPathPrefix("\(rootPath)/a/sub")
+        XCTAssertEqual(rootSelf.map(\.entry.name), ["m.pyc"], "la carpeta pedida no se incluye (filesOnly)")
+
+        let all = try await index.listByPathPrefix(rootPath, filesOnly: false, limit: 100)
+        XCTAssertEqual(all.count, 5, "con filesOnly=false se ven también carpetas y el propio root no aplica")
+
+        let capped = try await index.listByPathPrefix("\(rootPath)", filesOnly: true, limit: 2)
+        XCTAssertEqual(capped.count, 2, "respeta el límite")
+    }
 }

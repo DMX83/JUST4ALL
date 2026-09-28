@@ -196,38 +196,43 @@ public actor SearchIndex {
     }
 
     /// Elimina entradas (subárbol inclusivo) bajo cada path, scoped al root.
+    /// v1.2 — por lotes: tabla temporal de paths → un único conjunto de ids → un solo DELETE por
+    /// tabla. Antes: 5 DELETE por path (con los replays del watcher, decenas de miles de eventos
+    /// dejaban el actor ocupado minutos y bloqueaban búsquedas y listados).
     @discardableResult
     public func removeEntries(rootID: Int64, paths: [String]) throws -> Int {
         try openIfNeeded()
         guard !paths.isEmpty else { return 0 }
         var removed = 0
         try inTransaction {
+            try exec("CREATE TEMP TABLE IF NOT EXISTS _j4i_rm_paths(path TEXT PRIMARY KEY) WITHOUT ROWID;", [])
+            try exec("DELETE FROM _j4i_rm_paths;", [])
             for path in paths {
                 let std = URL(fileURLWithPath: path).standardizedFileURL.path
-                let lo = std + "/"
-                let hi = lo + "\u{10FFFF}"
-                removed += try countEntries(rootID: rootID, path: std, lo: lo, hi: hi)
-                try exec(
-                    "DELETE FROM doc_text_fts WHERE rowid IN (SELECT id FROM entries WHERE root_id = ? AND (path = ? OR (path >= ? AND path < ?)));",
-                    [.int(rootID), .text(std), .text(lo), .text(hi)]
-                )
-                try exec(
-                    "DELETE FROM doc_text WHERE entry_id IN (SELECT id FROM entries WHERE root_id = ? AND (path = ? OR (path >= ? AND path < ?)));",
-                    [.int(rootID), .text(std), .text(lo), .text(hi)]
-                )
-                try exec(
-                    "DELETE FROM embeddings WHERE entry_id IN (SELECT id FROM entries WHERE root_id = ? AND (path = ? OR (path >= ? AND path < ?)));",
-                    [.int(rootID), .text(std), .text(lo), .text(hi)]
-                )
-                try exec(
-                    "DELETE FROM entries_fts WHERE rowid IN (SELECT id FROM entries WHERE root_id = ? AND (path = ? OR (path >= ? AND path < ?)));",
-                    [.int(rootID), .text(std), .text(lo), .text(hi)]
-                )
-                try exec(
-                    "DELETE FROM entries WHERE root_id = ? AND (path = ? OR (path >= ? AND path < ?));",
-                    [.int(rootID), .text(std), .text(lo), .text(hi)]
-                )
+                try exec("INSERT OR IGNORE INTO _j4i_rm_paths(path) VALUES (?);", [.text(std)])
             }
+            try exec("DROP TABLE IF EXISTS _j4i_rm_ids;", [])
+            try exec(
+                """
+                CREATE TEMP TABLE _j4i_rm_ids AS
+                SELECT id FROM entries
+                WHERE root_id = ?
+                  AND EXISTS (
+                      SELECT 1 FROM _j4i_rm_paths r
+                      WHERE entries.path = r.path
+                         OR (entries.path >= r.path || '/' AND entries.path < r.path || '/' || char(1114111))
+                  );
+                """,
+                [.int(rootID)]
+            )
+            removed = Int(try scalarInt64("SELECT COUNT(*) FROM _j4i_rm_ids;", []) ?? 0)
+            try exec("DELETE FROM doc_text_fts WHERE rowid IN (SELECT id FROM _j4i_rm_ids);", [])
+            try exec("DELETE FROM doc_text WHERE entry_id IN (SELECT id FROM _j4i_rm_ids);", [])
+            try exec("DELETE FROM embeddings WHERE entry_id IN (SELECT id FROM _j4i_rm_ids);", [])
+            try exec("DELETE FROM entries_fts WHERE rowid IN (SELECT id FROM _j4i_rm_ids);", [])
+            try exec("DELETE FROM entries WHERE id IN (SELECT id FROM _j4i_rm_ids);", [])
+            try exec("DROP TABLE _j4i_rm_ids;", [])
+            try exec("DELETE FROM _j4i_rm_paths;", [])
         }
         return removed
     }
@@ -759,6 +764,36 @@ public actor SearchIndex {
         }
         defer { sqlite3_finalize(stmt) }
         try bind(stmt, filterParts.binds + [.int(Int64(max(1, min(limit, 5_000))))])
+        return try collectEntries(stmt).map {
+            IndexSearchHit(entry: $0.0, score: $0.1, matchedContent: false, contentSnippet: nil)
+        }
+    }
+
+    /// v1.2 — Listado por prefijo de ruta (vista aplanada del commander): sin MATCH y **sin**
+    /// orden por fecha, recorre en orden el índice único de `entries.path` — milisegundos
+    /// incluso con cientos de miles de entradas. Devuelve los ficheros del subárbol
+    /// (o también carpetas si `filesOnly` = false).
+    public func listByPathPrefix(_ prefix: String, filesOnly: Bool = true, limit: Int = 50_000) throws -> [IndexSearchHit] {
+        try openIfNeeded()
+        let cleanPrefix = prefix.hasSuffix("/") ? String(prefix.dropLast()) : prefix
+        var sql = """
+        SELECT e.id, e.root_id, e.path, e.name, e.ext, e.is_dir, e.size_bytes, e.modified_ts, 0.0
+        FROM entries e
+        WHERE e.path >= ? AND e.path < ?
+        """
+        if filesOnly {
+            sql += " AND e.is_dir = 0"
+        }
+        sql += " ORDER BY e.path ASC LIMIT ?;"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar el listado por prefijo de ruta.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        // '0' (0x30) es el carácter inmediatamente mayor que '/' (0x2F): todo el subárbol queda
+        // por debajo de `prefix + "0"` y la carpeta raíz (exactamente `prefix`) queda fuera.
+        let capped = Int64(max(1, min(limit, 50_000)))
+        try bind(stmt, [.text(cleanPrefix + "/"), .text(cleanPrefix + "0"), .int(capped)])
         return try collectEntries(stmt).map {
             IndexSearchHit(entry: $0.0, score: $0.1, matchedContent: false, contentSnippet: nil)
         }

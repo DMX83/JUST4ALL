@@ -45,6 +45,9 @@ swift run
 - Barra de progreso durante organizacion.
 - Busqueda indexada (**v1.1, 28-sep**): indice FTS5 compartido (`J4IIndex`, ver `PACKAGES/J4SHARED`)
   con indexado cooperativo por carpeta y consultas <100 ms (sustituye al recorrido propio).
+- Vista aplanada (**v1.2, 28-sep**): boton «Aplanada» por panel (o ⌥⌘F) que lista al instante
+  todos los ficheros del subarbol desde el indice (`listByPathPrefix`: recorrido por ruta, ms con
+  300k+ entradas); columna Tipo = ruta relativa, filtro en vivo y refresco silencioso por watcher.
 - Sidebar con ubicaciones autorizadas, favoritos y recientes.
 - Reautorizacion guiada de bookmarks invalidos/stale.
 - Deteccion de volumen read-only / NTFS con aviso en UI.

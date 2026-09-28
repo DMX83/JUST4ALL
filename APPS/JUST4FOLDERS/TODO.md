@@ -26,6 +26,21 @@
   feedback de progreso fino en la UI (el estado se muestra en `onStatus`).
 - [ ] Decidir si el atajo del commander añade búsqueda global (todos los roots del índice).
 
+## v1.2 — «Fiel a Opus» (en curso, 28-sep)
+
+- [x] **Flat view:** botón «Aplanada» por panel + ⌥⌘F (menú Navegación). Lista instantánea de
+  los ficheros del subárbol vía `SearchIndex.listByPathPrefix` (nuevo: recorrido del índice único
+  de `entries.path`, ms incluso con 317k entradas); «Tipo» muestra la ruta relativa; filtro
+  incremental en vivo con el filtro del panel; refresco silencioso por watcher (sin parpadeos).
+- [x] **Motor J4IIndex:** `removeEntries` por lotes (tabla temporal → un DELETE por tabla; antes
+  5 DELETE por path y el replay de FSEvents saturaba el actor) y refresh del watcher coalescido
+  + troceado con `yield`.
+- [ ] Filtro rápido de panel (escribir filtra; Esc limpia) — evaluar si el filtro actual basta.
+- [ ] Batch rename con regex + previsualización.
+- [ ] Colores/etiquetas por fila (FinderTags).
+- [ ] Tamaños de carpeta en background (cola J4FOps, cache LRU).
+- [ ] Duplicados (portar el detector hash de DESK G2).
+
 ## MVP-0 — Fundaciones
 
 - [x] Definir principios de arquitectura (AppKit-first + sandbox + copy engine).

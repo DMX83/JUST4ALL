@@ -80,6 +80,36 @@ actor IndexedSearchService {
         return try await search(query: query, under: root, limit: limit)
     }
 
+    // MARK: - Vista aplanada (v1.2, «flat view»)
+
+    /// Flat view: todos los **ficheros** del subárbol (sin carpetas), directo del índice.
+    /// Usa `listByPathPrefix` (recorrido del índice por ruta, milisegundos) — no el listado
+    /// por fecha, que ordena todo el árbol. Sin comprobación de existencia por fila (serían
+    /// miles de `stat`): la frescura la mantienen el crawler y `refreshChangedPaths`.
+    func flatEntries(under root: URL, limit: Int = 50_000) async throws -> [Hit] {
+        let hits = try await index.listByPathPrefix(root.standardizedFileURL.path, filesOnly: true, limit: limit)
+        return hits.map { hit in
+            Hit(
+                path: hit.entry.path,
+                name: hit.entry.name,
+                isDirectory: hit.entry.isDirectory,
+                sizeBytes: hit.entry.sizeBytes,
+                modifiedTimeInterval: hit.entry.modifiedAt?.timeIntervalSince1970 ?? 0
+            )
+        }
+    }
+
+    /// Flat view con indexado cooperativo previo (si la carpeta aún no está crawleada).
+    func flatEntriesPreparing(under root: URL, includeHidden: Bool, limit: Int = 50_000) async throws -> [Hit] {
+        try await ensureCrawled(
+            root: root.standardizedFileURL,
+            includeHidden: includeHidden,
+            batchSize: 800,
+            pausePerBatchMS: 8
+        )
+        return try await flatEntries(under: root, limit: limit)
+    }
+
     /// Consulta FTS5 limitada al subárbol de `root`.
     func search(query: String, under root: URL, limit: Int = 5000) async throws -> [Hit] {
         let clean = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -118,27 +148,77 @@ actor IndexedSearchService {
 
     // MARK: - Cambios externos (watcher de la app)
 
-    /// Refresca el índice tras cambios detectados por el watcher: upsert de lo nuevo/modificado,
-    /// crawl del subárbol para carpetas nuevas y borrado de lo desaparecido.
+    private var isRefreshing = false
+    private var pendingRefreshPaths: Set<String> = []
+    private var pendingRefreshRoot: (url: URL, includeHidden: Bool)?
+
+    /// Refresca el índice tras cambios detectados por el watcher. Los lotes de ambos paneles
+    /// (y el replay de FSEvents al arrancar) se fusionan aquí: un solo recorrido coalescido.
     func refreshChangedPaths(_ changedPaths: [String], watchedRoot: URL, includeHidden: Bool) async {
+        pendingRefreshPaths.formUnion(changedPaths)
+        pendingRefreshRoot = (watchedRoot, includeHidden)
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+
+        while !pendingRefreshPaths.isEmpty {
+            let batch = Array(pendingRefreshPaths)
+            pendingRefreshPaths.removeAll(keepingCapacity: true)
+            let target = pendingRefreshRoot ?? (watchedRoot, includeHidden)
+            pendingRefreshRoot = nil
+            await performRefresh(batch, watchedRoot: target.url, includeHidden: target.includeHidden)
+        }
+    }
+
+    /// Aplica un lote de cambios: un solo `upsertEntries` y un solo `removeEntries` por lote
+    /// (antes: una transacción por fichero — con miles de eventos dejaba el actor saturado).
+    private func performRefresh(_ paths: [String], watchedRoot: URL, includeHidden: Bool) async {
         let stdRoot = watchedRoot.standardizedFileURL.path
         guard let current = await rootAndState(for: stdRoot) else { return }
         guard current.state != .crawling else { return }
         let root = current.root
         let options = CrawlOptions(includeHidden: includeHidden, batchSize: 800, pausePerBatchMilliseconds: 8)
-        for raw in Set(changedPaths) {
+
+        var toCrawl: Set<String> = []
+        var writes: [IndexEntryWrite] = []
+        var removals: [String] = []
+
+        for raw in Set(paths) {
             let std = URL(fileURLWithPath: raw).standardizedFileURL.path
             guard std == stdRoot || std.hasPrefix(stdRoot + "/") else { continue }
             var isDirectory: ObjCBool = false
             if FileManager.default.fileExists(atPath: std, isDirectory: &isDirectory) {
                 if isDirectory.boolValue {
-                    try? await crawler.crawlSubtree(rootID: root.id, path: std, options: options)
+                    toCrawl.insert(std)
                 } else if let write = Self.entryWrite(for: std) {
-                    _ = try? await index.upsertEntries(rootID: root.id, [write])
+                    writes.append(write)
                 }
             } else {
-                _ = try? await index.removeEntries(rootID: root.id, paths: [std])
+                removals.append(std)
             }
+        }
+
+        for directory in toCrawl {
+            try? await crawler.crawlSubtree(rootID: root.id, path: directory, options: options)
+        }
+        // Troceado con `yield`: el actor queda libre entre trozos para búsquedas/listados.
+        var cursor = 0
+        while cursor < writes.count {
+            let chunk = Array(writes[cursor..<min(cursor + 2000, writes.count)])
+            _ = try? await index.upsertEntries(rootID: root.id, chunk)
+            cursor += 2000
+            await Task.yield()
+        }
+        var removedTotal = 0
+        cursor = 0
+        while cursor < removals.count {
+            let chunk = Array(removals[cursor..<min(cursor + 2000, removals.count)])
+            removedTotal += (try? await index.removeEntries(rootID: root.id, paths: chunk)) ?? 0
+            cursor += 2000
+            await Task.yield()
+        }
+        if removedTotal > 0 {
+            log.info("Índice: \(removedTotal, privacy: .public) entrada(s) podadas por el watcher.")
         }
     }
 

@@ -30,6 +30,11 @@ final class Just4FoldersAppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+extension Notification.Name {
+    /// v1.2 — alterna la vista aplanada del panel activo (menú Navegación, ⌥⌘F).
+    static let j4fToggleFlatView = Notification.Name("j4f.toggleFlatView")
+}
+
 @main
 struct Just4FoldersApp: App {
     @NSApplicationDelegateAdaptor(Just4FoldersAppDelegate.self) private var appDelegate
@@ -48,7 +53,11 @@ struct Just4FoldersApp: App {
                 Button("Ir a ruta") {
                     NotificationCenter.default.post(name: .j4fFocusPathBar, object: nil)
                 }
-                .keyboardShortcut("l", modifiers: [.command])
+                .keyboardShortcut("l", modifiers: .command)
+                Button("Vista aplanada (panel activo)") {
+                    NotificationCenter.default.post(name: .j4fToggleFlatView, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: [.command, .option])
             }
         }
     }
