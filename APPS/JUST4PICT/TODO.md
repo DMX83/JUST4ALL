@@ -25,7 +25,7 @@ El backlog historico del MVP queda en `ROADMAP_V1.md` y `JUST4PICT_POSTMVP_CHECK
 
 - [ ] Extraer `ExportPipeline` dedicado (coordinar escritura/render final fuera de `ImageEnhancer`).
 - [ ] Afinar criterios de `AUTO` en casos limite (documento vs ecommerce con branding ligero).
-- [ ] Añadir metrica simple de regresion visual automatizada para presets clave (`Retrato`, `Paisaje`, `Documento`, `Ecommerce`).
+- [x] Metrica simple de regresion visual automatizada por preset (`PresetVisualRegressionTests`): ventanas calibradas de luma/deltaRGB/edgeRatio/borde sobre las 4 muestras reales; ~1,5 s. Valores base 28-sep anotados en la suite.
 - [ ] Consolidar reportes QA en una salida unica por corrida (tiempo, memoria, conteo de errores).
 
 ## Prioridad baja
