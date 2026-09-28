@@ -72,6 +72,19 @@ swift run
   mantiene al redimensionar la ventana. El arrastre nativo de NSSplitView resultaba no-op en este
   contexto (Auto Layout + hosting de SwiftUI): el reparto lo controla `J4FPanelSplitView` con
   constraints propias y arrastre propio (cursor ↔).
+- **Divisoria de la vista previa arrastrable y recordada** (`J4FBodySplitView`): arrastra el
+  borde izquierdo del preview para agrandarlo (util con imagenes/documentos, sobre todo en modo
+  de un panel); el ancho se guarda (`j4f.previewWidth`) y se autocorrige si los minimos de los
+  paneles no conceden lo pedido (el tope real en modo dual ronda los 880pt; en modo simple hay
+  mas espacio). El preview nunca invade el minimo usable de los paneles (220pt).
+- **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
+  dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
+  de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del
+  cuerpo fijado al de la ventana (requerido). Ademas, la pila inferior (avisos/progreso/estado)
+  usa altura EXACTA calculada de sus filas visibles: `NSStackView` no expone intrinsic, asi que
+  ni hugging ni cap la gobernaban (el solver le daba 96pt y dejaba una banda vacia bajo los
+  paneles). Leccion: no ACTIVAR constraints dentro de `layout()` (bucle de «Update Constraints»
+  que aborta la app): activar en configuracion y solo actualizar constantes en layout.
 - **Fix de layout importante**: el campo de edicion de la direccion conservaba constraints de
   autoresizing y envenenaba al solver (20 conflictos; el contenido no llenaba la ventana en
   algunos estados). Ademas: refit de columnas tras asentarse el layout y limpieza de anchos

@@ -5,8 +5,11 @@ struct ContentView: View {
         // v2.1 — OJO: con solo minWidth/minHeight, el NSViewControllerRepresentable se queda
         // en su tamaño «fitting» (~965pt) y NO llena la ventana al redimensionar/restaurar;
         // maxWidth/maxHeight .infinity lo estiran a la ventana completa.
+        // v2.2d — ignoresSafeArea: el hosting dejaba una banda de ~36pt sin cubrir abajo
+        // (la vista del controlador quedaba por encima del borde inferior de la ventana).
         CommanderContainerView()
             .frame(minWidth: 980, maxWidth: .infinity, minHeight: 620, maxHeight: .infinity)
+            .ignoresSafeArea()
     }
 }
 

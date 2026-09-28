@@ -416,6 +416,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let activeIndicatorLabel = NSTextField(labelWithString: "IZQ")
     /// v2.1 — split raíz (autocuración de divisorias).
     private weak var bodySplit: NSSplitView?
+    private weak var bottomStackView: NSStackView?
+    private var bottomStackHeight: NSLayoutConstraint?
     /// v2.1 — split de paneles (autocuración del reparto 50/50).
     private weak var panelsSplit: NSSplitView?
     private let statusLabel = NSTextField(labelWithString: "Listo")
@@ -843,6 +845,18 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
     }
 
+    /// v2.2d — recalcula el alto exacto de la fila inferior según sus filas visibles
+    /// (ver nota en configureLayout sobre por qué no basta con hugging/cap).
+    private func refreshBottomStackHeight() {
+        guard let c = bottomStackHeight, let st = bottomStackView else { return }
+        let visible = st.arrangedSubviews.filter { !$0.isHidden }
+        let total = visible.reduce(CGFloat(0)) { $0 + $1.fittingSize.height }
+            + CGFloat(max(0, visible.count - 1)) * st.spacing
+        if abs(c.constant - total) > 0.5 {
+            c.constant = total
+        }
+    }
+
     /// v2.1 — autocuración del layout de la ventana: si la barra lateral o el preview quedaron
     /// con anchos inutilizables (p. ej. NSSplitView repartió a partes iguales al no haber
     /// autosave), recoloca las divisorias (250 / paneles / 220).
@@ -866,6 +880,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             panelsSplit.setPosition(panelsSplit.bounds.width / 2, ofDividerAt: 0)
         }
         // Tras cualquier ajuste, que los paneles reajusten sus columnas.
+        refreshBottomStackHeight()
         leftPanel.refreshColumnLayout()
         rightPanel.refreshColumnLayout()
     }
@@ -923,7 +938,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
         let sidebarView = makeSidebarView()
 
-        let bodySplit = NSSplitView()
+        let bodySplit = J4FBodySplitView()
         bodySplit.translatesAutoresizingMaskIntoConstraints = false
         bodySplit.isVertical = true
         bodySplit.dividerStyle = .thin
@@ -942,11 +957,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         // (antes se llamaba con índice 2 inexistente y el preview se quedaba con la prioridad
         // por defecto: absorbía todo el crecimiento de la ventana y quedaba gigante).
         bodySplit.setHoldingPriority(.defaultHigh, forSubviewAt: 2)
-        // v2.1.1 — y un ancho preferido explícito: al crecer la ventana el espacio extra va a
-        // los paneles. Prioridad 750: por debajo del arrastre manual de la divisoria.
-        let previewWidth = previewPane.widthAnchor.constraint(equalToConstant: 232)
-        previewWidth.priority = .defaultHigh
-        previewWidth.isActive = true
+        // v2.2d — el ancho del preview lo gestiona J4FBodySplitView (divisoria arrastrable con
+        // cursor ↔ y persistencia en j4f.previewWidth); al crecer la ventana el espacio extra
+        // va a los paneles.
+        bodySplit.installPreviewConstraint(previewPane)
 
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -961,10 +975,13 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         jobProgressLabel.font = .systemFont(ofSize: 11)
         jobProgressLabel.textColor = .secondaryLabelColor
         jobProgressLabel.isHidden = true
+        // v2.2d — la FILA también se oculta: con los hijos ocultos pero la fila visible,
+        // el stack reservaba 72pt vacíos que dejaban una banda muerta bajo los paneles.
         let jobProgressRow = NSStackView(views: [jobProgressLabel, jobProgressBar])
         jobProgressRow.orientation = .horizontal
         jobProgressRow.spacing = 8
         jobProgressRow.translatesAutoresizingMaskIntoConstraints = false
+        jobProgressRow.isHidden = true
         jobProgressBar.widthAnchor.constraint(greaterThanOrEqualToConstant: 160).isActive = true
 
         // v2.1.1 — chip del panel activo + estado en una sola fila (sin tira superior vacía).
@@ -982,8 +999,20 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         bottomStack.translatesAutoresizingMaskIntoConstraints = false
         // v2.2c — sin esto el stack se estiraba y se comía ~250pt del alto: los paneles
         // acababan en el aire y dejaban un hueco muerto antes de la barra de estado.
-        bottomStack.setHuggingPriority(.defaultHigh, for: .vertical)
-        bottomStack.heightAnchor.constraint(lessThanOrEqualToConstant: 96).isActive = true
+        // v2.2d — OJO: en NSStackView, setHuggingPriority(_:for:) aplica a las FILAS, no a
+        // la pila; la pila necesita setContentHuggingPriority para no estirarse (se estiraba
+        // a 96pt y dejaba una banda vacía de ~100pt bajo los paneles).
+        bottomStack.setHuggingPriority(.required, for: .vertical)
+        bottomStack.setContentHuggingPriority(.required, for: .vertical)
+        // v2.2d — NSStackView no expone intrinsicContentSize, así que ni hugging ni el cap
+        // gobiernan su alto (el solver le daba 96pt y dejaba una banda vacía bajo los
+        // paneles). Altura EXACTA calculada de las filas visibles; refreshBottomStackHeight()
+        // la recalcula cuando aparecen/desaparecen avisos o el progreso.
+        bottomStackView = bottomStack
+        let hConstraint = bottomStack.heightAnchor.constraint(equalToConstant: 18)
+        hConstraint.priority = .required
+        hConstraint.isActive = true
+        bottomStackHeight = hConstraint
 
         container.addSubview(bodySplit)
         container.addSubview(bottomStack)
@@ -1871,23 +1900,27 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         guard let info = VolumeInspector.inspect(url: url) else {
             volumeWarningLabel.isHidden = true
             volumeWarningLabel.stringValue = ""
+            refreshBottomStackHeight()
             return
         }
 
         if info.isReadOnly {
             volumeWarningLabel.stringValue = "Volumen en solo lectura (\(info.fileSystemType)). Algunas operaciones de escritura no estaran disponibles."
             volumeWarningLabel.isHidden = false
+            refreshBottomStackHeight()
             return
         }
 
         if info.isLikelyNTFS {
             volumeWarningLabel.stringValue = "Volumen NTFS detectado. Escritura puede depender de drivers externos."
             volumeWarningLabel.isHidden = false
+            refreshBottomStackHeight()
             return
         }
 
         volumeWarningLabel.isHidden = true
         volumeWarningLabel.stringValue = ""
+        refreshBottomStackHeight()
     }
 
     @discardableResult
@@ -2703,6 +2736,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         let finished = snapshot.state == .done || snapshot.state == .failed || snapshot.state == .cancelled
         jobProgressBar.isHidden = finished
         jobProgressLabel.isHidden = finished
+        (jobProgressBar.superview as? NSStackView)?.isHidden = finished
+        refreshBottomStackHeight()
         guard !finished else { return }
         jobProgressBar.doubleValue = max(0, min(1, snapshot.progress))
         jobProgressLabel.stringValue = "\(snapshot.type.rawValue.uppercased()) \(snapshot.processedItems)/\(snapshot.totalItems) (\(pct)%)"
@@ -6536,11 +6571,14 @@ private final class J4FPanelSplitView: NSSplitView {
     }
 
     /// Crea las constraints de reparto (llamar DESPUÉS de añadir los dos paneles).
+    /// Prioridad 998: por debajo del preview del cuerpo (@999) para que al agrandar el
+    /// preview sean estos paneles quienes cedan el espacio, y por encima de las internas
+    /// del split (250/750) para que el reparto propio siga mandando.
     func installPaneConstraints(left: NSView, right: NSView) {
         let c0 = left.widthAnchor.constraint(equalToConstant: 283)
-        c0.priority = NSLayoutConstraint.Priority(999)
+        c0.priority = NSLayoutConstraint.Priority(998)
         let c1 = right.widthAnchor.constraint(equalToConstant: 283)
-        c1.priority = NSLayoutConstraint.Priority(999)
+        c1.priority = NSLayoutConstraint.Priority(998)
         pane0Width = c0
         pane1Width = c1
         setManualWidthsEnabled(true)
@@ -6614,6 +6652,161 @@ private final class J4FPanelSplitView: NSSplitView {
         }
         isDraggingDivider = false
         UserDefaults.standard.set(Double(leftRatio), forKey: Self.leftRatioKey)
+        window?.invalidateCursorRects(for: self)
+    }
+}
+
+/// v2.2d — split del cuerpo (sidebar | paneles | preview) con la divisoria del **preview**
+/// arrastrable: mismo problema y misma solución que en los paneles (el arrastre nativo es no-op
+/// en este contexto). El ancho del preview se controla con una constraint propia (@999) y se
+/// recuerda en `j4f.previewWidth`; al crecer la ventana el espacio extra va a los paneles.
+private final class J4FBodySplitView: NSSplitView {
+    static let previewWidthKey = "j4f.previewWidth"
+    private let minPreviewWidth: CGFloat = 140
+    private let minPanelsWidth: CGFloat = 220
+    private let defaultPreviewWidth: CGFloat = 232
+    private var previewWidthConstraint: NSLayoutConstraint?
+    private var previewCapConstraint: NSLayoutConstraint?
+    private var splitWidthConstraint: NSLayoutConstraint?
+    private var previewWidth: CGFloat = 232
+    private var isDraggingDivider = false
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        if let stored = UserDefaults.standard.object(forKey: Self.previewWidthKey) as? Double,
+           stored >= Double(minPreviewWidth) - 1, stored <= 2000 {
+            previewWidth = CGFloat(stored)
+        }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) no soportado")
+    }
+
+    /// Crea las constraints del preview (llamar DESPUÉS de añadirlo al split). Todas se
+    /// ACTIVAN aquí (en viewDidLoad), nunca dentro de `layout()`: activar constraints
+    /// durante un ciclo de layout provoca bucles de «Update Constraints» y aborta la app.
+    func installPreviewConstraint(_ preview: NSView) {
+        let c = preview.widthAnchor.constraint(equalToConstant: previewWidth)
+        c.priority = NSLayoutConstraint.Priority(999)
+        c.isActive = true
+        previewWidthConstraint = c
+        // Techo requerido del preview (contra la ventana, constante actualizada en layout()).
+        let cap = preview.widthAnchor.constraint(lessThanOrEqualToConstant: 1000)
+        cap.priority = .required
+        cap.isActive = true
+        previewCapConstraint = cap
+        // Ancho fijo requerido del split (contra la ventana, constante actualizada en layout()).
+        let w = widthAnchor.constraint(equalToConstant: 1700)
+        w.priority = .required
+        w.isActive = true
+        splitWidthConstraint = w
+    }
+
+    /// Presupuesto real de anchura: la ventana (medido: el bounds del contenedor/split se
+    /// infla si una subview no cede porque la cadena de vistas abraza el contenido).
+    private var budgetWidth: CGFloat {
+        window?.frame.width ?? superview?.bounds.width ?? bounds.width
+    }
+
+    /// Límites del preview para el ancho disponible.
+    private func clampedPreviewWidth(_ width: CGFloat) -> CGFloat {
+        let sidebarWidth = subviews.first?.frame.width ?? 250
+        let maxWidth = max(minPreviewWidth, budgetWidth - 24 - sidebarWidth - (dividerThickness + 1) * 2 - minPanelsWidth)
+        return min(max(width, minPreviewWidth), maxWidth)
+    }
+
+    /// Fija el ancho del propio split al de la VENTANA (requerido). Medido: si el split
+    /// puede crecer, al agrandar el preview el solver prefiere estirar el split hacia la
+    /// derecha (invisible) antes que menguar los paneles; con el ancho fijo, el espacio
+    /// del preview sale de los paneles y el arrastre se ve. De paso rellena el ancho real
+    /// de la ventana (antes quedaba un hueco muerto a la derecha).
+    private func refreshSplitWidthIfNeeded() {
+        guard let c = splitWidthConstraint else { return }
+        let target = budgetWidth - 24
+        if abs(c.constant - target) > 1 {
+            c.constant = target
+        }
+    }
+
+    /// Techo REQUERIDO del preview contra el ancho de la VENTANA: sin él, una petición
+    /// grande estira toda la cadena de vistas (medido: el split llegó a 5.634pt) y el
+    /// arrastre no movería la divisoria visible.
+    private func refreshPreviewCapIfNeeded() {
+        guard let cap = previewCapConstraint else { return }
+        let maxW = max(minPreviewWidth, budgetWidth - 24 - 250 - (dividerThickness + 1) * 2 - minPanelsWidth)
+        if abs(cap.constant - maxW) > 1 {
+            cap.constant = maxW
+        }
+    }
+
+    private func applyPreviewWidth() {
+        guard let c = previewWidthConstraint else { return }
+        // v2.2d — autolimpieza: si el layout no pudo conceder el ancho pedido (los
+        // mínimos internos «requeridos» de los paneles son el tope real), se adopta el
+        // ancho resuelto para que lo guardado coincida con lo visible y no quede un
+        // valor fantasma tras reiniciar.
+        if let actual = subviews.last?.frame.width, actual > minPreviewWidth,
+           abs(actual - previewWidth) > 1 {
+            previewWidth = actual
+            UserDefaults.standard.set(Double(actual), forKey: Self.previewWidthKey)
+        }
+        let target = clampedPreviewWidth(previewWidth)
+        guard abs(c.constant - target) > 0.5 else { return }
+        c.constant = target
+        window?.invalidateCursorRects(for: self)
+    }
+
+    override func layout() {
+        super.layout()
+        refreshSplitWidthIfNeeded()
+        refreshPreviewCapIfNeeded()
+        if !isDraggingDivider {
+            applyPreviewWidth()
+        }
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        guard subviews.count >= 2 else { return }
+        let dividerX = subviews[1].frame.maxX
+        addCursorRect(
+            NSRect(x: dividerX - 2, y: 0, width: dividerThickness + 4, height: bounds.height),
+            cursor: .resizeLeftRight
+        )
+    }
+
+    private func isPointOnPreviewDivider(_ point: NSPoint) -> Bool {
+        guard subviews.count >= 2 else { return false }
+        return abs(point.x - subviews[1].frame.maxX) <= 3
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard subviews.count >= 2, isPointOnPreviewDivider(point),
+              let previewWidthConstraint else {
+            super.mouseDown(with: event)
+            return
+        }
+        isDraggingDivider = true
+        NSCursor.resizeLeftRight.set()
+        while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            if next.type == .leftMouseUp { break }
+            // Candidato medido desde el borde derecho real de la ventana (no contra el
+            // bounds del split: puede estar inflado).
+            let lw = next.locationInWindow
+            let candidate = budgetWidth - 14 - lw.x
+            let width = clampedPreviewWidth(candidate)
+            previewWidth = width
+            previewWidthConstraint.constant = width
+            layoutSubtreeIfNeeded()
+        }
+        isDraggingDivider = false
+        // Se guarda el ancho REAL resuelto (si los paneles no dieron más, el tope real),
+        // no la última demanda del puntero.
+        let resolved = subviews.last?.frame.width ?? previewWidth
+        previewWidth = resolved
+        UserDefaults.standard.set(Double(resolved), forKey: Self.previewWidthKey)
         window?.invalidateCursorRects(for: self)
     }
 }

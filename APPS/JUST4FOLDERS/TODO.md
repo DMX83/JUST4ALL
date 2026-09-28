@@ -15,11 +15,18 @@
 - [x] **Modo de un solo panel** (**botón en la barra de herramientas**, ⌘\\, menú Navegación,
   paleta; persistente): solo se ve el panel activo; Tab alterna izquierdo/derecho; las columnas
   se reajustan al cambiar de modo.
-- [x] **Divisoria de paneles arrastrable** (`J4FPanelSplitView`): reparto libre izq/der con
-  proporción persistente (`j4f.panelsLeftRatio`), aplicada al arrancar y al redimensionar;
+- [x] **Divisoria de paneles arrastrable** (`J4FPanelSplitView`): reparto libre izq/der con  proporción persistente (`j4f.panelsLeftRatio`), aplicada al arrancar y al redimensionar;
   arrastre propio con cursor ↔ (el arrastre nativo y `setPosition` eran no-op en este contexto).
+- [x] **Divisoria de la vista previa arrastrable** (`J4FBodySplitView`, v2.2d): agranda el preview
+  arrastrando su borde izquierdo (útil con imágenes/documentos, sobre todo en modo de un panel);
+  ancho persistente (`j4f.previewWidth`) con techo requerido atado a la ventana y autocorrección
+  al valor resuelto si los mínimos de los paneles no conceden lo pedido.
+- [x] **Fill total de la ventana** (v2.2d): `.ignoresSafeArea()` en `ContentView` + ancho del
+  split del cuerpo fijado al de la ventana; sin huecos muertos a ningún lado.
 - [x] **Fix del hueco inferior**: el stack de estado se estiraba (~250 pt) y los paneles
-  acababan en el aire; ahora el split ocupa todo el alto disponible.
+  acababan en el aire; ahora el split ocupa todo el alto disponible y la pila inferior usa
+  altura EXACTA calculada de sus filas visibles (`NSStackView` no expone intrinsic: hugging/cap
+  no la gobernaban). Lección: no activar constraints dentro de `layout()` (aborta la app).
 - [x] **Fixes de layout**: el pathEditField con autoresizing envenenaba el solver (contenido no
   llenaba la ventana); refit de columnas tras asentarse; limpieza de anchos guardados envenenados.
 - [ ] Menor conocido: la última columna («Tipo») puede recortar un carácter si el ancho queda

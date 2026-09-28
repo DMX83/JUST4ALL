@@ -37,8 +37,14 @@
   relanzar la app y vuelta a dual con reajuste automatico de columnas.
 - [x] Divisoria entre paneles: arrastre real validado (divisor 659 → 830) y persistencia al
   relanzar (838 ≈ proporcion × ancho nuevo; escala si cambia la ventana).
+- [x] Divisoria del preview (v2.2d): encoger deja 464pt exactos guardados; agrandar topa en el
+  minimo real de los paneles (~884pt en dual) y el valor guardado se autocorrige al resuelto
+  (885) — sin valores fantasma tras relanzar.
+- [x] Fill completo de la ventana (v2.2d): geometria verificada (view = 1.728 = ventana; split
+  hasta 28pt del borde inferior: 10 de separacion + fila de estado de 18 + margen 12) y capturas
+  sin bandas muertas arriba/abajo/izquierda/derecha.
 - [x] Hueco inferior cerrado: los paneles ocupan todo el alto disponible (antes ~250 pt muertos
-  a causa del stack de estado estirado).
+  a causa del stack de estado estirado; v2.2d: altura exacta por filas visibles).
 - [x] Estilos visuales en vivo: cambio a Oceano reflejado al instante (chip, toggles, sidebar);
   restaurado a Esmeralda.
 - [x] Comprobado en el mismo ciclo: barra de direccion por panel (atras/adelante + edicion),
