@@ -53,6 +53,8 @@ extension Notification.Name {
     static let j4fWorkspaceSave = Notification.Name("j4f.workspaceSave")
     static let j4fWorkspaceRestoreLast = Notification.Name("j4f.workspaceRestoreLast")
     static let j4fWorkspaceRestore = Notification.Name("j4f.workspaceRestore")
+    /// Ola 3 — vista en galería (⌥⌘G).
+    static let j4fToggleGallery = Notification.Name("j4f.toggleGallery")
 }
 
 @main
@@ -83,6 +85,10 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fTogglePreview, object: nil)
                 }
                 .keyboardShortcut("p", modifiers: [.command, .option])
+                Button("Vista en galería") {
+                    NotificationCenter.default.post(name: .j4fToggleGallery, object: nil)
+                }
+                .keyboardShortcut("g", modifiers: [.command, .option])
                 Divider()
                 Button("Paleta de comandos") {
                     NotificationCenter.default.post(name: .j4fCommandPalette, object: nil)

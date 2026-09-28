@@ -115,9 +115,11 @@ private final class FileThumbnailCache {
     private let lock = NSLock()
     private let cache = NSCache<NSString, NSImage>()
     private var inFlight: Set<String> = []
+    private let size: CGFloat
 
-    init() {
-        cache.countLimit = 512
+    init(size: CGFloat = 40, countLimit: Int = 512) {
+        self.size = size
+        cache.countLimit = countLimit
     }
 
     func cached(for url: URL) -> NSImage? {
@@ -143,7 +145,7 @@ private final class FileThumbnailCache {
 
         let request = QLThumbnailGenerator.Request(
             fileAt: url,
-            size: CGSize(width: 40, height: 40),
+            size: CGSize(width: size, height: size),
             scale: 2,
             representationTypes: .thumbnail
         )
@@ -167,7 +169,72 @@ private final class FileThumbnailCache {
     }
 }
 
-private let sharedThumbnailCache = FileThumbnailCache()
+private let sharedThumbnailCache = FileThumbnailCache(size: 40, countLimit: 512)
+/// Ola 3 — miniaturas grandes para la galería.
+private let sharedGalleryThumbnailCache = FileThumbnailCache(size: 128, countLimit: 256)
+
+/// Ola 3 — celda de la galería (miniatura + nombre).
+private final class GalleryItem: NSCollectionViewItem {
+    static let identifier = NSUserInterfaceItemIdentifier("GalleryItem")
+
+    private let thumb = NSImageView()
+    private let nameLabel = NSTextField(labelWithString: "")
+
+    override func loadView() {
+        let container = NSView()
+        container.wantsLayer = true
+        container.layer?.cornerRadius = 8
+
+        thumb.imageScaling = .scaleProportionallyUpOrDown
+        thumb.wantsLayer = true
+        thumb.layer?.cornerRadius = 6
+        thumb.layer?.backgroundColor = NSColor.quaternaryLabelColor.withAlphaComponent(0.10).cgColor
+        nameLabel.font = .systemFont(ofSize: 10)
+        nameLabel.alignment = .center
+        nameLabel.lineBreakMode = .byTruncatingMiddle
+
+        for subview in [thumb, nameLabel] {
+            subview.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(subview)
+        }
+        NSLayoutConstraint.activate([
+            thumb.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
+            thumb.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            thumb.widthAnchor.constraint(equalToConstant: 96),
+            thumb.heightAnchor.constraint(equalToConstant: 72),
+            nameLabel.topAnchor.constraint(equalTo: thumb.bottomAnchor, constant: 4),
+            nameLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 4),
+            nameLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -4)
+        ])
+        view = container
+    }
+
+    override var isSelected: Bool {
+        didSet { updateSelectionAppearance() }
+    }
+
+    func configure(with row: FileRow) {
+        nameLabel.stringValue = row.name
+        if row.isDirectory {
+            thumb.image = sharedFileIconCache.icon(for: row)
+        } else if let cached = sharedGalleryThumbnailCache.cached(for: row.url) {
+            thumb.image = cached
+        } else {
+            thumb.image = sharedFileIconCache.icon(for: row)
+            sharedGalleryThumbnailCache.request(for: row.url) { [weak self] in
+                guard let self, let image = sharedGalleryThumbnailCache.cached(for: row.url) else { return }
+                self.thumb.image = image
+            }
+        }
+        updateSelectionAppearance()
+    }
+
+    private func updateSelectionAppearance() {
+        view.layer?.backgroundColor = isSelected
+            ? NSColor.selectedContentBackgroundColor.withAlphaComponent(0.35).cgColor
+            : nil
+    }
+}
 
 /// Ola 3 — fila con hover sutil (no se dibuja sobre la seleccionada).
 private final class HoverRowView: NSTableRowView {
@@ -302,6 +369,12 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NotificationCenter.default.addObserver(self, selector: #selector(onWorkspaceSaveRequested), name: .j4fWorkspaceSave, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onRestoreLastWorkspaceRequested), name: .j4fWorkspaceRestoreLast, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onWorkspaceRestoreRequested(_:)), name: .j4fWorkspaceRestore, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onToggleGalleryRequested), name: .j4fToggleGallery, object: nil)
+    }
+
+    /// Ola 3 — alterna lista/galería del panel activo (⌥⌘G).
+    @objc private func onToggleGalleryRequested() {
+        activePanel.setGalleryMode(!activePanel.isGalleryMode)
     }
 
     // MARK: - Paleta de comandos (Ola 3)
@@ -329,6 +402,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             .init(title: "QuickLook (vista rápida)", hint: "Espacio · F3") { [weak self] in _ = self?.toggleQuickLookPreview() },
             .init(title: "Vista aplanada", hint: "⌥⌘F") { [weak self] in self?.onToggleFlatViewRequested() },
             .init(title: "Vista previa lateral", hint: "⌥⌘P") { [weak self] in self?.onTogglePreviewRequested() },
+            .init(title: "Vista en galería / lista", hint: "⌥⌘G") { [weak self] in self?.onToggleGalleryRequested() },
             .init(title: "Renombrar en lote…", hint: "⇧⌘R") { [weak self] in self?.onBatchRenameRequested() },
             .init(title: "Buscar duplicados…", hint: "⇧⌘D") { [weak self] in self?.onFindDuplicatesRequested() },
             .init(title: "Ordenar esta carpeta…", hint: "⌥⌘O") { [weak self] in self?.onOrderFolderRequested() },
@@ -2365,7 +2439,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 }
 
-private final class FilePanelViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
+private final class FilePanelViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSCollectionViewDataSource, NSCollectionViewDelegate {
     var onActivate: (() -> Void)?
     var onStatus: ((String) -> Void)?
     var onDirectoryChanged: ((URL) -> Void)?
@@ -2434,6 +2508,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private var hoveredRow = -1
     private weak var contextMenu: NSMenu?
     private var hoverMonitor: Any?
+    /// Ola 3 — galería: modo de vista, colección y scroll propios.
+    private enum ViewMode: String { case list, gallery }
+    private var viewMode: ViewMode = .list
+    private let galleryScrollView = NSScrollView()
+    private let collectionView = NSCollectionView()
+    private let galleryLayout = NSCollectionViewFlowLayout()
+    private weak var listScrollView: NSScrollView?
     private var includeHiddenFiles = false
     private var isActivePanel = false
 
@@ -2558,7 +2639,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     /// ¿La tabla de este panel tiene el foco del teclado?
     func isTableFirstResponder() -> Bool {
-        view.window?.firstResponder === tableView
+        view.window?.firstResponder === tableView || view.window?.firstResponder === collectionView
     }
 
     func appendQuickFilter(_ text: String) {
@@ -2700,6 +2781,12 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     func selectedURLs() -> [URL] {
+        if viewMode == .gallery {
+            let indexes = collectionView.selectionIndexPaths.compactMap(\.item).sorted()
+            let urls = indexes.compactMap { $0 < rows.count ? rows[$0].url : nil }
+            if !urls.isEmpty { return urls }
+            return rootSelected ? [currentURL] : []
+        }
         let selected = Array(tableView.selectedRowIndexes).compactMap { (idx: Int) -> URL? in
             guard idx >= 0, idx < rows.count else { return nil }
             return rows[idx].url
@@ -2998,6 +3085,60 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         loadDirectory(urls[activeTabIndex], pushHistory: false)
     }
 
+    // MARK: - Galería (Ola 3)
+
+    var isGalleryMode: Bool { viewMode == .gallery }
+
+    /// Alterna lista/galería (se recuerda por carpeta en el formato).
+    func setGalleryMode(_ enabled: Bool) {
+        applyGalleryMode(enabled)
+        saveFormat()
+        onStatus?(enabled ? "Vista en galería." : "Vista en lista.")
+    }
+
+    /// Aplica el modo sin guardar (restauración de formato).
+    private func applyGalleryMode(_ enabled: Bool) {
+        viewMode = enabled ? .gallery : .list
+        galleryScrollView.isHidden = !enabled
+        listScrollView?.isHidden = enabled
+        if enabled {
+            collectionView.reloadData()
+        } else {
+            tableView.reloadData()
+        }
+    }
+
+    @objc private func galleryDoubleClick(_ sender: NSClickGestureRecognizer) {
+        let point = sender.location(in: collectionView)
+        guard let indexPath = collectionView.indexPathForItem(at: point) else { return }
+        collectionView.deselectAll(nil)
+        collectionView.selectItems(at: [indexPath], scrollPosition: [])
+        openSelected()
+    }
+
+    func numberOfSections(in collectionView: NSCollectionView) -> Int { 1 }
+
+    func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
+        rows.count
+    }
+
+    func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
+        let item = collectionView.makeItem(withIdentifier: GalleryItem.identifier, for: indexPath)
+        if let galleryItem = item as? GalleryItem, indexPath.item < rows.count {
+            galleryItem.configure(with: rows[indexPath.item])
+        }
+        return item
+    }
+
+    func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
+        activatePanel()
+        onSelectionChanged?()
+    }
+
+    func collectionView(_ collectionView: NSCollectionView, didDeselectItemsAt indexPaths: Set<IndexPath>) {
+        onSelectionChanged?()
+    }
+
     // MARK: - Historial con menú (Ola 2)
 
     func backHistoryURLs() -> [URL] {
@@ -3063,7 +3204,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tableView.dataSource = self
         tableView.doubleAction = #selector(openSelected)
         tableView.target = self
-        tableView.menu = makeContextMenu()
+        let panelMenu = makeContextMenu()
+        tableView.menu = panelMenu
         tableView.setAccessibilityLabel("Contenido del panel \(side.rawValue)")
         // Ola 1 — drag & drop: interior mueve (⌥ copia), desde fuera copia (⌘ mueve).
         tableView.registerForDraggedTypes([.fileURL])
@@ -3090,6 +3232,29 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        listScrollView = scrollView
+
+        // Ola 3 — galería (misma región; se muestra/oculta según el modo).
+        galleryLayout.itemSize = NSSize(width: 108, height: 98)
+        galleryLayout.minimumInteritemSpacing = 10
+        galleryLayout.minimumLineSpacing = 10
+        galleryLayout.sectionInset = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        collectionView.collectionViewLayout = galleryLayout
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        collectionView.isSelectable = true
+        collectionView.allowsMultipleSelection = true
+        collectionView.backgroundColors = [.clear]
+        collectionView.register(GalleryItem.self, forItemWithIdentifier: GalleryItem.identifier)
+        collectionView.menu = panelMenu
+        collectionView.setAccessibilityLabel("Galería del panel \(side.rawValue)")
+        let galleryDoubleClick = NSClickGestureRecognizer(target: self, action: #selector(galleryDoubleClick(_:)))
+        galleryDoubleClick.numberOfClicksRequired = 2
+        collectionView.addGestureRecognizer(galleryDoubleClick)
+        galleryScrollView.documentView = collectionView
+        galleryScrollView.hasVerticalScroller = true
+        galleryScrollView.translatesAutoresizingMaskIntoConstraints = false
+        galleryScrollView.isHidden = true
 
         let header = NSStackView()
         header.orientation = .horizontal
@@ -3127,6 +3292,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         view.addSubview(breadcrumbRow)
         view.addSubview(tabsRow)
         view.addSubview(scrollView)
+        view.addSubview(galleryScrollView)
 
         configureQuickFilterHUD(above: scrollView)
         configureEmptyState(over: scrollView)
@@ -3144,7 +3310,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
             scrollView.topAnchor.constraint(equalTo: tabsRow.bottomAnchor, constant: 8),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8)
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8),
+            galleryScrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
+            galleryScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            galleryScrollView.topAnchor.constraint(equalTo: tabsRow.bottomAnchor, constant: 8),
+            galleryScrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8)
         ])
     }
 
@@ -3573,6 +3743,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         for column in tableView.tableColumns {
             column.isHidden = format.hiddenColumns?.contains(column.identifier.rawValue) ?? false
         }
+        applyGalleryMode(format.viewMode == "gallery")
     }
 
     /// Guarda el formato actual del panel para su carpeta (tras cambios del usuario).
@@ -3584,7 +3755,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 sortColumn: sortColumn,
                 ascending: ascending,
                 includeHidden: includeHiddenFiles,
-                hiddenColumns: tableView.tableColumns.filter { $0.isHidden }.map { $0.identifier.rawValue }
+                hiddenColumns: tableView.tableColumns.filter { $0.isHidden }.map { $0.identifier.rawValue },
+                viewMode: viewMode == .gallery ? "gallery" : nil
             ),
             for: currentURL.standardizedFileURL.path
         )
@@ -3762,6 +3934,16 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     @objc private func openSelected() {
         activatePanel()
+        if viewMode == .gallery {
+            let urls = selectedURLs()
+            guard urls.count == 1, let url = urls.first else { return }
+            if isDirectory(url) {
+                loadDirectory(url, pushHistory: true)
+            } else {
+                NSWorkspace.shared.open(url)
+            }
+            return
+        }
         let idx = tableView.clickedRow >= 0 ? tableView.clickedRow : tableView.selectedRow
         guard idx >= 0, idx < rows.count else { return }
         let row = rows[idx]
@@ -4062,6 +4244,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         rowCountLabel.stringValue = "\(rows.count) elemento(s)"
             + (flatView ? " · aplanada" : "")
             + (quickFilter.isEmpty ? "" : " · filtro «\(quickFilter)»")
+        if viewMode == .gallery {
+            collectionView.reloadData()
+        }
         updateEmptyState()
     }
 

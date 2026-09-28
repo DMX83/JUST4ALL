@@ -90,6 +90,9 @@
 - [x] Workspaces: guardar (⌥⌘S) y restaurar (⌥⌘L / contextual «Workspaces ▸») pestañas, activo
   y vista previa de ambos paneles (`WorkspaceStore` JSON; 2 tests).
 - [x] Hover por fila (sutil, fuera de la selección).
+- [x] Galería/mosaico (⌥⌘G): rejilla NSCollectionView con miniaturas grandes (128 px), doble
+  clic abre, recordada por carpeta en el folder format; convive con orden/filtro/aplanada.
+- [ ] Árbol por panel y atajos configurables. Tamaño de miniatura ajustable.
 - [ ] Árbol por panel, galería/mosaico y atajos configurables.
 
 ## MVP-0 — Fundaciones

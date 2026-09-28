@@ -10,19 +10,23 @@ public struct FolderFormat: Codable, Sendable, Equatable {
     public var includeHidden: Bool
     /// Ola 2 — columnas ocultas (ids: name/size/modified/type); nil = todas visibles.
     public var hiddenColumns: [String]?
+    /// Ola 3 — modo de vista por carpeta: "gallery" o nil (lista).
+    public var viewMode: String?
 
     public init(
         flatView: Bool = false,
         sortColumn: String = "name",
         ascending: Bool = true,
         includeHidden: Bool = false,
-        hiddenColumns: [String]? = nil
+        hiddenColumns: [String]? = nil,
+        viewMode: String? = nil
     ) {
         self.flatView = flatView
         self.sortColumn = sortColumn
         self.ascending = ascending
         self.includeHidden = includeHidden
         self.hiddenColumns = hiddenColumns
+        self.viewMode = viewMode
     }
 }
 

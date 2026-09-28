@@ -108,7 +108,9 @@ fila: pendiente (cosmético).*
 13. ✅ **Paleta de comandos ⌘K**: busca acciones (título + teclas), ↑/↓ navegan, Enter ejecuta,
     Esc cierra; 23 comandos de toda la app.
 14. ⏳ **Árbol por panel** (columna lateral colapsable, como Opus/TC) — pendiente.
-15. ⏳ **Galería/mosaico** para fotos + tamaño de miniatura ajustable — pendiente.
+15. ✅ **Galería/mosaico** (⌥⌘G, recordada por carpeta): rejilla de miniaturas grandes (128 px)
+    con nombre debajo; doble clic abre; convive con orden/filtro/aplanada y con la vista previa
+    lateral. *Tamaño de miniatura ajustable: pendiente.*
 16. ✅ **Workspaces** (QSpace-style): guarda pestañas/activo/preview de ambos paneles con nombre;
     restaurar desde el menú, el contextual (Workspaces ▸) o la paleta.
 17. ⏳ **Atajos configurables** + export/import — pendiente.
