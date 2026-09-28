@@ -26,6 +26,7 @@ actividad, estado, accesos) + **buscador instantáneo** (omnibox ⌘K en Inicio 
 | `J4IDocs` | `Sources/J4IDocs` | PDFKit, Vision OCR, txt/md/rtf, docx/xlsx, regex de metadatos |
 | `J4IAI` | `Sources/J4IAI` | `DeepSeekClient`, `DeepSeekFilingAdvisor`, cache por hash |
 | `J4IFiling` | `Sources/J4IFiling` | Ejecución mkdirs+move (J4FOps), journal+undo, «sin clasificar», simulación |
+| `J4IMCP` / `JUST4DESKMCP` | `Sources/J4IMCP`, `Sources/JUST4DESKMCP` | Servidor MCP local (stdio, solo lectura) para agentes: `buscar_archivos` / `leer_documento` (ver `docs/MCP.md`) |
 | `JUST4DESK` | `Sources/JUST4DESK` | App SwiftUI: **Inicio** (`HomeView`), ventana «Buscar», explorador, revisión, ajustes |
 
 Dependencia local: `APPS/JUST4FOLDERS` (`.package(path: "../JUST4FOLDERS")`, productos
@@ -38,6 +39,7 @@ cd APPS/JUST4DESK
 swift build
 swift test
 swift run                 # app en dev
+swift build --product JUST4DESKMCP   # servidor MCP para agentes (docs/MCP.md)
 ./scripts/run.sh          # relanza la app desacoplada de la terminal (dev)
 ./scripts/build_dmg.sh    # DMG en dist/ (usa scripts/app_env.sh del repo)
 ./scripts/qa_smoke.sh     # build + test + checklist manual
@@ -72,5 +74,7 @@ QA/benchmarks grandes: env-gated (p. ej. `J4I_RUN_100K_PERF=1`), nunca en el cam
 
 - Docs del módulo: `README.md`, `ARCHITECTURE.md`, `PRIVACY.md`, `MEMORY.md`, `TODO.md` (en `APPS/JUST4DESK/`).
 - Patrón IA/planner: `APPS/JUST4PICT/Sources/JUST4PICT/{OpenAIImageAdvisor,EnhancementPlanner}.swift`.
+- MCP para agentes: `docs/MCP.md` (protocolo, herramientas y configuración).
+- Auditoría vigente: `docs/AUDITORIA-2026-09-28.md` (verificaciones, incidencias y deudas).
 - Motor de operaciones: `APPS/JUST4FOLDERS/Sources/J4FOps/`.
 - Antipatrones de búsqueda a evitar: `APPS/JUST4FOLDERS/Sources/J4FFileSystem/PathSearchIndex.swift`.

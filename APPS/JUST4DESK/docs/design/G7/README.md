@@ -45,3 +45,28 @@
 - QA: para teclear en campos SwiftUI vía accesibilidad hay que forzar `AXFocused` (los `keystroke`
   no bastan).
 - **G7.2** pendiente: MCP para agentes (servidor local que expone búsqueda/lectura del archivo).
+
+## G7.2 — MCP para agentes (28-sep)
+
+- `J4IMCP` (servidor MCP: `initialize`/`tools/list`/`tools/call`) + ejecutable `JUST4DESKMCP`;
+  herramientas `buscar_archivos` (índice + sinónimos; solo ficheros) y `leer_documento`
+  (índice o extracción al momento). Config: `docs/MCP.md`.
+- Verificación por tubería real: `printf '…initialize…tools/call buscar_archivos «recibo de luz»…'
+  | .build/debug/JUST4DESKMCP` → handshake correcto y 9 resultados (Iberdrola Gas primero).
+  Tests: `MCPHandlerTests` (8).
+
+## G7.3 — Re-extracción de contenido (28-sep)
+
+- `ContentBackfill` + marcadores vacíos (fila `''` = intento sin texto → no repite OCR) +
+  barrido de huérfanos + re-vectorizado automático al terminar.
+- Real: **344 textos recuperados** · 2 sin texto · 0 ausentes; después, **3.997 vectores**
+  (324 de contenido). Evidencia en el registro: «Contenido re-extraído: 344 texto(s)…».
+
+## G7.4 — Reindexado conservador (28-sep) — incidencia y arreglo
+
+- **Incidencia**: el «Reindexar» completo del 27-sep (4.603 entradas) vaciaba `doc_text` y
+  `embeddings` junto con el índice; los 3.950 ficheros quedaron sin textos ni vectores.
+- **Arreglo**: `preserveContentSnapshot`/`restorePreservedContent` (snapshot en tablas temporales +
+  re-vinculado **por ruta** tras el crawl) + mantenimiento post-crawl en `SearchViewModel`.
+  La app recuperó sola los datos al arrancar (344 textos + 3.997 vectores). Tests:
+  `ReindexPreservationTests` (3).

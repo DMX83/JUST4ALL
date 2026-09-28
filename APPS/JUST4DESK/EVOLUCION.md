@@ -215,7 +215,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 | **G4** ✅ | **N5: menú de barra + atajo global + Quick Action Finder** (v1: menú + ⌥Espacio; la Quick Action llega con el DMG) | La app pasa de «ventana» a «presencia» (lo pide el mercado) | Bajo-Medio |
 | **G5** ✅ | **Espacios/colecciones** (v1: colecciones por búsquedas; etiquetas Finder = G5.1) | «Organizar sin mover»; encaja con Inicio y omnibox | Medio-Alto |
 | **G6** ✅ | **Archivo en frío + informe semanal** | Consolida «mantenimiento continuo» del entorno | Bajo |
-| **G7** ✅ | **Búsqueda semántica local + chat del archivo** (v1: expansión + vectores de contenido + chat con citas; MCP = G7.2; re-extracción de texto = G7.3) | Diferencial avanzado (DEVONthink 4/Eagle ya lo venden) | Alto |
+| **G7** ✅ | **Búsqueda semántica local + chat + MCP** (v1: expansión/vectores/chat; G7.2 MCP ✅; G7.3 re-extracción de contenido ✅; G7.4 reindexado conservador ✅) | Diferencial avanzado (DEVONthink 4/Eagle ya lo venden) | Alto |
 
 **Recomendación de secuencia**: G1 → G3 → G2 → G4 → G5 → G6 → G7.
 (G3 antes que G2 porque es más barato y multiplica la confianza en las sugerencias de G2.)

@@ -602,3 +602,30 @@ Convención por version + build stamp:
   búsqueda por contenido desde reindexados anteriores.
 - +19 tests (`SemanticIndexTests`, `QueryExpansionTests`, `ArchiveChatTests`); suite **196**
   (195 + 1 skip). Capturas en `docs/design/G7/`.
+
+### Added — G7.2 (MCP para agentes) (28-sep)
+
+- **Servidor MCP local** (`J4IMCP` + ejecutable `JUST4DESKMCP`): JSON-RPC 2.0 por stdio con
+  `initialize`, `tools/list` y `tools/call`; herramientas `buscar_archivos` (índice FTS5 +
+  sinónimos; nunca carpetas) y `leer_documento` (texto del índice o extracción al momento con el
+  extractor local). Solo lectura; la app no necesita estar abierta (índice en WAL). Configuración
+  para Claude Desktop / VS Code en `docs/MCP.md`.
+- +8 tests (`MCPHandlerTests`).
+
+### Added — G7.3 (re-extracción de contenido) (28-sep)
+
+- `ContentBackfill` (J4IFiling): recupera en segundo plano el texto de documentos sin `doc_text`
+  (p. ej. perdidos en reindexados antiguos) con el mismo extractor y tope del pipeline; los
+  intentos sin texto se marcan con una fila vacía para no repetir OCR en cada arranque; barrido
+  de filas huérfanas y re-vectorizado automático al terminar. En el archivo real: **344 textos
+  recuperados** (2 sin texto) y 324 vectores de contenido.
+- +4 tests (`ContentBackfillTests`).
+
+### Fixed — G7.4 (reindexado conservador) (28-sep)
+
+- El **«Reindexar»** completo ya no borra textos ni vectores: se copian a tablas temporales antes
+  de vaciar el índice y se re-vinculan **por ruta** tras el crawl
+  (`preserveContentSnapshot`/`restorePreservedContent`), más mantenimiento post-crawl (rellenos de
+  contenido y vectores). Se detectó porque un reindexado del 27-sep dejó los 3.950 ficheros sin
+  textos ni vectores; tras el arreglo se recuperaron solos al arrancar.
+- +3 tests (`ReindexPreservationTests`); suite **211** (210 + 1 skip).

@@ -322,9 +322,12 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
   («sueldo» → «nómina»), vectores por documento (`embeddings`, schema v4) y chip «Semántica»;
   Chat del archivo (⇧⌘K / Accesos) con recuperación local, citas [n] clicables, Copiar/Exportar…
   y respeto del interruptor/cap de IA; carry-over de texto/vectores al reindexar. Suite 196.
-- [ ] G7.2: MCP para agentes (servidor local que expone búsqueda/lectura del archivo).
-- [ ] G7.3: re-extracción de contenido — sanar los `doc_text` huérfanos de reindexados previos
-  (p. ej. `ContentReindexer` sobre el root, en lotes y con las mismas salvaguardas).
+- [x] G7.2: MCP para agentes — `J4IMCP` + `JUST4DESKMCP` (JSON-RPC/stdio; `buscar_archivos` y
+  `leer_documento`, solo lectura; la app no necesita estar abierta). Config: `docs/MCP.md`.
+- [x] G7.3: re-extracción de contenido — `ContentBackfill` con marcadores vacíos (sin repetir OCR),
+  barrido de huérfanos y re-vectorizado al terminar. Real: 344 textos recuperados.
+- [x] G7.4: reindexado conservador — el «Reindexar» conserva textos/vectores (snapshot + re-vinculado
+  por ruta) y hay mantenimiento post-crawl. Suite 211. Evidencias en `docs/design/G7/`.
 
 ## Referencias
 

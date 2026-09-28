@@ -650,6 +650,17 @@
   entradas se re-crean con id nuevo en cada reindexado — se detectó que **299 doc_text históricos
   quedaron huérfanos** (búsqueda por contenido degradada desde antes de G7; re-extracción = G7.3).
   Suite 196 (195 + 1 skip; +19 tests). Capturas `docs/design/G7/`.
+- G7.2–G7.4 (26–28 sep): **MCP + re-extracción + reindexado conservador** — (a) `J4IMCP`
+  (servidor MCP: `initialize`/`tools/list`/`tools/call`; herramientas `buscar_archivos` — índice
+  + sinónimos, solo ficheros — y `leer_documento` — índice o extracción al momento) + ejecutable
+  `JUST4DESKMCP` (stdio; stdout = protocolo, jamás logs; config en `docs/MCP.md`; la app no
+  necesita estar abierta). (b) `ContentBackfill` (J4IFiling) + `contentCandidates`/
+  `markContentAttempted` (fila vacía = intento sin texto → no repite OCR)/`sweepOrphanContent`:
+  recupera textos perdidos en segundo plano (real: **344** recuperados, 2 sin texto;
+  re-vectorizado automático → 324 vectores de contenido). (c) **Reindexado conservador**:
+  `IndexCrawler.reindex` conserva textos/vectores (snapshot en tablas temp + re-vinculado por
+  ruta; antes el «Reindexar» los borraba en silencio — incidente real del 27-sep con 3.950
+  ficheros) + mantenimiento post-crawl en `SearchViewModel`. Suite 211 (210 + 1 skip; +15 tests).
 
 ## Lecciones y trampas
 

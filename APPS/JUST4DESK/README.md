@@ -128,7 +128,15 @@ Sin key, la app funciona en modo "solo reglas locales" (sin llamadas de red).
 - Memoria maestra (decisiones, hitos, lecciones): `MEMORY.md`
 - Arquitectura viva: `ARCHITECTURE.md`
 - Privacidad: `PRIVACY.md`
+- MCP para agentes (Claude, VS Code…): `docs/MCP.md`
 - Skill de agente para VS Code: `.github/skills/just4desk/SKILL.md`
+
+## MCP para agentes (opcional)
+
+El ejecutable `JUST4DESKMCP` expone el archivo como **servidor MCP local** (solo lectura:
+`buscar_archivos` y `leer_documento`). Compílalo con
+`swift build -c release --product JUST4DESKMCP` y configúralo en tu agente — instrucciones
+completas en `docs/MCP.md`. La app no necesita estar abierta (índice en WAL).
 
 ## Hub JUST4ALL
 
