@@ -666,3 +666,14 @@ Convención por version + build stamp:
 - **N9 — CI**: `.github/workflows/ci.yml` (GitHub Actions, runner macOS 14): `swift build` +
   `swift test` en push/PR que toquen `APPS/JUST4DESK`/`APPS/JUST4FOLDERS`.
 - Suite: **231** (230 + 1 skip). Captura del panel en `docs/design/N7/`.
+
+### Fixed — «Por revisar» se auto-actualiza ante borrados externos (28-sep)
+
+- La ventana «Por revisar» **vigila el disco cada ~3 s mientras está abierta**: si un fichero se
+  borra/mueve desde el Finder, desaparece de la lista al momento (y lo nuevo aparece sin reabrir),
+  conservando la selección y los destinos elegidos a mano (`refreshFromDisk`, merge que no pisa estado).
+- Las acciones ya **no muestran errores rojos** por «fantasmas»: al intentar mover o llevar a la
+  Papelera algo que ya no existe, se quita de la lista y se poda del índice si quedara entrada
+  (auto-curación para eventos FSEvents perdidos), con una **nota suave** en la barra de estado.
+- +3 tests (`ReviewRefreshTests`); suite **234** (233 + 1 skip). Capturas antes/después en
+  `docs/design/N7/` (`review-refresh-*.png`).

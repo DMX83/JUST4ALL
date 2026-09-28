@@ -682,6 +682,11 @@
   restos del incidente del reindexado — los textos ya se barrían, los vectores no).
   (d) **N9**: CI en GitHub Actions (`.github/workflows/ci.yml`, macos-14). Suite **231**
   (230 + 1 skip; +16 tests desde G5.1). Captura en `docs/design/N7/`.
+- Fix «Por revisar» (28-sep, post-lote): la ventana se **auto-actualiza** (refresh con merge cada
+  ~3 s + auto-curación en las acciones): los borrados hechos desde el Finder desaparecen de la
+  lista (y del índice si quedara entrada) **sin errores rojos «ya no existe»** — solo una nota
+  suave; conserva selección y destinos elegidos. Suite **234**. Capturas
+  `docs/design/N7/review-refresh-*.png`.
 
 ## Lecciones y trampas
 

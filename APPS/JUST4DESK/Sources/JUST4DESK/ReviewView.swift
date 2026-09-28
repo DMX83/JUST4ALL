@@ -40,7 +40,12 @@ struct ReviewView: View {
             }
         }
         .frame(minWidth: 720, minHeight: 480)
-        .task { model.load() }
+        .task {
+            model.load()
+            // Auto-actualización: mientras la ventana esté abierta, detecta borrados/movimientos
+            // hechos fuera de la app (Finder) y añade lo nuevo sin reabrirla.
+            await model.watchForDiskChanges()
+        }
     }
 
     private var content: some View {
@@ -492,60 +497,122 @@ final class ReviewViewModel: ObservableObject {
         // Criterio compartido con el contador de «Inicio» (`QuarantineListing`): ocultos omitidos y
         // solo ficheros/carpetas — el contador y esta lista no deben discrepar nunca.
         let urls = QuarantineListing.itemURLs(rootURL: URL(fileURLWithPath: rootPath, isDirectory: true))
-        var loaded: [Item] = []
-        for url in urls {
-            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey, .isDirectoryKey])
-            let isDirectory = values?.isDirectory == true
-            let name = url.lastPathComponent
-            let sizeBytes = Int64(values?.fileSize ?? 0)
-            let modifiedAt = values?.contentModificationDate
-            // Carpetas: se perfila el contenido sin leer texto (rápido) para diferenciarlas en la
-            // lista («carpeta · N fichero(s) · dominante .ext») y usar su señal real al sugerir,
-            // igual que hace el archivado (nombre → extensión dominante).
-            var folderSummary: String?
-            var dominantExtension: String?
-            if isDirectory {
-                let summary = FolderProfiler.summarize(folderURL: url, includeText: false)
-                dominantExtension = summary.dominantExtension
-                if summary.isEmpty {
-                    folderSummary = "sin ficheros (cáscara vacía)"
-                } else if let dominantExtension {
-                    folderSummary = "\(summary.fileCount) fichero(s) · dominante .\(dominantExtension)"
-                } else {
-                    folderSummary = "\(summary.fileCount) fichero(s)"
-                }
-            }
-            let suggestion = isDirectory
-                ? RulesFilingClassifier.classifyFolder(name: name, dominantExtension: dominantExtension)?.categoryPath
-                : RulesFilingClassifier.suggestDestination(fileName: name)?.categoryPath
-            // Caché persistente: si ya se consultó a la IA este mismo archivo con la misma skill,
-            // la propuesta reaparece sin volver a preguntar (sin gastar tokens).
-            if aiSuggestions[url.path] == nil,
-               let stored = suggestionStore.suggestion(forPath: url.path, sizeBytes: sizeBytes, modifiedAt: modifiedAt) {
-                aiSuggestions[url.path] = stored
-            }
-            let ai = aiSuggestions[url.path]
-            loaded.append(
-                Item(
-                    path: url.path,
-                    name: name,
-                    sizeBytes: sizeBytes,
-                    modifiedAt: modifiedAt,
-                    suggestion: suggestion,
-                    destination: Self.effectiveDestination(
-                        aiCategory: ai?.categoryPath,
-                        aiIsQuarantine: ai?.isQuarantine ?? true,
-                        rulesSuggestion: suggestion
-                    ),
-                    isDirectory: isDirectory,
-                    folderSummary: folderSummary
-                )
-            )
-        }
+        let loaded = urls.map { buildItem(url: $0) }
         let alive = Set(loaded.map(\.path))
         aiSuggestions = aiSuggestions.filter { alive.contains($0.key) }
         items = Self.sorted(loaded, by: sortKey)
         selection = selection.intersection(Set(items.map(\.id)))
+    }
+
+    /// Construye la fila de un elemento de la cuarentena (metadatos, perfil de carpeta y
+    /// sugerencia/caché de la IA). Compartido por `load` y `refreshFromDisk`.
+    private func buildItem(url: URL) -> Item {
+        let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey, .isDirectoryKey])
+        let isDirectory = values?.isDirectory == true
+        let name = url.lastPathComponent
+        let sizeBytes = Int64(values?.fileSize ?? 0)
+        let modifiedAt = values?.contentModificationDate
+        // Carpetas: se perfila el contenido sin leer texto (rápido) para diferenciarlas en la
+        // lista («carpeta · N fichero(s) · dominante .ext») y usar su señal real al sugerir,
+        // igual que hace el archivado (nombre → extensión dominante).
+        var folderSummary: String?
+        var dominantExtension: String?
+        if isDirectory {
+            let summary = FolderProfiler.summarize(folderURL: url, includeText: false)
+            dominantExtension = summary.dominantExtension
+            if summary.isEmpty {
+                folderSummary = "sin ficheros (cáscara vacía)"
+            } else if let dominantExtension {
+                folderSummary = "\(summary.fileCount) fichero(s) · dominante .\(dominantExtension)"
+            } else {
+                folderSummary = "\(summary.fileCount) fichero(s)"
+            }
+        }
+        let suggestion = isDirectory
+            ? RulesFilingClassifier.classifyFolder(name: name, dominantExtension: dominantExtension)?.categoryPath
+            : RulesFilingClassifier.suggestDestination(fileName: name)?.categoryPath
+        // Caché persistente: si ya se consultó a la IA este mismo archivo con la misma skill,
+        // la propuesta reaparece sin volver a preguntar (sin gastar tokens).
+        if aiSuggestions[url.path] == nil,
+           let stored = suggestionStore.suggestion(forPath: url.path, sizeBytes: sizeBytes, modifiedAt: modifiedAt) {
+            aiSuggestions[url.path] = stored
+        }
+        let ai = aiSuggestions[url.path]
+        return Item(
+            path: url.path,
+            name: name,
+            sizeBytes: sizeBytes,
+            modifiedAt: modifiedAt,
+            suggestion: suggestion,
+            destination: Self.effectiveDestination(
+                aiCategory: ai?.categoryPath,
+                aiIsQuarantine: ai?.isQuarantine ?? true,
+                rulesSuggestion: suggestion
+            ),
+            isDirectory: isDirectory,
+            folderSummary: folderSummary
+        )
+    }
+
+    /// Relee la cuarentena del disco conservando el estado de la ventana (selección, destinos
+    /// elegidos a mano y sugerencias de IA): quita lo que ya no existe (borrado desde el Finder)
+    /// y añade lo nuevo sin reabrir la ventana. Devuelve cuántos elementos desaparecieron.
+    @discardableResult
+    func refreshFromDisk() -> Int {
+        guard let rootPath else {
+            items = []
+            selection = []
+            return 0
+        }
+        let urls = QuarantineListing.itemURLs(rootURL: URL(fileURLWithPath: rootPath, isDirectory: true))
+        let current = Dictionary(uniqueKeysWithValues: items.map { ($0.path, $0) })
+        let fresh = urls.map { current[$0.path] ?? buildItem(url: $0) }
+        let alive = Set(fresh.map(\.path))
+        let vanished = items.filter { !alive.contains($0.path) }
+        items = Self.sorted(fresh, by: sortKey)
+        selection = selection.intersection(alive)
+        aiSuggestions = aiSuggestions.filter { alive.contains($0.key) }
+        removeVanishedFromList(vanished)
+        return vanished.count
+    }
+
+    /// Vigila cambios en disco mientras la ventana está abierta (el bucle muere al cerrarla):
+    /// cada ~3 s detecta borrados/movimientos externos y lo deja dicho en la barra de estado.
+    func watchForDiskChanges() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { break }
+            let vanished = refreshFromDisk()
+            if vanished > 0 {
+                statusMessage = vanished == 1
+                    ? "1 elemento quitado de la lista: ya no existe en disco (borrado fuera de la app)."
+                    : "\(vanished) elementos quitados de la lista: ya no existen en disco (borrado fuera de la app)."
+            }
+        }
+    }
+
+    /// Quita de la lista elementos que ya no existen y poda su entrada del índice si quedara
+    /// (auto-curación para eventos FSEvents perdidos), sin mostrar errores.
+    private func removeVanishedFromList(_ vanished: [Item]) {
+        guard !vanished.isEmpty else { return }
+        let gone = Set(vanished.map(\.path))
+        items.removeAll { gone.contains($0.path) }
+        selection.subtract(gone)
+        for item in vanished {
+            Task {
+                if let root = try? await index.rootID(containing: item.path) {
+                    _ = try? await index.removeEntries(rootID: root.id, paths: [item.path])
+                }
+            }
+        }
+        J4Log.info(.app, "Por revisar: \(vanished.count) elemento(s) quitados de la lista (ya no existen en disco).")
+    }
+
+    /// Nota suave (nunca error rojo) para elementos que desaparecieron fuera de la app.
+    private func vanishedNote(for vanished: [Item]) -> String {
+        let names = vanished.prefix(3).map { "«\($0.name)»" }.joined(separator: ", ")
+        let extra = vanished.count > 3 ? " (+\(vanished.count - 3) más)" : ""
+        return "\(names)\(extra): ya no existe\(vanished.count == 1 ? "" : "n") en disco (borrado fuera de la app); quitado\(vanished.count == 1 ? "" : "s") de la lista."
     }
 
     /// Grupos para el orden por extensión: primero CARPETAS (unidades completas, que no tienen
@@ -794,7 +861,16 @@ final class ReviewViewModel: ObservableObject {
             errorMessage = "Los ficheros seleccionados no tienen destino elegido."
             return
         }
-        for item in ready {
+        // Auto-curación: lo borrado fuera de la app (Finder) no se intenta mover; se quita de la
+        // lista y del índice, con una nota suave en lugar de un error.
+        let existing = ready.filter { FileManager.default.fileExists(atPath: $0.path) }
+        let vanished = ready.filter { !FileManager.default.fileExists(atPath: $0.path) }
+        removeVanishedFromList(vanished)
+        guard !existing.isEmpty else {
+            statusMessage = vanishedNote(for: vanished)
+            return
+        }
+        for item in existing {
             busyPaths.insert(item.path)
         }
         statusMessage = nil
@@ -807,7 +883,7 @@ final class ReviewViewModel: ObservableObject {
             var movedCount = 0
             var firstDetail: String?
             var failures: [String] = []
-            for item in ready {
+            for item in existing {
                 let outcome = await coordinator.reclassify(fileAt: URL(fileURLWithPath: item.path), to: item.destination ?? "")
                 busyPaths.remove(item.path)
                 if outcome.action == "move" {
@@ -825,11 +901,12 @@ final class ReviewViewModel: ObservableObject {
                     failures.append("«\(item.name)»")
                 }
             }
-            if ready.count == 1 {
+            if existing.count == 1 {
                 statusMessage = firstDetail
             } else {
-                var message = "Movidos \(movedCount) de \(ready.count)"
+                var message = "Movidos \(movedCount) de \(existing.count)"
                 if skipped > 0 { message += " · \(skipped) sin destino (omitidos)" }
+                if !vanished.isEmpty { message += " · \(vanished.count) quitado(s): ya no existían" }
                 if !failures.isEmpty {
                     message += " · errores: \(failures.prefix(3).joined(separator: ", "))\(failures.count > 3 ? "…" : "")"
                 }
@@ -838,7 +915,7 @@ final class ReviewViewModel: ObservableObject {
             if movedCount == 0 {
                 errorMessage = "No se pudo mover: \(failures.prefix(3).joined(separator: ", "))"
             }
-            load()
+            refreshFromDisk()
         }
     }
 
@@ -848,10 +925,11 @@ final class ReviewViewModel: ObservableObject {
         errorMessage = nil
         let fileManager = FileManager.default
         var trashed: [Item] = []
+        var vanished: [Item] = []
         var failures: [String] = []
         for item in targets {
             guard fileManager.fileExists(atPath: item.path) else {
-                failures.append("«\(item.name)» (ya no existe)")
+                vanished.append(item)
                 continue
             }
             do {
@@ -863,8 +941,14 @@ final class ReviewViewModel: ObservableObject {
                 failures.append("«\(item.name)»")
             }
         }
-        guard !trashed.isEmpty else {
+        removeVanishedFromList(vanished)
+        guard !trashed.isEmpty || !vanished.isEmpty else {
             errorMessage = "No se pudo mover a la papelera: \(failures.prefix(3).joined(separator: ", "))"
+            return
+        }
+        guard !trashed.isEmpty else {
+            // Todos eran fantasmas (borrados fuera de la app): nota suave, sin error rojo.
+            statusMessage = vanishedNote(for: vanished)
             return
         }
         let paths = trashed.map(\.path)
@@ -874,16 +958,20 @@ final class ReviewViewModel: ObservableObject {
                     _ = try? await index.removeEntries(rootID: root.id, paths: [path])
                 }
             }
+            var message: String
             if trashed.count == 1, let only = trashed.first {
-                statusMessage = "«\(only.name)» → Papelera"
+                message = "«\(only.name)» → Papelera"
             } else {
-                var message = "\(trashed.count) fichero(s) → Papelera"
-                if !failures.isEmpty {
-                    message += " · errores: \(failures.prefix(3).joined(separator: ", "))\(failures.count > 3 ? "…" : "")"
-                }
-                statusMessage = message
+                message = "\(trashed.count) fichero(s) → Papelera"
             }
-            load()
+            if !vanished.isEmpty {
+                message += " · \(vanished.count) quitado(s): ya no existían"
+            }
+            if !failures.isEmpty {
+                message += " · errores: \(failures.prefix(3).joined(separator: ", "))\(failures.count > 3 ? "…" : "")"
+            }
+            statusMessage = message
+            refreshFromDisk()
         }
     }
 
