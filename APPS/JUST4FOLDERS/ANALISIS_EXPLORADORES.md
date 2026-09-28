@@ -86,15 +86,22 @@ los referentes del género, y convertirlo en un plan por olas. Honestidad por de
 5. ✅ **Estado vacío** («Carpeta vacía · ⌘N» / «Sin coincidencias · Esc»).
 6. ✅ **Breadcrumb clicable** (Macintosh HD › … › carpeta actual, último segmento en negrita).
 
-### Ola 2 — «Potencia sin fricción»
+### Ola 2 — «Potencia sin fricción» — ✅ aplicada (28-sep)
 
-7. **Panel de preview lateral** (toggle ⌥⌘P): QuickLook empotrado + metadatos (tipo, tamaño,
-   fechas, etiquetas) — estilo Opus/Dolphin.
-8. **F-keys completas** F2/F3/F4/F5/F6/F7/F8 + menú «Tecla» que las enseñe.
-9. **Columnas configurables** (menú de cabecera estándar) + «ajustar columnas».
-10. **Historial con pull-down** en back/forward.
-11. **Progreso por operación en la cabecera del panel** (mini-barra con el job activo).
-12. **Pestañas**: renombrar (doble clic), duplicar (⌘⇧T), reordenar por arrastre.
+7. ✅ **Panel de preview lateral** (⌥⌘P, persistente): QLPreviewView + metadatos (tipo, tamaño,
+   fecha, etiquetas); sigue a la selección del panel activo.
+8. ✅ **F-keys completas**: F2 renombrar · F3 QuickLook · F4 abrir · F5 copiar · F6 mover ·
+   F7 nueva carpeta · F8 borrar.
+9. ✅ **Columnas configurables**: menú en la cabecera (mostrar/ocultar cada columna + «Ajustar
+   columnas») con visibilidad recordada por carpeta (folder formats).
+10. ✅ **Historial con pull-down**: clic derecho en Atrás/Adelante abre la lista y salta a
+    cualquier entrada (rebobinado correcto).
+11. ✅ **Progreso en la ventana**: barra + «TIPO n/m (%)» encima del estado en copias/movimientos.
+12. ✅ **Pestañas completas**: duplicar (⌥⌘T), renombrar (⌥⌘R, nombre personalizado) y mover a
+    izquierda/derecha (⌥⌘←/→).
+
+Validado en vivo: preview lateral con foto real, pestaña duplicada y toolbar nueva. *Hover por
+fila: pendiente (cosmético).*
 
 ### Ola 3 — «ADN propio»
 

@@ -169,7 +169,7 @@ private final class FileThumbnailCache {
 
 private let sharedThumbnailCache = FileThumbnailCache()
 
-final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSearchFieldDelegate, NSControlTextEditingDelegate, NSTableViewDataSource, NSTableViewDelegate, NSOutlineViewDataSource, NSOutlineViewDelegate, NSToolbarItemValidation, QLPreviewPanelDataSource, QLPreviewPanelDelegate {
+final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSearchFieldDelegate, NSControlTextEditingDelegate, NSTableViewDataSource, NSTableViewDelegate, NSOutlineViewDataSource, NSOutlineViewDelegate, NSToolbarItemValidation, QLPreviewPanelDataSource, QLPreviewPanelDelegate, NSMenuDelegate {
     private enum ToolbarID {
         static let root = NSToolbar.Identifier("j4f.toolbar.main")
         static let back = NSToolbarItem.Identifier("j4f.toolbar.back")
@@ -209,10 +209,21 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private var orderingWindow: OrderingWindowController?
     /// Ola 1 — panel que alimenta el QuickLook (Espacio).
     private weak var previewPanelSource: FilePanelViewController?
+    /// Ola 2 — vista previa lateral (⌥⌘P) y progreso de trabajos en la ventana.
+    private let previewPane = NSView()
+    private var previewView: QLPreviewView?
+    private let previewInfoLabel = NSTextField(labelWithString: "")
+    private var previewPaneVisible = UserDefaults.standard.bool(forKey: "j4f.previewPaneVisible")
+    private let jobProgressBar = NSProgressIndicator()
+    private let jobProgressLabel = NSTextField(labelWithString: "")
+    /// Ola 2 — menús del historial (clic derecho en atrás/adelante).
+    private let backHistoryMenu = NSMenu()
+    private let forwardHistoryMenu = NSMenu()
 
     private var activeSide: PanelSide = .left {
         didSet {
             updateActiveIndicator()
+            updatePreviewPane()
         }
     }
 
@@ -266,6 +277,45 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NotificationCenter.default.addObserver(self, selector: #selector(onFindDuplicatesRequested), name: .j4fFindDuplicates, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onOrderFolderRequested), name: .j4fOrderFolder, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onUndoOrderingRequested), name: .j4fUndoOrdering, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onTogglePreviewRequested), name: .j4fTogglePreview, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onDuplicateTabRequested), name: .j4fDuplicateTab, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onRenameTabRequested), name: .j4fRenameTab, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onMoveTabLeftRequested), name: .j4fMoveTabLeft, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onMoveTabRightRequested), name: .j4fMoveTabRight, object: nil)
+    }
+
+    /// Ola 2 — vista previa lateral (menu Navegación, ⌥⌘P).
+    @objc private func onTogglePreviewRequested() {
+        togglePreviewPane()
+    }
+
+    // MARK: - Pestañas (Ola 2)
+
+    @objc private func onDuplicateTabRequested() {
+        activePanel.duplicateCurrentTab()
+        statusLabel.stringValue = "Pestaña duplicada (panel \(activeSide.rawValue))."
+    }
+
+    @objc private func onRenameTabRequested() {
+        let alert = NSAlert()
+        alert.messageText = "Renombrar pestaña"
+        alert.informativeText = "Deja el campo vacío para volver al nombre de la carpeta."
+        alert.addButton(withTitle: "Renombrar")
+        alert.addButton(withTitle: "Cancelar")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
+        field.stringValue = activePanel.currentTabTitle()
+        alert.accessoryView = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        activePanel.renameCurrentTab(as: field.stringValue)
+        statusLabel.stringValue = "Pestaña renombrada."
+    }
+
+    @objc private func onMoveTabLeftRequested() {
+        activePanel.moveCurrentTab(by: -1)
+    }
+
+    @objc private func onMoveTabRightRequested() {
+        activePanel.moveCurrentTab(by: 1)
     }
 
     /// v1.2 — renombrado en lote del panel activo (menú Operaciones ⇧⌘R o menú contextual).
@@ -430,14 +480,34 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         bodySplit.addArrangedSubview(panelsSplit)
         sidebarView.widthAnchor.constraint(equalToConstant: 250).isActive = true
         bodySplit.autosaveName = "j4f.split.body"
+        configurePreviewPane()
+        bodySplit.addArrangedSubview(previewPane)
 
         let container = NSStackView()
         container.orientation = .vertical
         container.spacing = 10
         container.translatesAutoresizingMaskIntoConstraints = false
+
+        // Ola 2 — barra de progreso del trabajo activo (encima del estado).
+        jobProgressBar.style = .bar
+        jobProgressBar.isIndeterminate = false
+        jobProgressBar.minValue = 0
+        jobProgressBar.maxValue = 1
+        jobProgressBar.controlSize = .small
+        jobProgressBar.isHidden = true
+        jobProgressLabel.font = .systemFont(ofSize: 11)
+        jobProgressLabel.textColor = .secondaryLabelColor
+        jobProgressLabel.isHidden = true
+        let jobProgressRow = NSStackView(views: [jobProgressLabel, jobProgressBar])
+        jobProgressRow.orientation = .horizontal
+        jobProgressRow.spacing = 8
+        jobProgressRow.translatesAutoresizingMaskIntoConstraints = false
+        jobProgressBar.widthAnchor.constraint(greaterThanOrEqualToConstant: 160).isActive = true
+
         container.addArrangedSubview(topBar)
         container.addArrangedSubview(bodySplit)
         container.addArrangedSubview(volumeWarningLabel)
+        container.addArrangedSubview(jobProgressRow)
         container.addArrangedSubview(statusLabel)
 
         view.addSubview(container)
@@ -633,6 +703,46 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         activePanel.goBack()
     }
 
+    // MARK: - Historial con menú (Ola 2)
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu === backHistoryMenu {
+            rebuildHistoryMenu(menu, urls: activePanel.backHistoryURLs(), forward: false)
+        } else if menu === forwardHistoryMenu {
+            rebuildHistoryMenu(menu, urls: activePanel.forwardHistoryURLs(), forward: true)
+        }
+    }
+
+    private func rebuildHistoryMenu(_ menu: NSMenu, urls: [URL], forward: Bool) {
+        menu.removeAllItems()
+        guard !urls.isEmpty else {
+            let empty = NSMenuItem(title: forward ? "Sin historial adelante" : "Sin historial atrás", action: nil, keyEquivalent: "")
+            empty.isEnabled = false
+            menu.addItem(empty)
+            return
+        }
+        for url in urls {
+            let item = NSMenuItem(
+                title: url.path,
+                action: forward ? #selector(historyForwardChosen(_:)) : #selector(historyBackChosen(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = url
+            menu.addItem(item)
+        }
+    }
+
+    @objc private func historyBackChosen(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        activePanel.jumpBack(to: url)
+    }
+
+    @objc private func historyForwardChosen(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        activePanel.jumpForward(to: url)
+    }
+
     @objc private func goForward() {
         activePanel.goForward()
     }
@@ -773,6 +883,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             guard let self else { return }
             self.updateWatcherPauseState(jobId: jobId, state: snapshot.state)
             let pct = Int(snapshot.progress * 100)
+            self.updateJobProgressStrip(snapshot, pct: pct)
             let bytesPart: String
             if snapshot.totalBytes > 0 {
                 let done = ByteCountFormatter.string(fromByteCount: snapshot.processedBytes, countStyle: .file)
@@ -1512,6 +1623,16 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
                 }
                 toggleActivePanel()
                 return true
+            case 120: // F2 — renombrar
+                renameSelection()
+                return true
+            case 99: // F3 — QuickLook
+                if toggleQuickLookPreview() {
+                    return true
+                }
+            case 118: // F4 — abrir (editar con la app por defecto)
+                activePanel.openSelection()
+                return true
             case 96: // F5
                 copySelection()
                 return true
@@ -1584,10 +1705,99 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
     /// Refresca el preview cuando cambia la selección del panel que lo alimenta.
     fileprivate func previewSourceSelectionChanged(_ source: FilePanelViewController) {
+        updatePreviewPane()
         guard source === previewPanelSource,
               QLPreviewPanel.sharedPreviewPanelExists(),
               QLPreviewPanel.shared()?.isVisible == true else { return }
         QLPreviewPanel.shared()?.reloadData()
+    }
+
+    // MARK: - Vista previa lateral (Ola 2)
+
+    private func configurePreviewPane() {
+        previewPane.translatesAutoresizingMaskIntoConstraints = false
+        previewPane.wantsLayer = true
+        previewPane.layer?.cornerRadius = 8
+        previewPane.layer?.borderWidth = 1
+        previewPane.layer?.borderColor = NSColor.separatorColor.cgColor
+        previewPane.isHidden = !previewPaneVisible
+        previewPane.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
+
+        let ql = QLPreviewView(frame: .zero, style: .normal)
+        ql?.autostarts = true
+        ql?.translatesAutoresizingMaskIntoConstraints = false
+        previewView = ql
+
+        previewInfoLabel.font = .systemFont(ofSize: 11)
+        previewInfoLabel.textColor = .secondaryLabelColor
+        previewInfoLabel.alignment = .center
+        previewInfoLabel.lineBreakMode = .byWordWrapping
+        previewInfoLabel.maximumNumberOfLines = 0
+        previewInfoLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Importante: la etiqueta debe estar ANTES en la jerarquía (las constraints no pueden
+        // cruzar vistas sin ancestro común).
+        previewPane.addSubview(previewInfoLabel)
+        if let ql {
+            previewPane.addSubview(ql)
+            NSLayoutConstraint.activate([
+                ql.leadingAnchor.constraint(equalTo: previewPane.leadingAnchor, constant: 6),
+                ql.trailingAnchor.constraint(equalTo: previewPane.trailingAnchor, constant: -6),
+                ql.topAnchor.constraint(equalTo: previewPane.topAnchor, constant: 6),
+                ql.bottomAnchor.constraint(equalTo: previewInfoLabel.topAnchor, constant: -6)
+            ])
+        }
+        NSLayoutConstraint.activate([
+            previewInfoLabel.leadingAnchor.constraint(equalTo: previewPane.leadingAnchor, constant: 10),
+            previewInfoLabel.trailingAnchor.constraint(equalTo: previewPane.trailingAnchor, constant: -10),
+            previewInfoLabel.bottomAnchor.constraint(equalTo: previewPane.bottomAnchor, constant: -10)
+        ])
+    }
+
+    private func togglePreviewPane() {
+        previewPaneVisible.toggle()
+        previewPane.isHidden = !previewPaneVisible
+        UserDefaults.standard.set(previewPaneVisible, forKey: "j4f.previewPaneVisible")
+        updatePreviewPane()
+        statusLabel.stringValue = previewPaneVisible ? "Vista previa activada." : "Vista previa ocultada."
+    }
+
+    private func updatePreviewPane() {
+        guard previewPaneVisible, let ql = previewView else { return }
+        let selected = activePanel.selectedURLs()
+        let url = selected.count == 1 ? selected.first : nil
+        ql.previewItem = url as NSURL?
+
+        guard let url else {
+            previewInfoLabel.stringValue = selected.isEmpty ? "Sin selección" : "\(selected.count) elementos seleccionados"
+            return
+        }
+        var lines: [String] = [url.lastPathComponent]
+        let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey, .isDirectoryKey, .localizedTypeDescriptionKey])
+        if let type = values?.localizedTypeDescription {
+            lines.append(type)
+        }
+        if let size = values?.fileSize, values?.isDirectory != true {
+            lines.append(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
+        }
+        if let date = values?.contentModificationDate {
+            lines.append(date.formatted(date: .abbreviated, time: .shortened))
+        }
+        let tags = FinderTags.names(of: url)
+        if !tags.isEmpty {
+            lines.append("Etiquetas: " + tags.joined(separator: ", "))
+        }
+        previewInfoLabel.stringValue = lines.joined(separator: "\n")
+    }
+
+    /// Ola 2 — barra de progreso del trabajo en curso (se oculta al terminar).
+    private func updateJobProgressStrip(_ snapshot: JobSnapshot, pct: Int) {
+        let finished = snapshot.state == .done || snapshot.state == .failed || snapshot.state == .cancelled
+        jobProgressBar.isHidden = finished
+        jobProgressLabel.isHidden = finished
+        guard !finished else { return }
+        jobProgressBar.doubleValue = max(0, min(1, snapshot.progress))
+        jobProgressLabel.stringValue = "\(snapshot.type.rawValue.uppercased()) \(snapshot.processedItems)/\(snapshot.totalItems) (\(pct)%)"
     }
 
     override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel) -> Bool { true }
@@ -1770,6 +1980,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
         toolbar.allowsUserCustomization = false
+        backHistoryMenu.delegate = self
+        forwardHistoryMenu.delegate = self
         window.toolbar = toolbar
         toolbarConfigured = true
     }
@@ -1796,17 +2008,29 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         let item = NSToolbarItem(itemIdentifier: itemIdentifier)
         switch itemIdentifier {
         case ToolbarID.back:
-            item.label = "Back"
-            item.toolTip = "Volver (panel activo)"
-            item.image = NSImage(systemSymbolName: "chevron.left", accessibilityDescription: nil)
-            item.target = self
-            item.action = #selector(goBack)
+            item.label = "Atrás"
+            item.toolTip = "Volver (clic derecho: historial)"
+            let backButton = NSButton(
+                image: NSImage(systemSymbolName: "chevron.left", accessibilityDescription: nil) ?? NSImage(),
+                target: self,
+                action: #selector(goBack)
+            )
+            backButton.bezelStyle = .toolbar
+            backButton.menu = backHistoryMenu
+            backButton.setAccessibilityLabel("Atrás")
+            item.view = backButton
         case ToolbarID.forward:
-            item.label = "Forward"
-            item.toolTip = "Adelante (panel activo)"
-            item.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
-            item.target = self
-            item.action = #selector(goForward)
+            item.label = "Adelante"
+            item.toolTip = "Avanzar (clic derecho: historial)"
+            let forwardButton = NSButton(
+                image: NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil) ?? NSImage(),
+                target: self,
+                action: #selector(goForward)
+            )
+            forwardButton.bezelStyle = .toolbar
+            forwardButton.menu = forwardHistoryMenu
+            forwardButton.setAccessibilityLabel("Adelante")
+            item.view = forwardButton
         case ToolbarID.home:
             item.label = "Home"
             item.toolTip = "Ir al Home del usuario"
@@ -2053,6 +2277,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private var pendingSearchWorkItem: DispatchWorkItem?
     private var tabURLs: [URL] = []
     private var activeTabIndex = 0
+    /// Ola 2 — títulos personalizados por pestaña (nil = nombre de la carpeta).
+    private var tabCustomTitles: [String?] = []
     private var rootSelected = false
 
     private var historyBack: [URL] = []
@@ -2548,6 +2774,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     func newTab() {
         tabURLs.append(currentURL)
+        tabCustomTitles.append(nil)
         activeTabIndex = tabURLs.count - 1
         historyBack.removeAll()
         historyForward.removeAll()
@@ -2559,6 +2786,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     func closeCurrentTab() -> Bool {
         guard tabURLs.count > 1 else { return false }
         tabURLs.remove(at: activeTabIndex)
+        if activeTabIndex < tabCustomTitles.count {
+            tabCustomTitles.remove(at: activeTabIndex)
+        }
         if activeTabIndex >= tabURLs.count {
             activeTabIndex = max(0, tabURLs.count - 1)
         }
@@ -2567,6 +2797,81 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         refreshTabsControl()
         loadDirectory(tabURLs[activeTabIndex], pushHistory: false)
         return true
+    }
+
+    // MARK: - Pestañas completas (Ola 2)
+
+    func currentTabTitle() -> String {
+        guard activeTabIndex < tabURLs.count else { return "" }
+        let url = tabURLs[activeTabIndex]
+        let base = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
+        let custom = activeTabIndex < tabCustomTitles.count ? tabCustomTitles[activeTabIndex] : nil
+        return custom ?? base
+    }
+
+    /// Duplica la pestaña actual (misma carpeta e historial limpio).
+    func duplicateCurrentTab() {
+        guard activeTabIndex >= 0, activeTabIndex < tabURLs.count else { return }
+        let url = tabURLs[activeTabIndex]
+        let custom = activeTabIndex < tabCustomTitles.count ? tabCustomTitles[activeTabIndex] : nil
+        let insertAt = activeTabIndex + 1
+        tabURLs.insert(url, at: insertAt)
+        tabCustomTitles.insert(custom, at: min(insertAt, tabCustomTitles.count))
+        activeTabIndex = insertAt
+        historyBack.removeAll()
+        historyForward.removeAll()
+        refreshTabsControl()
+        loadDirectory(url, pushHistory: false)
+        tabCustomTitles[activeTabIndex] = custom
+        refreshTabsControl()
+    }
+
+    /// Renombra la pestaña actual (cadena vacía = volver al nombre de la carpeta).
+    func renameCurrentTab(as name: String) {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard activeTabIndex < tabCustomTitles.count else { return }
+        tabCustomTitles[activeTabIndex] = clean.isEmpty ? nil : clean
+        refreshTabsControl()
+    }
+
+    /// Mueve la pestaña actual una posición (izquierda = -1).
+    func moveCurrentTab(by delta: Int) {
+        let target = activeTabIndex + delta
+        guard target >= 0, target < tabURLs.count else { return }
+        tabURLs.swapAt(activeTabIndex, target)
+        if activeTabIndex < tabCustomTitles.count, target < tabCustomTitles.count {
+            tabCustomTitles.swapAt(activeTabIndex, target)
+        }
+        activeTabIndex = target
+        refreshTabsControl()
+    }
+
+    // MARK: - Historial con menú (Ola 2)
+
+    func backHistoryURLs() -> [URL] {
+        Array(historyBack.reversed())
+    }
+
+    func forwardHistoryURLs() -> [URL] {
+        Array(historyForward.reversed())
+    }
+
+    /// Salta a una entrada del historial hacia atrás (rebobina el resto al historial adelante).
+    func jumpBack(to url: URL) {
+        guard let index = historyBack.lastIndex(where: { $0.standardizedFileURL == url.standardizedFileURL }) else { return }
+        let skipped = Array(historyBack[(index + 1)...])
+        historyBack.removeSubrange(index...)
+        historyForward.append(contentsOf: skipped.reversed())
+        loadDirectory(url, pushHistory: false)
+    }
+
+    /// Salta a una entrada del historial hacia adelante.
+    func jumpForward(to url: URL) {
+        guard let index = historyForward.lastIndex(where: { $0.standardizedFileURL == url.standardizedFileURL }) else { return }
+        let skipped = Array(historyForward[(index + 1)...])
+        historyForward.removeSubrange(index...)
+        historyBack.append(contentsOf: skipped.reversed())
+        loadDirectory(url, pushHistory: false)
     }
 
     private func configureUI() {
@@ -2619,6 +2924,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         addColumn(id: "type", title: "Tipo", width: 80)
         // Diseño (v2.0): las columnas caben y se reparten el ancho del panel entre todas.
         tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
+        configureColumnMenu()
 
         tableView.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
 
@@ -2800,6 +3106,62 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             item.target = self
         }
         return menu
+    }
+
+    // MARK: - Columnas configurables (Ola 2)
+
+    /// Menú en la cabecera: mostrar/ocultar columnas y ajustar al ancho.
+    private func configureColumnMenu() {
+        let menu = NSMenu(title: "Columnas")
+        menu.delegate = self
+        for id in ["name", "size", "modified", "type"] {
+            let item = NSMenuItem(title: Self.columnTitle(for: id), action: #selector(toggleColumnVisibility(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = id
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        let fit = NSMenuItem(title: "Ajustar columnas", action: #selector(fitColumnsToWidth), keyEquivalent: "")
+        fit.target = self
+        menu.addItem(fit)
+        tableView.headerView?.menu = menu
+    }
+
+    nonisolated static func columnTitle(for id: String) -> String {
+        switch id {
+        case "name": return "Nombre"
+        case "size": return "Tamaño"
+        case "modified": return "Modificado"
+        case "type": return "Tipo"
+        default: return id
+        }
+    }
+
+    @objc private func toggleColumnVisibility(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String,
+              let column = tableView.tableColumns.first(where: { $0.identifier.rawValue == id }) else { return }
+        column.isHidden.toggle()
+        saveFormat()
+    }
+
+    @objc private func fitColumnsToWidth() {
+        let visible = tableView.tableColumns.filter { !$0.isHidden }
+        guard !visible.isEmpty else { return }
+        let available = tableView.bounds.width - 12
+        let total = visible.reduce(CGFloat(0)) { $0 + $1.width }
+        guard total > 0 else { return }
+        for column in visible {
+            column.width = max(48, available * (column.width / total))
+        }
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu === tableView.headerView?.menu else { return }
+        for item in menu.items {
+            guard let id = item.representedObject as? String,
+                  let column = tableView.tableColumns.first(where: { $0.identifier.rawValue == id }) else { continue }
+            item.state = column.isHidden ? .off : .on
+        }
     }
 
     private func addColumn(id: String, title: String, width: CGFloat) {
@@ -3010,6 +3372,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             flatView = format.flatView
             flatToggleButton.state = format.flatView ? .on : .off
         }
+        for column in tableView.tableColumns {
+            column.isHidden = format.hiddenColumns?.contains(column.identifier.rawValue) ?? false
+        }
     }
 
     /// Guarda el formato actual del panel para su carpeta (tras cambios del usuario).
@@ -3020,7 +3385,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 flatView: flatView,
                 sortColumn: sortColumn,
                 ascending: ascending,
-                includeHidden: includeHiddenFiles
+                includeHidden: includeHiddenFiles,
+                hiddenColumns: tableView.tableColumns.filter { $0.isHidden }.map { $0.identifier.rawValue }
             ),
             for: currentURL.standardizedFileURL.path
         )
@@ -3389,6 +3755,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
         activatePanel()
         onSelectionChanged?()
+    }
+
+    /// Ola 2 — abrir la selección con la app por defecto (F4).
+    func openSelection() {
+        openSelected()
     }
 
     /// Ola 1 — mueve la selección (para navegar el preview QuickLook con las flechas).
@@ -4096,10 +4467,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     private func refreshTabsControl() {
         tabsControl.segmentCount = tabURLs.count
+        while tabCustomTitles.count < tabURLs.count {
+            tabCustomTitles.append(nil)
+        }
         for idx in 0..<tabURLs.count {
             let url = tabURLs[idx]
             let base = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
-            let title = "\(idx + 1): \(base)"
+            let title = tabCustomTitles[idx].map { "\(idx + 1): \($0)" } ?? "\(idx + 1): \(base)"
             tabsControl.setLabel(title, forSegment: idx)
             tabsControl.setWidth(120, forSegment: idx)
         }

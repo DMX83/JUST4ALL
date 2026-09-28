@@ -63,6 +63,10 @@ swift run
 - Ola 1 de explorador (**v2.0**): miniaturas reales (imagen/PDF/video), **QuickLook con Espacio**,
   **breadcrumb clicable**, **drag & drop** (interior mueve/⌥ copia; desde Finder copia/⌘ mueve),
   filas estilo Finder y estados vacios («Carpeta vacia · ⌘N»).
+- Ola 2 de explorador (**v2.0**): **vista previa lateral** (⌥⌘P) con metadatos, **F2/F3/F4**
+  completan la fila de teclas, **columnas configurables** (cabecera; recordadas por carpeta),
+  **historial con menu** en Atras/Adelante, **progreso en la ventana** y **pestañas completas**
+  (duplicar ⌥⌘T, renombrar ⌥⌘R, mover ⌥⌘←/→).
 - Folder formats (**v2.0**): cada carpeta recuerda su vista (aplanada, orden, ocultos) y se restaura
   al volver; «Olvidar formato de esta carpeta» en el menu contextual.
 - Sidebar con ubicaciones autorizadas, favoritos y recientes.

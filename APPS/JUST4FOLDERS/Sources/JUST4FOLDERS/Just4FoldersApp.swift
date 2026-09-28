@@ -41,6 +41,13 @@ extension Notification.Name {
     static let j4fOrderFolder = Notification.Name("j4f.orderFolder")
     /// v2.0 — deshacer la última ordenación (⌥⌘Z).
     static let j4fUndoOrdering = Notification.Name("j4f.undoOrdering")
+    /// Ola 2 — vista previa lateral (⌥⌘P).
+    static let j4fTogglePreview = Notification.Name("j4f.togglePreview")
+    /// Ola 2 — pestañas: duplicar / renombrar / mover.
+    static let j4fDuplicateTab = Notification.Name("j4f.duplicateTab")
+    static let j4fRenameTab = Notification.Name("j4f.renameTab")
+    static let j4fMoveTabLeft = Notification.Name("j4f.moveTabLeft")
+    static let j4fMoveTabRight = Notification.Name("j4f.moveTabRight")
 }
 
 @main
@@ -66,6 +73,30 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fToggleFlatView, object: nil)
                 }
                 .keyboardShortcut("f", modifiers: [.command, .option])
+                Divider()
+                Button("Vista previa lateral") {
+                    NotificationCenter.default.post(name: .j4fTogglePreview, object: nil)
+                }
+                .keyboardShortcut("p", modifiers: [.command, .option])
+                Menu("Pestañas") {
+                    Button("Duplicar pestaña") {
+                        NotificationCenter.default.post(name: .j4fDuplicateTab, object: nil)
+                    }
+                    .keyboardShortcut("t", modifiers: [.command, .option])
+                    Button("Renombrar pestaña…") {
+                        NotificationCenter.default.post(name: .j4fRenameTab, object: nil)
+                    }
+                    .keyboardShortcut("r", modifiers: [.command, .option])
+                    Divider()
+                    Button("Mover a la izquierda") {
+                        NotificationCenter.default.post(name: .j4fMoveTabLeft, object: nil)
+                    }
+                    .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+                    Button("Mover a la derecha") {
+                        NotificationCenter.default.post(name: .j4fMoveTabRight, object: nil)
+                    }
+                    .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+                }
             }
             CommandMenu("Operaciones") {
                 Button("Renombrar en lote…") {

@@ -74,6 +74,16 @@
 - [ ] Hover por fila y Ola 2 (preview lateral, F-keys completas, columnas configurables,
   historial con menú, progreso en panel, tabs completas).
 
+## v2.0 — Ola 2 «potencia sin fricción» (28-sep)
+
+- [x] Vista previa lateral (⌥⌘P, persistente): QuickLook empotrado + metadatos; sigue a la selección.
+- [x] F-keys completas: F2 renombrar · F3 QuickLook · F4 abrir · F5-F8 ya existían.
+- [x] Columnas configurables desde la cabecera (mostrar/ocultar + ajustar) y recordadas por carpeta.
+- [x] Historial con menú (clic derecho en Atrás/Adelante) con salto directo y rebobinado correcto.
+- [x] Progreso del trabajo en la propia ventana: barra + «TIPO n/m (%)» encima del estado.
+- [x] Pestañas completas: duplicar (⌥⌘T), renombrar (⌥⌘R: nombre o dejar vacío) y mover (⌥⌘←/→).
+- [ ] Hover por fila (cosmético) y Ola 3 (paleta ⌘K, árbol por panel, galería, workspaces).
+
 ## MVP-0 — Fundaciones
 
 - [x] Definir principios de arquitectura (AppKit-first + sandbox + copy engine).
