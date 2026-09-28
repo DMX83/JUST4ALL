@@ -208,6 +208,8 @@ final class SearchViewModel: ObservableObject {
     private var queryExpander: QueryExpander?
     private var backfillTask: Task<Void, Never>?
     private var lastBackfillKick = Date.distantPast
+    /// G7.3 — re-extracción de contenido (una pasada por sesión).
+    private var contentBackfillTask: Task<Void, Never>?
     private let collectionStore = CollectionStore.shared
     private var lastCollectionsScan = Date.distantPast
 
@@ -219,6 +221,7 @@ final class SearchViewModel: ObservableObject {
         searchTask?.cancel()
         statusTask?.cancel()
         backfillTask?.cancel()
+        contentBackfillTask?.cancel()
         for task in crawlTasks.values {
             task.cancel()
         }
@@ -264,6 +267,7 @@ final class SearchViewModel: ObservableObject {
         await refreshActivity()
         startSemanticBackfillIfNeeded()
         await refreshSemanticStatus()
+        startContentBackfillIfNeeded()
     }
 
     /// Deja en el registro la configuración activa al arrancar.
@@ -1112,7 +1116,8 @@ final class SearchViewModel: ObservableObject {
                 if let text = candidate.documentText, !text.isEmpty {
                     payload += "\n" + String(text.prefix(DocEmbedder.maxTextCharacters))
                 }
-                let source = candidate.documentText == nil ? "name" : "content"
+                let hasContentText = !(candidate.documentText ?? "").isEmpty
+                let source = hasContentText ? "content" : "name"
                 if let vector = await embedder.embedNormalized(payload) {
                     do {
                         try await index.setEmbedding(entryID: candidate.entryID, model: tag, source: source, vector: vector)
@@ -1147,6 +1152,31 @@ final class SearchViewModel: ObservableObject {
             J4Log.warn(.index, "Expansión semántica no disponible (sin embeddings de palabras en español).")
         }
         return made
+    }
+
+    /// G7.3 — re-extracción de contenido: recupera el texto de documentos que quedaron sin él
+    /// (p. ej. huérfanos de reindexados anteriores). Una pasada acotada por sesión, en segundo plano.
+    private func startContentBackfillIfNeeded() {
+        guard contentBackfillTask == nil else { return }
+        contentBackfillTask = Task { [weak self] in
+            guard let self else { return }
+            let swept = (try? await self.index.sweepOrphanContent()) ?? 0
+            if swept > 0 {
+                J4Log.info(.index, "Contenido: \(swept) fila(s) de texto huérfana(s) limpiadas (histórico).")
+            }
+            let outcome = await Task.detached(priority: .utility) {
+                await ContentBackfill.runOnce(index: SearchIndex.shared, limit: 400) { Task.isCancelled }
+            }.value
+            if outcome.processed > 0 {
+                J4Log.info(.index, "Contenido re-extraído: \(outcome.extracted) texto(s) · \(outcome.empty) sin texto · \(outcome.missing) ausente(s).")
+                // Con textos nuevos, los vectores de contenido suben de calidad: rellena ya.
+                self.startSemanticBackfillIfNeeded()
+            } else {
+                J4Log.debug(.index, "Contenido: nada pendiente de re-extraer.")
+            }
+            await self.refreshSemanticStatus()
+            self.contentBackfillTask = nil
+        }
     }
 
     /// Texto de la ayuda del chip «Semántica».
@@ -1293,6 +1323,9 @@ final class SearchViewModel: ObservableObject {
             await self.refreshRoots()
             if !Task.isCancelled {
                 self.startWatching(rootID: rootID, path: path)
+                // Mantenimiento: rellena textos/vectores que falten tras crawl o reindexado.
+                self.startSemanticBackfillIfNeeded()
+                self.startContentBackfillIfNeeded()
             }
         }
     }

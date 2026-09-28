@@ -1,4 +1,5 @@
 import Foundation
+import J4ICore
 import SQLite3
 
 /// Índice local de JUST4DESK (SQLite + FTS5).
@@ -340,7 +341,7 @@ public actor SearchIndex {
         LEFT JOIN embeddings em ON em.entry_id = e.id AND em.model = ?
         LEFT JOIN doc_text dt ON dt.entry_id = e.id
         WHERE e.is_dir = 0
-          AND (em.entry_id IS NULL OR (em.source = 'name' AND dt.text IS NOT NULL))
+          AND (em.entry_id IS NULL OR (em.source = 'name' AND dt.text IS NOT NULL AND dt.text != ''))
         ORDER BY e.id
         LIMIT ?;
         """
@@ -517,6 +518,175 @@ public actor SearchIndex {
             }
         }
         return floats
+    }
+
+    // MARK: - Re-extracción de contenido (G7.3)
+
+    /// Fichero pendiente de extraer texto (sin fila en `doc_text`: ni texto ni intento previo).
+    public struct ContentCandidate: Sendable, Equatable {
+        public let entryID: Int64
+        public let path: String
+        public let name: String
+    }
+
+    /// Candidatos a extracción de contenido: extensión soportada y `doc_text` ausente. Los intentos
+    /// sin texto quedan marcados con una fila vacía, así que no se repiten en cada arranque.
+    public func contentCandidates(extensions: [String], limit: Int = 48) throws -> [ContentCandidate] {
+        try openIfNeeded()
+        guard !extensions.isEmpty else { return [] }
+        let placeholders = Array(repeating: "?", count: extensions.count).joined(separator: ",")
+        let sql = """
+        SELECT e.id, e.path, e.name
+        FROM entries e
+        LEFT JOIN doc_text dt ON dt.entry_id = e.id
+        WHERE e.is_dir = 0 AND dt.entry_id IS NULL AND lower(e.ext) IN (\(placeholders))
+        ORDER BY COALESCE(e.modified_ts, 0) DESC, e.id DESC
+        LIMIT ?;
+        """
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            throw sqliteError("No se pudo preparar candidatos de contenido.")
+        }
+        defer { sqlite3_finalize(stmt) }
+        var binds = extensions.map { SQLBind.text($0) }
+        binds.append(.int(Int64(limit)))
+        try bind(stmt, binds)
+        var rows: [ContentCandidate] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            rows.append(
+                ContentCandidate(
+                    entryID: sqlite3_column_int64(stmt, 0),
+                    path: columnText(stmt, 1) ?? "",
+                    name: columnText(stmt, 2) ?? ""
+                )
+            )
+        }
+        return rows
+    }
+
+    /// Marca un intento de extracción sin texto útil: fila vacía en `doc_text` («ya se intentó»).
+    public func markContentAttempted(entryID: Int64) throws {
+        try openIfNeeded()
+        try exec(
+            """
+            INSERT INTO doc_text(entry_id, text, updated_ts) VALUES(?, '', ?)
+            ON CONFLICT(entry_id) DO NOTHING;
+            """,
+            [.int(entryID), .double(Date().timeIntervalSince1970)]
+        )
+    }
+
+    /// Borra filas de texto de entradas que ya no existen (histórico de reindexados anteriores).
+    @discardableResult
+    public func sweepOrphanContent() throws -> Int {
+        try openIfNeeded()
+        let removed = try scalarInt64("SELECT COUNT(*) FROM doc_text WHERE entry_id NOT IN (SELECT id FROM entries);", []) ?? 0
+        if removed > 0 {
+            try exec("DELETE FROM doc_text_fts WHERE rowid NOT IN (SELECT id FROM entries);")
+            try exec("DELETE FROM doc_text WHERE entry_id NOT IN (SELECT id FROM entries);")
+        }
+        return Int(removed)
+    }
+
+    // MARK: - Reindexado conservador (G7.4)
+
+    /// Copia a tablas temporales el texto y los vectores de un root antes de un reindexado
+    /// completo, para re-vincularlos por ruta después (las entradas se recrean con ids nuevos).
+    public func preserveContentSnapshot(rootID: Int64) throws {
+        try openIfNeeded()
+        try exec("DROP TABLE IF EXISTS j4i_keep_text;")
+        try exec("DROP TABLE IF EXISTS j4i_keep_embeddings;")
+        try exec(
+            """
+            CREATE TEMP TABLE j4i_keep_text AS
+            SELECT e.path AS path, dt.text AS text
+            FROM doc_text dt JOIN entries e ON e.id = dt.entry_id
+            WHERE e.root_id = ?;
+            """,
+            [.int(rootID)]
+        )
+        try exec(
+            """
+            CREATE TEMP TABLE j4i_keep_embeddings AS
+            SELECT e.path AS path, em.model AS model, em.dim AS dim, em.source AS source,
+                   em.vec AS vec, em.updated_ts AS updated_ts
+            FROM embeddings em JOIN entries e ON e.id = em.entry_id
+            WHERE e.root_id = ?;
+            """,
+            [.int(rootID)]
+        )
+        let texts = try scalarInt64("SELECT COUNT(*) FROM j4i_keep_text;", []) ?? 0
+        let vectors = try scalarInt64("SELECT COUNT(*) FROM j4i_keep_embeddings;", []) ?? 0
+        J4Log.info(.index, "Reindexado: preservados \(texts) texto(s) y \(vectors) vector(es) para re-vincular.")
+    }
+
+    /// Re-vincula por ruta el contenido preservado (llamar después del crawl del reindexado).
+    @discardableResult
+    public func restorePreservedContent(rootID: Int64) throws -> Int {
+        try openIfNeeded()
+
+        let textsToRestore = try scalarInt64(
+            """
+            SELECT COUNT(*) FROM j4i_keep_text k
+            JOIN entries e ON e.path = k.path AND e.root_id = ?
+            WHERE k.text != '';
+            """,
+            [.int(rootID)]
+        ) ?? 0
+        if textsToRestore > 0 {
+            try exec(
+                """
+                INSERT OR REPLACE INTO doc_text(entry_id, text, updated_ts)
+                SELECT e.id, k.text, ? FROM j4i_keep_text k
+                JOIN entries e ON e.path = k.path AND e.root_id = ?
+                WHERE k.text != '';
+                """,
+                [.double(Date().timeIntervalSince1970), .int(rootID)]
+            )
+            try exec(
+                """
+                DELETE FROM doc_text_fts WHERE rowid IN (
+                    SELECT e.id FROM j4i_keep_text k
+                    JOIN entries e ON e.path = k.path AND e.root_id = ?
+                    WHERE k.text != ''
+                );
+                """,
+                [.int(rootID)]
+            )
+            try exec(
+                """
+                INSERT INTO doc_text_fts(rowid, text)
+                SELECT e.id, k.text FROM j4i_keep_text k
+                JOIN entries e ON e.path = k.path AND e.root_id = ?
+                WHERE k.text != '';
+                """,
+                [.int(rootID)]
+            )
+        }
+
+        let vectorsToRestore = try scalarInt64(
+            """
+            SELECT COUNT(*) FROM j4i_keep_embeddings k
+            JOIN entries e ON e.path = k.path AND e.root_id = ?;
+            """,
+            [.int(rootID)]
+        ) ?? 0
+        if vectorsToRestore > 0 {
+            try exec(
+                """
+                INSERT OR REPLACE INTO embeddings(entry_id, model, dim, source, vec, updated_ts)
+                SELECT e.id, k.model, k.dim, k.source, k.vec, k.updated_ts FROM j4i_keep_embeddings k
+                JOIN entries e ON e.path = k.path AND e.root_id = ?;
+                """,
+                [.int(rootID)]
+            )
+        }
+
+        try exec("DROP TABLE IF EXISTS j4i_keep_text;")
+        try exec("DROP TABLE IF EXISTS j4i_keep_embeddings;")
+        embeddingCache = nil
+        J4Log.info(.index, "Reindexado: re-vinculados \(textsToRestore) texto(s) y \(vectorsToRestore) vector(es) por ruta.")
+        return Int(textsToRestore)
     }
 
     // MARK: - Búsqueda

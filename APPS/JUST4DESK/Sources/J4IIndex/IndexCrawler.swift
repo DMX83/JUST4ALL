@@ -82,9 +82,12 @@ public final class IndexCrawler: @unchecked Sendable {
         options: CrawlOptions = .init(),
         onProgress: (@Sendable (Int64) -> Void)? = nil
     ) async throws -> CrawlResult {
-        J4Log.info(.index, "Reindexado completo (se vacía el índice previo) de «\((rootPath as NSString).abbreviatingWithTildeInPath)»…")
+        J4Log.info(.index, "Reindexado completo (conservando textos y vectores por ruta) de «\((rootPath as NSString).abbreviatingWithTildeInPath)»…")
+        try await index.preserveContentSnapshot(rootID: rootID)
         try await index.clearEntries(rootID: rootID)
-        return try await crawl(rootID: rootID, rootPath: rootPath, options: options, onProgress: onProgress)
+        let result = try await crawl(rootID: rootID, rootPath: rootPath, options: options, onProgress: onProgress)
+        try await index.restorePreservedContent(rootID: rootID)
+        return result
     }
 
     /// Upsert de un subárbol sin tocar el estado del root (lo usa la ingesta FSEvents

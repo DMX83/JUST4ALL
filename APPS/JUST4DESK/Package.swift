@@ -8,11 +8,13 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .executable(name: "JUST4DESK", targets: ["JUST4DESK"]),
+        .executable(name: "JUST4DESKMCP", targets: ["JUST4DESKMCP"]),
         .library(name: "J4ICore", targets: ["J4ICore"]),
         .library(name: "J4IIndex", targets: ["J4IIndex"]),
         .library(name: "J4IDocs", targets: ["J4IDocs"]),
         .library(name: "J4IAI", targets: ["J4IAI"]),
-        .library(name: "J4IFiling", targets: ["J4IFiling"])
+        .library(name: "J4IFiling", targets: ["J4IFiling"]),
+        .library(name: "J4IMCP", targets: ["J4IMCP"])
     ],
     dependencies: [
         .package(path: "../JUST4FOLDERS")
@@ -52,6 +54,14 @@ let package = Package(
             name: "JUST4DESK",
             dependencies: ["J4ICore", "J4IIndex", "J4IDocs", "J4IAI", "J4IFiling"]
         ),
+        .target(
+            name: "J4IMCP",
+            dependencies: ["J4ICore", "J4IDocs", "J4IIndex"]
+        ),
+        .executableTarget(
+            name: "JUST4DESKMCP",
+            dependencies: ["J4IMCP"]
+        ),
         .testTarget(
             name: "J4ICoreTests",
             dependencies: ["J4ICore"]
@@ -75,6 +85,10 @@ let package = Package(
         .testTarget(
             name: "JUST4DESKTests",
             dependencies: ["JUST4DESK", "J4IIndex"]
+        ),
+        .testTarget(
+            name: "J4IMCPTests",
+            dependencies: ["J4IMCP", "J4IIndex"]
         )
     ]
 )
