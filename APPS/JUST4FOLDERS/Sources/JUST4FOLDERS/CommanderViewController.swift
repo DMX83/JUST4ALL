@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import J4FFileSystem
 import J4FOps
+import J4FUI
 import J4ICore
 import QuickLookUI
 import QuickLookThumbnailing
@@ -377,6 +378,16 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let previewPane = NSView()
     private var previewView: QLPreviewView?
     private let previewInfoLabel = NSTextField(labelWithString: "")
+    /// v2.1 — icono del estado vacío del preview (sin selección).
+    private let previewPlaceholderIcon = NSImageView()
+
+    // v2.1 — barra lateral de navegación: árbol colapsable + sección de reautorización dinámica.
+    private var sidebarTreeExpanded = (UserDefaults.standard.object(forKey: "j4f.sidebarTreeExpanded") as? Bool) ?? false
+    private var sidebarTreeScroll: NSScrollView?
+    private var sidebarTreeHeightConstraint: NSLayoutConstraint?
+    private var sidebarReauthLabel: NSTextField?
+    private var sidebarReauthScroll: NSScrollView?
+    private let treeSidebarDisclosureButton = NSButton()
     private var previewPaneVisible = UserDefaults.standard.bool(forKey: "j4f.previewPaneVisible")
     private let jobProgressBar = NSProgressIndicator()
     private let jobProgressLabel = NSTextField(labelWithString: "")
@@ -391,7 +402,11 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
     }
 
-    private let activeIndicatorLabel = NSTextField(labelWithString: "Panel activo: Izquierdo")
+    private let activeIndicatorLabel = NSTextField(labelWithString: "IZQ")
+    /// v2.1 — split raíz (autocuración de divisorias).
+    private weak var bodySplit: NSSplitView?
+    /// v2.1 — split de paneles (autocuración del reparto 50/50).
+    private weak var panelsSplit: NSSplitView?
     private let pathField = NSTextField(string: "")
     private let statusLabel = NSTextField(labelWithString: "Listo")
     private let volumeWarningLabel = NSTextField(labelWithString: "")
@@ -744,6 +759,34 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         super.viewDidAppear()
         configureToolbarIfNeeded()
         installKeyMonitorIfNeeded()
+        healSplitLayoutIfNeeded()
+    }
+
+    /// v2.1 — autocuración del layout de la ventana: si la barra lateral o el preview quedaron
+    /// con anchos absurdos (p. ej. NSSplitView repartió a partes iguales al no haber autosave),
+    /// recoloca las divisorias (250 / paneles / 220). No toca ajustes razonables.
+    private func healSplitLayoutIfNeeded() {
+        guard let bodySplit, bodySplit.bounds.width > 700 else { return }
+        let sidebarWidth = bodySplit.subviews.first?.frame.width ?? 0
+        let previewWidth = bodySplit.subviews.last?.frame.width ?? 0
+        if sidebarWidth < 200 || sidebarWidth > 340 || previewWidth < 180 || previewWidth > 420 {
+            bodySplit.setPosition(250, ofDividerAt: 0)
+            bodySplit.setPosition(bodySplit.bounds.width - 232, ofDividerAt: 1)
+        }
+        // Paneles: si el reparto quedó muy descompensado (p. ej. recuerdos corruptos), 50/50.
+        if let panelsSplit, panelsSplit.bounds.width > 400,
+           let first = panelsSplit.subviews.first, let last = panelsSplit.subviews.last,
+           abs(first.frame.width - last.frame.width) > 60 {
+            panelsSplit.setPosition(panelsSplit.bounds.width / 2, ofDividerAt: 0)
+        }
+        // Tras cualquier ajuste, que los paneles reajusten sus columnas.
+        leftPanel.refreshColumnLayout()
+        rightPanel.refreshColumnLayout()
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        healSplitLayoutIfNeeded()
     }
 
     deinit {
@@ -764,8 +807,19 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         topBar.spacing = 8
         topBar.translatesAutoresizingMaskIntoConstraints = false
 
-        activeIndicatorLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        // v2.1 — chip del panel activo (IZQ/DER): fondo suave de marca, sin texto «debug».
+        activeIndicatorLabel.font = J4FDesign.microFont()
+        activeIndicatorLabel.textColor = J4FDesign.brand
+        activeIndicatorLabel.alignment = .center
+        activeIndicatorLabel.wantsLayer = true
+        activeIndicatorLabel.layer?.backgroundColor = J4FDesign.brandSoft.cgColor
+        activeIndicatorLabel.layer?.cornerRadius = 5
         activeIndicatorLabel.setAccessibilityLabel("Panel activo")
+        activeIndicatorLabel.toolTip = "Panel activo · Tab cambia"
+        activeIndicatorLabel.translatesAutoresizingMaskIntoConstraints = false
+        activeIndicatorLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 36).isActive = true
+        activeIndicatorLabel.heightAnchor.constraint(equalToConstant: 18).isActive = true
+
         pathField.placeholderString = "Ruta (⌘L)"
         pathField.isEditable = true
         pathField.isSelectable = true
@@ -783,8 +837,15 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         volumeWarningLabel.isHidden = true
         volumeWarningLabel.setAccessibilityLabel("Advertencia de volumen")
 
-        let pathGoButton = NSButton(title: "Ir", target: self, action: #selector(commitPathField))
+        // v2.1 — «Ir» como icono compacto (antes texto suelto que flotaba a la derecha).
+        let pathGoButton = NSButton(
+            image: NSImage(systemSymbolName: "arrow.turn.down.right", accessibilityDescription: nil) ?? NSImage(),
+            target: self,
+            action: #selector(commitPathField)
+        )
         pathGoButton.bezelStyle = .rounded
+        pathGoButton.controlSize = .small
+        pathGoButton.toolTip = "Ir a la ruta (Enter)"
         pathGoButton.setAccessibilityLabel("Ir a la ruta")
 
         topBar.addArrangedSubview(activeIndicatorLabel)
@@ -799,6 +860,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         panelsSplit.setHoldingPriority(.defaultLow, forSubviewAt: 0)
         panelsSplit.setHoldingPriority(.defaultLow, forSubviewAt: 1)
         panelsSplit.autosaveName = "j4f.split.panels"
+        self.panelsSplit = panelsSplit
 
         addChild(leftPanel)
         addChild(rightPanel)
@@ -816,7 +878,13 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         bodySplit.addArrangedSubview(sidebarView)
         bodySplit.addArrangedSubview(panelsSplit)
         sidebarView.widthAnchor.constraint(equalToConstant: 250).isActive = true
+        // v2.1 — sin frames guardados NSSplitView divide a partes iguales (ignora 250/220).
+        // Las prioridades hacen que al redimensionar cedan los paneles, no la barra/preview.
+        bodySplit.setHoldingPriority(.defaultHigh, forSubviewAt: 0)
+        bodySplit.setHoldingPriority(.defaultLow, forSubviewAt: 1)
+        bodySplit.setHoldingPriority(.defaultHigh, forSubviewAt: 2)
         bodySplit.autosaveName = "j4f.split.body"
+        self.bodySplit = bodySplit
         configurePreviewPane()
         bodySplit.addArrangedSubview(previewPane)
 
@@ -843,6 +911,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
         container.addArrangedSubview(topBar)
         container.addArrangedSubview(bodySplit)
+        // v2.1 — el split debe llenar el ancho del contenedor (los stack views no lo estiran solos).
+        bodySplit.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
         container.addArrangedSubview(volumeWarningLabel)
         container.addArrangedSubview(jobProgressRow)
         container.addArrangedSubview(statusLabel)
@@ -865,13 +935,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         container.spacing = 8
         container.edgeInsets = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.wantsLayer = true
-        container.layer?.cornerRadius = 8
-        container.layer?.borderWidth = 1
-        container.layer?.borderColor = NSColor.separatorColor.cgColor
-
-        let header = NSTextField(labelWithString: "Árbol")
-        header.font = .systemFont(ofSize: 12, weight: .semibold)
+        // v2.1 — sin esto el reparto por «gravity areas» estira las tablas y deja huecos enormes.
+        container.distribution = .fill
+        container.alignment = .width
+        J4FDesign.styleCard(container, radius: J4FDesign.Radius.medium)
 
         let addLocationButton = NSButton(title: "Añadir ubicación", target: self, action: #selector(addAuthorizedLocation))
         addLocationButton.bezelStyle = .rounded
@@ -904,24 +971,82 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         treeScroll.documentView = directoryTree
         treeScroll.hasVerticalScroller = true
         treeScroll.translatesAutoresizingMaskIntoConstraints = false
-        treeScroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 380).isActive = true
+        // v2.1 — altura acotada; la sección arranca colapsada (⌥⌘E sigue controlando el árbol de panel).
+        let treeHeight = treeScroll.heightAnchor.constraint(equalToConstant: 300)
+        sidebarTreeScroll = treeScroll
+        sidebarTreeHeightConstraint = treeHeight
 
         let sidebarActions = NSStackView(views: [addLocationButton, infoCurrentButton])
         sidebarActions.orientation = .horizontal
         sidebarActions.spacing = 6
         sidebarActions.distribution = .fillEqually
 
-        container.addArrangedSubview(header)
         container.addArrangedSubview(sidebarActions)
+
+        // v2.1 — barra de navegación de verdad: destinos (Ubicaciones/Favoritos/Recientes),
+        // reautorización solo cuando hace falta y el árbol como sección colapsable al final.
+        container.addArrangedSubview(sidebarSectionLabel("UBICACIONES"))
+        container.addArrangedSubview(makeTableScroll(for: authorizedTable, accessibilityLabel: "Ubicaciones autorizadas"))
+
+        let reauthLabel = sidebarSectionLabel("REAUTORIZAR")
+        let reauthScroll = makeTableScroll(for: reauthTable, accessibilityLabel: "Pendientes de reautorizar")
+        sidebarReauthLabel = reauthLabel
+        sidebarReauthScroll = reauthScroll
+        container.addArrangedSubview(reauthLabel)
+        container.addArrangedSubview(reauthScroll)
+
+        container.addArrangedSubview(sidebarSectionLabel("FAVORITOS"))
+        container.addArrangedSubview(makeTableScroll(for: favoritesTable, accessibilityLabel: "Favoritos"))
+
+        container.addArrangedSubview(sidebarSectionLabel("RECIENTES"))
+        container.addArrangedSubview(makeTableScroll(for: recentsTable, accessibilityLabel: "Recientes"))
+
+        treeSidebarDisclosureButton.bezelStyle = .inline
+        treeSidebarDisclosureButton.controlSize = .small
+        treeSidebarDisclosureButton.target = self
+        treeSidebarDisclosureButton.action = #selector(toggleSidebarTree)
+        treeSidebarDisclosureButton.setAccessibilityLabel("Mostrar u ocultar el árbol")
+        let treeSpacer = NSView()
+        treeSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        treeSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let treeHeader = NSStackView(views: [sidebarSectionLabel("ÁRBOL"), treeSpacer, treeSidebarDisclosureButton])
+        treeHeader.orientation = .horizontal
+        treeHeader.spacing = 4
+        container.addArrangedSubview(treeHeader)
         container.addArrangedSubview(treeScroll)
+
+        updateReauthSectionVisibility()
+        applySidebarTreeState()
 
         return container
     }
 
+    @objc private func toggleSidebarTree() {
+        sidebarTreeExpanded.toggle()
+        applySidebarTreeState()
+    }
+
+    private func applySidebarTreeState() {
+        sidebarTreeScroll?.isHidden = !sidebarTreeExpanded
+        sidebarTreeHeightConstraint?.isActive = sidebarTreeExpanded
+        treeSidebarDisclosureButton.image = NSImage(
+            systemSymbolName: sidebarTreeExpanded ? "chevron.down" : "chevron.right",
+            accessibilityDescription: nil
+        )
+        treeSidebarDisclosureButton.toolTip = sidebarTreeExpanded ? "Ocultar el árbol" : "Mostrar el árbol de carpetas"
+        UserDefaults.standard.set(sidebarTreeExpanded, forKey: "j4f.sidebarTreeExpanded")
+    }
+
+    private func updateReauthSectionVisibility() {
+        let needed = !failedBookmarks.isEmpty
+        sidebarReauthLabel?.isHidden = !needed
+        sidebarReauthScroll?.isHidden = !needed
+    }
+
     private func sidebarSectionLabel(_ text: String) -> NSTextField {
         let label = NSTextField(labelWithString: text)
-        label.font = .systemFont(ofSize: 11, weight: .medium)
-        label.textColor = .secondaryLabelColor
+        label.font = J4FDesign.microFont()
+        label.textColor = .tertiaryLabelColor
         return label
     }
 
@@ -945,7 +1070,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         scroll.documentView = table
         scroll.hasVerticalScroller = true
         scroll.translatesAutoresizingMaskIntoConstraints = false
-        scroll.heightAnchor.constraint(equalToConstant: 88).isActive = true
+        scroll.heightAnchor.constraint(equalToConstant: 64).isActive = true
         scroll.setAccessibilityLabel(accessibilityLabel)
         return scroll
     }
@@ -961,11 +1086,11 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
 
         leftPanel.onStatus = { [weak self] text in
-            self?.statusLabel.stringValue = "IZQ · \(text)"
+            self?.statusLabel.stringValue = "◀  \(text)"
             self?.updatePathFieldFromActivePanel()
         }
         rightPanel.onStatus = { [weak self] text in
-            self?.statusLabel.stringValue = "DER · \(text)"
+            self?.statusLabel.stringValue = "▶  \(text)"
             self?.updatePathFieldFromActivePanel()
         }
         leftPanel.onSelectionChanged = { [weak self] in
@@ -1436,6 +1561,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         if !report.failedLocations.isEmpty {
             logger.warning("Bookmarks sin resolver: \(report.failedLocations.map(\.path).joined(separator: ", "), privacy: .public)")
         }
+        updateReauthSectionVisibility()
         for url in authorizedLocations {
             _ = beginSecurityScope(for: url)
         }
@@ -1538,7 +1664,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     private func updateActiveIndicator() {
-        activeIndicatorLabel.stringValue = "Panel activo: \(activeSide.rawValue)"
+        activeIndicatorLabel.stringValue = activeSide == .left ? "IZQ" : "DER"
+        activeIndicatorLabel.toolTip = "Panel activo: \(activeSide.rawValue) · Tab cambia"
         leftPanel.setActive(activeSide == .left)
         rightPanel.setActive(activeSide == .right)
     }
@@ -1603,7 +1730,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             }
             watcher.setPaused(!activeJobIds.isEmpty)
         } catch {
-            statusLabel.stringValue = "No se pudo activar watcher para \(directory.lastPathComponent): \(J4FError.from(error).userMessage)"
+            statusLabel.stringValue = "No se pudo vigilar «\(directory.lastPathComponent)»: \(J4FError.from(error).userMessage)"
         }
     }
 
@@ -2204,10 +2331,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
     private func configurePreviewPane() {
         previewPane.translatesAutoresizingMaskIntoConstraints = false
-        previewPane.wantsLayer = true
-        previewPane.layer?.cornerRadius = 8
-        previewPane.layer?.borderWidth = 1
-        previewPane.layer?.borderColor = NSColor.separatorColor.cgColor
+        J4FDesign.styleCard(previewPane, radius: J4FDesign.Radius.medium)
         previewPane.isHidden = !previewPaneVisible
         previewPane.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
 
@@ -2216,16 +2340,23 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         ql?.translatesAutoresizingMaskIntoConstraints = false
         previewView = ql
 
-        previewInfoLabel.font = .systemFont(ofSize: 11)
+        previewInfoLabel.font = J4FDesign.captionFont()
         previewInfoLabel.textColor = .secondaryLabelColor
         previewInfoLabel.alignment = .center
         previewInfoLabel.lineBreakMode = .byWordWrapping
         previewInfoLabel.maximumNumberOfLines = 0
         previewInfoLabel.translatesAutoresizingMaskIntoConstraints = false
 
+        // v2.1 — estado vacío con icono (antes la tarjeta quedaba en blanco absoluto).
+        previewPlaceholderIcon.image = NSImage(systemSymbolName: "eye", accessibilityDescription: nil)
+        previewPlaceholderIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 26, weight: .light)
+        previewPlaceholderIcon.contentTintColor = .tertiaryLabelColor
+        previewPlaceholderIcon.translatesAutoresizingMaskIntoConstraints = false
+
         // Importante: la etiqueta debe estar ANTES en la jerarquía (las constraints no pueden
         // cruzar vistas sin ancestro común).
         previewPane.addSubview(previewInfoLabel)
+        previewPane.addSubview(previewPlaceholderIcon)
         if let ql {
             previewPane.addSubview(ql)
             NSLayoutConstraint.activate([
@@ -2238,7 +2369,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NSLayoutConstraint.activate([
             previewInfoLabel.leadingAnchor.constraint(equalTo: previewPane.leadingAnchor, constant: 10),
             previewInfoLabel.trailingAnchor.constraint(equalTo: previewPane.trailingAnchor, constant: -10),
-            previewInfoLabel.bottomAnchor.constraint(equalTo: previewPane.bottomAnchor, constant: -10)
+            previewInfoLabel.bottomAnchor.constraint(equalTo: previewPane.bottomAnchor, constant: -10),
+            previewPlaceholderIcon.centerXAnchor.constraint(equalTo: previewPane.centerXAnchor),
+            previewPlaceholderIcon.centerYAnchor.constraint(equalTo: previewPane.centerYAnchor, constant: -8)
         ])
     }
 
@@ -2255,11 +2388,17 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         let selected = activePanel.selectedURLs()
         let url = selected.count == 1 ? selected.first : nil
         ql.previewItem = url as NSURL?
+        ql.isHidden = (url == nil)
 
         guard let url else {
-            previewInfoLabel.stringValue = selected.isEmpty ? "Sin selección" : "\(selected.count) elementos seleccionados"
+            // v2.1 — estado vacío claro en vez de tarjeta en blanco.
+            previewPlaceholderIcon.isHidden = false
+            previewInfoLabel.stringValue = selected.isEmpty
+                ? "Selecciona un archivo para la vista previa\n⌥⌘P oculta este panel"
+                : "\(selected.count) elementos seleccionados"
             return
         }
+        previewPlaceholderIcon.isHidden = true
         var lines: [String] = [url.lastPathComponent]
         let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey, .isDirectoryKey, .localizedTypeDescriptionKey])
         if let type = values?.localizedTypeDescription {
@@ -3258,7 +3397,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
         allRows = Array(rowMap.values)
         applySortAndReload()
-        onStatus?("Actualizado por watcher (\(childPaths.count) cambio(s)).")
+        onStatus?("Actualizado (\(childPaths.count) cambio(s) en disco).")
     }
 
     func focusTable() {
@@ -3491,8 +3630,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         titleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
         titleLabel.stringValue = "Panel \(side.rawValue)"
 
-        rowCountLabel.font = .systemFont(ofSize: 11)
-        rowCountLabel.textColor = .secondaryLabelColor
+        rowCountLabel.font = J4FDesign.microFont()
+        rowCountLabel.textColor = .tertiaryLabelColor
 
         tabsControl.segmentStyle = .capsule
         tabsControl.target = self
@@ -3577,8 +3716,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         header.translatesAutoresizingMaskIntoConstraints = false
         // P3 diseño — jerarquía: carpeta protagonista y contador discreto a la derecha.
         titleLabel.lineBreakMode = .byTruncatingMiddle
-        rowCountLabel.font = .systemFont(ofSize: 11)
-        rowCountLabel.textColor = .secondaryLabelColor
+        rowCountLabel.font = J4FDesign.microFont()
+        rowCountLabel.textColor = .tertiaryLabelColor
         rowCountLabel.setContentHuggingPriority(.required, for: .horizontal)
         header.addArrangedSubview(titleLabel)
         header.addArrangedSubview(NSView())
@@ -3593,8 +3732,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         breadcrumbRow.orientation = .horizontal
         breadcrumbRow.spacing = 2
         breadcrumbRow.translatesAutoresizingMaskIntoConstraints = false
-        flatToggleButton.setButtonType(.switch)
+        // v2.1 — toggle plano con icono (antes checkbox genérico).
+        flatToggleButton.setButtonType(.toggle)
+        flatToggleButton.bezelStyle = .inline
         flatToggleButton.title = "Aplanada"
+        flatToggleButton.image = NSImage(systemSymbolName: "rectangle.expand.vertical", accessibilityDescription: nil)
+        flatToggleButton.imagePosition = .imageLeading
+        flatToggleButton.contentTintColor = .secondaryLabelColor
         flatToggleButton.font = .systemFont(ofSize: 11)
         flatToggleButton.controlSize = .small
         flatToggleButton.target = self
@@ -3681,6 +3825,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         treeWidthConstraint?.constant = visible ? 170 : 0
         UserDefaults.standard.set(visible, forKey: "j4f.panelTreeVisible")
         onStatus?(visible ? "Árbol del panel visible." : "Árbol del panel oculto.")
+        // v2.1 — al cambiar el ancho disponible, reparte las columnas para que no queden cortadas.
+        DispatchQueue.main.async { [weak self] in self?.fitColumnsIfNeeded() }
     }
 
     var isPanelTreeVisible: Bool { panelTreeVisible }
@@ -3866,14 +4012,69 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         saveFormat()
     }
 
+    /// v2.1 — anchos base de las columnas (proporción canónica para el reparto).
+    static let baseColumnWidths: [String: CGFloat] = ["name": 180, "size": 65, "modified": 100, "type": 80]
+
     @objc private func fitColumnsToWidth() {
         let visible = tableView.tableColumns.filter { !$0.isHidden }
         guard !visible.isEmpty else { return }
-        let available = tableView.bounds.width - 12
-        let total = visible.reduce(CGFloat(0)) { $0 + $1.width }
-        guard total > 0 else { return }
+        // OJO: `tableView.bounds` crece con las columnas; el ancho útil es el del viewport.
+        let viewport = tableView.enclosingScrollView?.contentSize.width ?? tableView.bounds.width
+        let available = viewport - 26  // margen extra: el scroller vertical se superpone al borde
+        guard available > 200 else { return }
+        // Reparto determinista desde los anchos base (sin efecto trinquete al repetir el ajuste).
+        // El nombre conserva un suelo mayor: en ventanas pequeñas aparece scroll horizontal
+        // antes que nombres ilegibles.
+        let baseTotal = visible.reduce(CGFloat(0)) { $0 + (Self.baseColumnWidths[$1.identifier.rawValue] ?? $1.width) }
+        var widths: [(NSTableColumn, CGFloat)] = []
+        var assigned: CGFloat = 0
         for column in visible {
-            column.width = max(48, available * (column.width / total))
+            let base = Self.baseColumnWidths[column.identifier.rawValue] ?? column.width
+            let floor: CGFloat = column.identifier.rawValue == "name" ? 110 : 52
+            let width = max(floor, base * available / baseTotal)
+            widths.append((column, width))
+            assigned += width
+        }
+        if assigned > available, let first = widths.first {
+            widths[0] = (first.0, max(110, first.1 - (assigned - available)))
+        }
+        var didChange = false
+        for (column, width) in widths {
+            if abs(column.width - width) > 0.5 {
+                didChange = true
+            }
+            column.width = width
+        }
+        lastFittedViewport = viewport
+        // Sin recargar, las celdas ya creadas conservan el frame viejo (texto solapado).
+        if didChange {
+            tableView.reloadData()
+        }
+    }
+
+    /// v2.1 — refit de columnas pedido desde el commander (tras ajustes de divisorias).
+    func refreshColumnLayout() {
+        fitColumnsIfNeeded()
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        fitColumnsIfNeeded()
+    }
+
+    private var lastFittedViewport: CGFloat = 0
+
+    /// v2.1 — si las columnas no caben en el ancho visible (p. ej. con el árbol de panel
+    /// apretando la tabla) o el viewport cambió, se reparten proporcionalmente.
+    private func fitColumnsIfNeeded() {
+        let visible = tableView.tableColumns.filter { !$0.isHidden }
+        guard !visible.isEmpty else { return }
+        let viewport = tableView.enclosingScrollView?.contentSize.width ?? tableView.bounds.width
+        guard viewport > 100 else { return }
+        let total = visible.reduce(CGFloat(0)) { $0 + $1.width }
+        let viewportChanged = abs(viewport - lastFittedViewport) > 2
+        if viewportChanged || total > viewport - 8 {
+            fitColumnsToWidth()
         }
     }
 
@@ -4035,6 +4236,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         guard flatView != enabled else { return }
         flatView = enabled
         flatToggleButton.state = enabled ? .on : .off
+        flatToggleButton.contentTintColor = enabled ? J4FDesign.brand : .secondaryLabelColor
         pendingFlatRefreshWorkItem?.cancel()
         if enabled {
             onStatus?("Vista aplanada activada — indexando si hace falta…")
@@ -4059,14 +4261,14 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             string: name,
             attributes: [
                 .foregroundColor: NSColor.labelColor,
-                .font: NSFont.systemFont(ofSize: 12, weight: .semibold)
+                .font: J4FDesign.titleFont()
             ]
         )
         attributed.append(NSAttributedString(
             string: "   " + url.deletingLastPathComponent().path,
             attributes: [
                 .foregroundColor: NSColor.tertiaryLabelColor,
-                .font: NSFont.systemFont(ofSize: 11)
+                .font: J4FDesign.captionFont()
             ]
         ))
         titleLabel.attributedStringValue = attributed
@@ -4129,6 +4331,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         if flatView != format.flatView {
             flatView = format.flatView
             flatToggleButton.state = format.flatView ? .on : .off
+            flatToggleButton.contentTintColor = format.flatView ? J4FDesign.brand : .secondaryLabelColor
         }
         for column in tableView.tableColumns {
             column.isHidden = format.hiddenColumns?.contains(column.identifier.rawValue) ?? false
@@ -4493,20 +4696,29 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         label.alignment = columnId == "size" ? .right : .left
         label.stringValue = text
         label.lineBreakMode = .byTruncatingMiddle
+        // v2.1 — OJO: con attributedStringValue el lineBreakMode del label se ignora; hay que
+        // fijar el truncado en el párrafo o las celdas envuelven y se solapan entre filas.
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byTruncatingMiddle
+        let baseAttributes: [NSAttributedString.Key: Any] = [
+            .font: label.font as Any,
+            .paragraphStyle: paragraph
+        ]
         if columnId == "name", let tagColor = Self.tagColor(forIndex: tagColorIndex(for: item.url)) {
             // Etiqueta Finder: punto de color + nombre neutro (legible también con la fila seleccionada).
             let attributed = NSMutableAttributedString(
                 string: "●  ",
-                attributes: [.foregroundColor: tagColor, .font: label.font as Any]
+                attributes: baseAttributes.merging([.foregroundColor: tagColor]) { _, new in new }
             )
             attributed.append(NSAttributedString(
                 string: item.name,
-                attributes: [.foregroundColor: NSColor.labelColor, .font: label.font as Any]
+                attributes: baseAttributes.merging([.foregroundColor: NSColor.labelColor]) { _, new in new }
             ))
             label.attributedStringValue = attributed
         } else {
-            label.attributedStringValue = NSAttributedString(string: text)
-            label.textColor = item.isDirectory && columnId == "name" ? .controlAccentColor : .labelColor
+            var attributes = baseAttributes
+            attributes[.foregroundColor] = item.isDirectory && columnId == "name" ? NSColor.controlAccentColor : NSColor.labelColor
+            label.attributedStringValue = NSAttributedString(string: text, attributes: attributes)
         }
 
         let existingLeadingConstraints = cell.constraints.filter { constraint in
@@ -4646,6 +4858,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             collectionView.reloadData()
         }
         updateEmptyState()
+        // v2.1 — si el ancho cambió (árbol de panel, ventana…), evita columnas cortadas.
+        fitColumnsIfNeeded()
     }
 
     /// v2.0 — hits del índice para una consulta; con búsqueda semántica activa la IA expande
@@ -5364,6 +5578,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
 private protocol FocusAwareTableViewDelegate: AnyObject {
     func activatePanel()
+    /// v2.1 — la tabla cambió de tamaño: reajusta columnas si hace falta.
+    func tableDidLayout()
 }
 
 private extension Array {
@@ -5377,6 +5593,11 @@ private final class FocusAwareTableView: NSTableView {
     weak var focusDelegate: FocusAwareTableViewDelegate?
     var onEnterPressed: (() -> Void)?
     var onBackgroundClicked: (() -> Void)?
+
+    override func layout() {
+        super.layout()
+        focusDelegate?.tableDidLayout()
+    }
 
     override func becomeFirstResponder() -> Bool {
         let accepted = super.becomeFirstResponder()
@@ -5404,4 +5625,8 @@ private final class FocusAwareTableView: NSTableView {
     }
 }
 
-extension FilePanelViewController: FocusAwareTableViewDelegate {}
+extension FilePanelViewController: FocusAwareTableViewDelegate {
+    func tableDidLayout() {
+        fitColumnsIfNeeded()
+    }
+}

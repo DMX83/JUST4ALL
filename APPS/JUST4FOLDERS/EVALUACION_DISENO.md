@@ -1,5 +1,28 @@
 # Evaluación de diseño — JUST4FOLDERS (28-sep, tras v1.2/v2.0)
 
+## Addendum v2.1 (28-sep, noche) — fallos estructurales cerrados
+
+Arreglados y validados en vivo (capturas antes/después):
+
+1. **El contenido no llenaba la ventana**: `ContentView` usaba solo `minWidth/minHeight` en el
+   `NSViewControllerRepresentable`; SwiftUI lo dejaba en su tamaño «fitting» (~965pt) al crecer
+   la ventana → paneles al mínimo y columnas cortadas. Con `maxWidth/maxHeight: .infinity` +
+   `bodySplit` anclado al ancho del contenedor, la app llena la ventana en cualquier tamaño.
+2. **Columnas solapadas/cortadas**: reparto determinista contra el **viewport real** (no contra el
+   ancho de la tabla), suelos por columna, refit en `layout()` de la tabla y tras divisorias. El
+   detalle clave: con `attributedStringValue` el `lineBreakMode` del label se ignora — las celdas
+   envolvían texto y se solapaban entre filas; ahora el párrafo lleva truncado medio explícito.
+3. **Barra lateral sin sentido**: el árbol suelto pasa a ser la sección «ÁRBOL» (colapsable) de
+   una barra de navegación real: UBICACIONES / FAVORITOS / RECIENTES (tablas ya existentes),
+   REAUTORIZAR solo cuando hay bookmarks rotos.
+
+Además: autocuración de divisorias (NSSplitView sin frames reparte a partes iguales; se recoloca
+250 / 50-50 / 220 con ancho fuera de rango), chip IZQ/DER con acento de marca, «Ir» como icono,
+estado vacío del preview con icono y ayuda, jerarquía tipográfica en cabeceras, contadores
+terciarios, barra de estado `◀/▶` sin jerga («watcher» → «en disco»), tarjetas con estilo común
+(`J4FDesign` en J4FUI) y tamaño de ventana por defecto 1320×860.
+
+
 Método: revisión de la app en vivo durante la validación de las features v1.2/v2.0 (capturas
 en ventana normal y maximizada) + lectura del layout en `CommanderViewController.swift`
 (constraints, columnas, cableado de estado). No es una auditoría de accesibilidad formal.

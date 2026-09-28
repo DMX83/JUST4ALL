@@ -71,6 +71,8 @@ struct Just4FoldersApp: App {
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unifiedCompact)
+        // v2.1 — tamaño de apertura sensato para un commander de doble panel.
+        .defaultSize(width: 1320, height: 860)
         Settings {
             SettingsView()
         }

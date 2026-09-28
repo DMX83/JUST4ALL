@@ -42,6 +42,10 @@ swift run
   `com.dmx83.just4folders`; los espectadores de `log stream` ven ademas el detalle.
 - **QA**: `scripts/qa_smoke.sh` (build + tests + arranque + AX) y `scripts/perf_100k_listing.sh`
   (100k: listado + crawl/consultas del indice).
+- **UI v2.1**: barra lateral de navegacion (Ubicaciones/Favoritos/Recientes; Arbol colapsable),
+  chip IZQ/DER y barra de ruta pulidos, estado vacio del preview, columnas a prueba de balas
+  (reparto contra el viewport real) y autocuracion de divisorias; el contenido ahora llena la
+  ventana a cualquier tamano.
 
 ## MVP actual
 

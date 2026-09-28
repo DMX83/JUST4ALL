@@ -1,5 +1,28 @@
 # TODO — JUST4FOLDERS (v1.0 App Store)
 
+## v2.1 — UI: navegación + layout a prueba de balas (28-sep, noche)
+
+- [x] **Barra lateral de navegación**: secciones UBICACIONES / FAVORITOS / RECIENTES con las
+  tablas ya existentes, REAUTORIZAR solo cuando hay bookmarks rotos y **ÁRBOL como sección
+  colapsable** (chevron; estado en `j4f.sidebarTreeExpanded`, por defecto colapsado).
+- [x] **Bug raíz de layout**: el `NSViewControllerRepresentable` no se estiraba (solo `minWidth`)
+  → el commander quedaba a ~965pt aunque la ventana fuese mayor; los paneles caían a su mínimo
+  y las columnas se cortaban. Arreglado con `maxWidth/maxHeight: .infinity` + `bodySplit` al
+  ancho del contenedor.
+- [x] **Columnas a prueba de balas**: reparto determinista por anchos base contra el **viewport**
+  real (no el ancho de la tabla), suelos (nombre 110 / resto 52), refit en `layout()` de la tabla
+  y tras cambios de divisorias, y `reloadData` si cambian los anchos.
+- [x] **Celdas sin «soup»**: con `attributedStringValue` el `lineBreakMode` del label se ignora —
+  párrafos con truncado medio explícito (los textos envolvían y se solapaban entre filas).
+- [x] **Autocuración de divisorias** (`healSplitLayoutIfNeeded`): si la barra lateral/preview o el
+  reparto de paneles quedan absurdos (NSSplitView sin frames guardados divide a partes iguales),
+  se recolocan (250 / 50-50 / 220). Prioridades de retención para que al redimensionar cedan los
+  paneles.
+- [x] **Pulido**: chip IZQ/DER con acento de marca, «Ir» como icono, barra superior sin texto
+  «debug», estado vacío del preview con icono y ayuda, cabeceras de panel con jerarquía
+  tipográfica, contadores terciarios, barra de estado `◀/▶` sin jerga («watcher» → «en disco»),
+  tarjetas con estilo común (`J4FDesign` en J4FUI) y tamaño de ventana por defecto 1320×860.
+
 ## Documentacion relacionada
 
 - Plan del modulo: `README.md`
