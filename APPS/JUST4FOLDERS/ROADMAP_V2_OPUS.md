@@ -53,7 +53,7 @@ Leyenda: ✅ hecho · 🟡 en curso/parcial · 🔴 pendiente · ➕ ventaja nue
 | Toolbars/hotkeys configurables | 🟡 (toolbar fija) | — | v2.0 |
 | Scripting/extensibilidad | 🔴 | ➕ **MCP** (agentes) | ➕ Shortcuts/JXA/MCP > scripting propietario |
 | Cálculo de tamaños de carpeta | ✅ background **(v1.2)** | — | caché LRU + invalidación watcher |
-| Índice propio + IA | — | ➕ semántica + chat | ➕ fusible: «ordena esta carpeta» |
+| Índice propio + IA | ✅ «Ordenar esta carpeta» **(28-sep)** | ➕ semántica + chat | reglas+taxonomía compartidas; IA pendiente |
 
 **El hueco de mercado:** en macOS no hay un Opus. Hay comandantes buenos (Nimble Commander,
 ForkLift, Path Finder, Commander One, Marta) pero ninguno con **índice instantáneo propio +
@@ -94,8 +94,11 @@ IA + automatización por agentes**. Ese es el moat.
   «seleccionar sobrantes», revelar en Finder y mover a la Papelera con confirmación.
 
 ### v2.0 — Diferenciación IA (lo que Opus no tiene)
-- «**Ordenar esta carpeta**»: la taxonomía de DESK (journal + undo) aplicada desde el commander
-  (mover, no copiar; reversible; `sin clasificar` para dudas).
+- ✅ **«Ordenar esta carpeta» (28-sep):** clasificación con el motor compartido de DESK
+  (`RulesFilingClassifier` + `FilingPlanner` + `DefaultTaxonomy`) desde el commander (⌥⌘O):
+  preview de categoría/nombre/motivo, **mueve** (crea `01_Fiscal`…`99_SinClasificar`, nunca copia
+  ni borra), diario JSON y «Deshacer última ordenación» (⌥⌘Z). Sin IA todavía: reglas locales
+  (nombre → extensión), el mismo fallback determinista de DESK.
 - Búsqueda **semántica** («los papeles del seguro del coche») y chat del archivo en el panel.
 - **Folder formats** (vista por carpeta) y temas.
 - Toolbars/hotkeys configurables + **acciones MCP** (agentes de IA operando el gestor).

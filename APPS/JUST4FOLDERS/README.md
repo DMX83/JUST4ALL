@@ -55,6 +55,9 @@ swift run
   revelar en Finder y mover a la Papelera con confirmacion (nunca borrado permanente).
 - Etiquetas Finder (**v1.2**): color del nombre por etiqueta + submenu para poner/quitar los 7 colores.
 - Tamanos de carpeta (**v1.2**): calculo en background con cache LRU y refresco al cambiar el contenido.
+- Ordenar carpeta (**v2.0**, ⌥⌘O): clasifica los ficheros con las reglas y la taxonomia compartidas
+  de JUST4DESK (`01_Fiscal`, `13_Multimedia`…, `99_SinClasificar`), previsualiza y **mueve**
+  (nunca copia ni borra); «Deshacer ultima ordenacion» (⌥⌘Z) con diario.
 - Sidebar con ubicaciones autorizadas, favoritos y recientes.
 - Reautorizacion guiada de bookmarks invalidos/stale.
 - Deteccion de volumen read-only / NTFS con aviso en UI.

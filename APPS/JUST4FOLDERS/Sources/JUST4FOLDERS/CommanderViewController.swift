@@ -144,6 +144,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private var batchRenameWindow: BatchRenameWindowController?
     /// v1.2 — ventana de duplicados (una a la vez).
     private var duplicatesWindow: DuplicatesWindowController?
+    /// v2.0 — ventana de «Ordenar esta carpeta» (una a la vez).
+    private var orderingWindow: OrderingWindowController?
 
     private var activeSide: PanelSide = .left {
         didSet {
@@ -199,6 +201,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NotificationCenter.default.addObserver(self, selector: #selector(onToggleFlatViewRequested), name: .j4fToggleFlatView, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onBatchRenameRequested), name: .j4fBatchRename, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onFindDuplicatesRequested), name: .j4fFindDuplicates, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onOrderFolderRequested), name: .j4fOrderFolder, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onUndoOrderingRequested), name: .j4fUndoOrdering, object: nil)
     }
 
     /// v1.2 — renombrado en lote del panel activo (menú Operaciones ⇧⌘R o menú contextual).
@@ -236,6 +240,48 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         duplicatesWindow = controller
         controller.window?.center()
         controller.showWindow(nil)
+    }
+
+    /// v2.0 — «Ordenar esta carpeta» sobre el panel activo (menú Operaciones ⌥⌘O o contextual).
+    @objc private func onOrderFolderRequested() {
+        openOrdering(for: activePanel.currentDirectoryURL)
+    }
+
+    /// v2.0 — abre la ventana de ordenación (clasificar + mover con diario para deshacer).
+    func openOrdering(for folder: URL) {
+        orderingWindow?.close()
+        let controller = OrderingWindowController(folder: folder) { [weak self] moved in
+            guard let self else { return }
+            self.orderingWindow = nil
+            self.statusLabel.stringValue = moved > 0
+                ? "Ordenados \(moved) fichero(s). «Deshacer última ordenación» en el menú Operaciones."
+                : "Nada que ordenar."
+            self.leftPanel.reloadAfterExternalChange()
+            self.rightPanel.reloadAfterExternalChange()
+        }
+        orderingWindow = controller
+        controller.window?.center()
+        controller.showWindow(nil)
+    }
+
+    /// v2.0 — deshace la última ordenación (⌥⌘Z): mueve los ficheros de vuelta a su sitio.
+    @objc private func onUndoOrderingRequested() {
+        let journalURL = OrderingJournalStore.defaultURL()
+        let journal = OrderingJournalStore.load(from: journalURL)
+        guard !journal.isEmpty else {
+            statusLabel.stringValue = "No hay ninguna ordenación que deshacer."
+            NSSound.beep()
+            return
+        }
+        let result = FolderOrderer.undo(journal)
+        OrderingJournalStore.clear(at: journalURL)
+        var message = "Ordenación deshecha: \(result.restored) fichero(s) restaurado(s)."
+        if !result.failures.isEmpty {
+            message += " \(result.failures.count) fallo(s)."
+        }
+        statusLabel.stringValue = message
+        leftPanel.reloadAfterExternalChange()
+        rightPanel.reloadAfterExternalChange()
     }
 
     /// v1.2 — alterna la vista aplanada del panel activo (menú Navegación, ⌥⌘F).
@@ -2079,6 +2125,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         NotificationCenter.default.post(name: .j4fFindDuplicates, object: nil)
     }
 
+    @objc private func contextOrderFolder() {
+        activatePanel()
+        NotificationCenter.default.post(name: .j4fOrderFolder, object: nil)
+    }
+
     func selectedURLs() -> [URL] {
         let selected = Array(tableView.selectedRowIndexes).compactMap { (idx: Int) -> URL? in
             guard idx >= 0, idx < rows.count else { return nil }
@@ -2434,6 +2485,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         menu.addItem(.separator())
         menu.addItem(withTitle: "Renombrar en lote…", action: #selector(contextBatchRename), keyEquivalent: "")
         menu.addItem(withTitle: "Buscar duplicados…", action: #selector(contextFindDuplicates), keyEquivalent: "")
+        menu.addItem(withTitle: "Ordenar esta carpeta…", action: #selector(contextOrderFolder), keyEquivalent: "")
         for item in menu.items {
             item.target = self
         }

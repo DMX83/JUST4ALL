@@ -37,6 +37,10 @@ extension Notification.Name {
     static let j4fBatchRename = Notification.Name("j4f.batchRename")
     /// v1.2 — búsqueda de duplicados bajo la carpeta del panel activo (menú Operaciones, ⇧⌘D).
     static let j4fFindDuplicates = Notification.Name("j4f.findDuplicates")
+    /// v2.0 — ordenar (clasificar + mover) la carpeta del panel activo (menú Operaciones, ⌥⌘O).
+    static let j4fOrderFolder = Notification.Name("j4f.orderFolder")
+    /// v2.0 — deshacer la última ordenación (⌥⌘Z).
+    static let j4fUndoOrdering = Notification.Name("j4f.undoOrdering")
 }
 
 @main
@@ -72,6 +76,15 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fFindDuplicates, object: nil)
                 }
                 .keyboardShortcut("d", modifiers: [.command, .shift])
+                Divider()
+                Button("Ordenar esta carpeta…") {
+                    NotificationCenter.default.post(name: .j4fOrderFolder, object: nil)
+                }
+                .keyboardShortcut("o", modifiers: [.command, .option])
+                Button("Deshacer última ordenación") {
+                    NotificationCenter.default.post(name: .j4fUndoOrdering, object: nil)
+                }
+                .keyboardShortcut("z", modifiers: [.command, .option])
             }
         }
     }

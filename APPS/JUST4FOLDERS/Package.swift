@@ -19,7 +19,9 @@ let package = Package(
             name: "J4FOps",
             dependencies: [
                 .product(name: "J4FCore", package: "J4SHARED"),
-                .product(name: "J4FFileSystem", package: "J4SHARED")
+                .product(name: "J4FFileSystem", package: "J4SHARED"),
+                // v2.0 — «Ordenar esta carpeta»: reutiliza reglas+taxonomía compartidas de DESK.
+                .product(name: "J4ICore", package: "J4SHARED")
             ]
         ),
         .target(

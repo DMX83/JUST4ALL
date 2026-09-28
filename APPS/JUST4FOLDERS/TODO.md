@@ -47,6 +47,16 @@
 - [x] **Duplicados** (⇧⌘D): tamaño + SHA-256 en streaming; grupos ordenados por desperdicio,
   «seleccionar sobrantes», revelar en Finder y mover a la Papelera con confirmación.
 
+## v2.0 — Diferenciación IA (en curso, 28-sep)
+
+- [x] **«Ordenar esta carpeta»** (⌥⌘O / menú contextual): clasifica con las reglas y taxonomía
+  compartidas de DESK (`RulesFilingClassifier` + `FilingPlanner` + `DefaultTaxonomy`),
+  previsualiza destino/categoría/nombre y **mueve** (nunca copia ni borra); diario JSON +
+  «Deshacer última ordenación» (⌥⌘Z) que restaura los ficheros a su sitio.
+- [ ] Clasificación con IA (DeepSeek de DESK) como mejora de la propuesta por reglas.
+- [ ] Búsqueda semántica en el panel (embeddings del índice).
+- [ ] Folder formats (vista por carpeta) y temas.
+
 ## MVP-0 — Fundaciones
 
 - [x] Definir principios de arquitectura (AppKit-first + sandbox + copy engine).
