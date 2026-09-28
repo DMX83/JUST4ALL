@@ -29,6 +29,12 @@
   no la gobernaban). Lección: no activar constraints dentro de `layout()` (aborta la app).
 - [x] **Fixes de layout**: el pathEditField con autoresizing envenenaba el solver (contenido no
   llenaba la ventana); refit de columnas tras asentarse; limpieza de anchos guardados envenenados.
+- [x] **Barra lateral sin huecos** (v2.2e): las cabeceras de sección ya no se estiran (hugging
+  requerido) y el árbol absorbe el espacio sobrante (mín. 160, prioridad 249; espaciador invisible
+  cuando está colapsado) — se acabó el hueco entre «ÁRBOL» y el árbol.
+- [ ] **Panel Hub** (propuesta en `PANEL_HUB.md`): módulos intercambiables en el panel derecho con
+  botones — Vista previa · **DESK mini** (omnibox + bandeja + ordenar con undo) · futuro PICT;
+  viable porque los motores ya están compartidos (`J4ICore`/`J4IIndex`, `FolderOrderer`, IA).
 - [ ] Menor conocido: la última columna («Tipo») puede recortar un carácter si el ancho queda
   justo; arrastrar el divisor lo resuelve. Reproducir con AppKit puro antes de tocarlo.
 

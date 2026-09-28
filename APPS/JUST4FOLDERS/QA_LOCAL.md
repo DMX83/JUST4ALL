@@ -43,6 +43,8 @@
 - [x] Fill completo de la ventana (v2.2d): geometria verificada (view = 1.728 = ventana; split
   hasta 28pt del borde inferior: 10 de separacion + fila de estado de 18 + margen 12) y capturas
   sin bandas muertas arriba/abajo/izquierda/derecha.
+- [x] Barra lateral sin hueco en «ARBOL» (v2.2e): captura con el arbol expandido — cabecera pegada
+  al arbol y el arbol absorbiendo el sobrante (antes: fila «ARBOL» estirada con hueco enorme).
 - [x] Hueco inferior cerrado: los paneles ocupan todo el alto disponible (antes ~250 pt muertos
   a causa del stack de estado estirado; v2.2d: altura exacta por filas visibles).
 - [x] Estilos visuales en vivo: cambio a Oceano reflejado al instante (chip, toggles, sidebar);

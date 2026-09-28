@@ -1084,8 +1084,11 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         treeScroll.documentView = directoryTree
         treeScroll.hasVerticalScroller = true
         treeScroll.translatesAutoresizingMaskIntoConstraints = false
-        // v2.1 — altura acotada; la sección arranca colapsada (⌥⌘E sigue controlando el árbol de panel).
-        let treeHeight = treeScroll.heightAnchor.constraint(equalToConstant: 300)
+        // v2.2e — el árbol ABSORBE el espacio sobrante de la barra lateral (antes: altura
+        // fija de 300 y el sobrante inflaba la fila «ÁRBOL», dejando un hueco enorme).
+        // 249 < 250 (espaciador inferior): así el árbol se queda con todo el sobrante.
+        treeScroll.setContentHuggingPriority(NSLayoutConstraint.Priority(249), for: .vertical)
+        let treeHeight = treeScroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 160)
         sidebarTreeScroll = treeScroll
         sidebarTreeHeightConstraint = treeHeight
 
@@ -1126,11 +1129,20 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         treeSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         let treeTitle = sidebarSectionLabel("ÁRBOL")
         treeTitle.setContentCompressionResistancePriority(.required, for: .horizontal)
+        // v2.2e — la cabecera «ÁRBOL» va pegada a su árbol (sin estirarse con el sobrante).
         let treeHeader = NSStackView(views: [treeTitle, treeSpacer, treeSidebarDisclosureButton])
         treeHeader.orientation = .horizontal
         treeHeader.spacing = 4
+        treeHeader.setContentHuggingPriority(.required, for: .vertical)
         addRow(treeHeader)
         addRow(treeScroll)
+
+        // v2.2e — espaciador final: con el árbol colapsado no queda ninguna fila elástica
+        // y el sobrante lo absorbe este espaciador (invisible) en vez de estirar cabeceras.
+        let sidebarBottomSpacer = NSView()
+        sidebarBottomSpacer.translatesAutoresizingMaskIntoConstraints = false
+        sidebarBottomSpacer.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        addRow(sidebarBottomSpacer)
 
         updateReauthSectionVisibility()
         applySidebarTreeState()
@@ -1191,6 +1203,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         let label = NSTextField(labelWithString: text)
         label.font = J4FDesign.microFont()
         label.textColor = .tertiaryLabelColor
+        // v2.2e — las cabeceras no deben estirarse nunca: con el stack .fill, el espacio
+        // sobrante las inflaba y aparecía un hueco enorme entre «ÁRBOL» y el árbol.
+        label.setContentHuggingPriority(.required, for: .vertical)
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
         return label
     }
 

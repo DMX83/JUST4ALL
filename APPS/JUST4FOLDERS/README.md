@@ -10,6 +10,7 @@ La meta v1.0 es evolucionar a arquitectura AppKit-first tipo commander (2 panele
 - Tareas de este modulo: `TODO.md`
 - Plan completo v1.0: `ROADMAP_V1.md`
 - Roadmap v2 (ADN Directory Opus: flat view, batch rename, IA): `ROADMAP_V2_OPUS.md`
+- Propuesta Panel Hub (DESK mini dentro del panel de vista previa): `PANEL_HUB.md`
 - Checklist motor adaptativo: `TODO.md` (seccion "Motor adaptativo v1.0")
 
 ## Requisitos
