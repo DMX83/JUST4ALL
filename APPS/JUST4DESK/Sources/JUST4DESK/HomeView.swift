@@ -22,6 +22,30 @@ struct HomeView: View {
     @State private var showNewCollection = false
     @State private var editingCollection: SavedCollection?
     @State private var showWeeklyReport = false
+    /// G5.1 — confirmación pendiente de etiquetado Finder.
+    @State private var pendingFinderTag: FinderTagRequest?
+
+    /// G5.1 — petición de etiquetado Finder pendiente de confirmación.
+    private struct FinderTagRequest: Identifiable {
+        let id = UUID()
+        let collection: SavedCollection
+        let removing: Bool
+        let fileCount: Int
+
+        var title: String { "Etiquetas Finder — «\(collection.name)»" }
+
+        var confirmLabel: String {
+            removing
+                ? "Quitar la etiqueta de \(fileCount) fichero(s)"
+                : "Etiquetar \(fileCount) fichero(s)"
+        }
+
+        var message: String {
+            removing
+                ? "Se quitará la etiqueta «\(collection.name)» de \(fileCount) fichero(s). No se toca ni el contenido ni la ubicación."
+                : "Se escribirá la etiqueta Finder «\(collection.name)» en \(fileCount) fichero(s): metadatos que viajan con el archivo (visibles en Finder y Spotlight; reversibles con «Quitar etiqueta»)."
+        }
+    }
     @FocusState private var omniFocused: Bool
 
     private var columns: [GridItem] {
@@ -768,6 +792,14 @@ struct HomeView: View {
                 HStack(spacing: 6) {
                     cardHeader("Colecciones", "square.stack.3d.up")
                     Spacer()
+                    if let busy = viewModel.tagBusy {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text(busy)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                     Button("Nueva") {
                         showNewCollection = true
                     }
@@ -787,6 +819,24 @@ struct HomeView: View {
                     }
                 }
             }
+        }
+        .confirmationDialog(
+            pendingFinderTag?.title ?? "",
+            isPresented: Binding(
+                get: { pendingFinderTag != nil },
+                set: { if !$0 { pendingFinderTag = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingFinderTag
+        ) { request in
+            Button(request.confirmLabel) {
+                let collection = request.collection
+                let removing = request.removing
+                Task { await viewModel.applyFinderTag(to: collection, remove: removing) }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: { request in
+            Text(request.message)
         }
     }
 
@@ -812,6 +862,19 @@ struct HomeView: View {
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .help("Resultados actuales de la búsqueda guardada")
+            Menu {
+                Button("Etiquetar en Finder") { requestFinderTag(collection, removing: false) }
+                Button("Quitar etiqueta") { requestFinderTag(collection, removing: true) }
+            } label: {
+                Image(systemName: "tag")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .disabled(viewModel.tagBusy != nil)
+            .help("Etiquetas Finder: metadatos en los ficheros para verlos también fuera de JUST4DESK (reversible)")
             Button("Abrir") {
                 openCollection(collection)
             }
@@ -821,6 +884,9 @@ struct HomeView: View {
         .contextMenu {
             Button("Abrir") { openCollection(collection) }
             Button("Editar…") { editingCollection = collection }
+            Divider()
+            Button("Etiquetar en Finder") { requestFinderTag(collection, removing: false) }
+            Button("Quitar etiqueta del Finder") { requestFinderTag(collection, removing: true) }
             Divider()
             Button("Borrar colección", role: .destructive) {
                 viewModel.removeCollection(collection)
@@ -837,6 +903,14 @@ struct HomeView: View {
         viewModel.query = collection.query
         openWindow(id: "search")
         J4Log.debug(.app, "Colección «\(collection.name)» → búsqueda «\(collection.query)».")
+    }
+
+    /// G5.1 — prepara (contando ficheros) la confirmación de etiquetado Finder.
+    private func requestFinderTag(_ collection: SavedCollection, removing: Bool) {
+        Task {
+            let files = await viewModel.collectionFiles(collection)
+            pendingFinderTag = FinderTagRequest(collection: collection, removing: removing, fileCount: files.count)
+        }
     }
 
     private func collectionOmniRow(_ collection: SavedCollection) -> some View {

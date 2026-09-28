@@ -170,8 +170,8 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 > **Implementado (25-sep, G5 v1)**: colecciones guardadas por búsquedas — tarjeta «Colecciones»
 > en «Inicio» con contador vivo (Nueva/Editar/Borrar), fila en el omnibox («fisc» → «Fiscal
 > 2026») y marcador en «Buscar» para guardar la búsqueda actual. Persistencia propia
-> (`collections.json`). Las **etiquetas Finder nativas** quedan como G5.1 a la espera de la
-> decisión §7.3.
+> (`collections.json`). **G5.1 (28-sep)**: etiquetas Finder nativas **implementadas** (opt-in
+> por colección: etiquetar/quitar con confirmación; aditivo y reversible) — decisión §7.3.
 
 > **Implementado (26-sep, G7 v1)**: **búsqueda por significado** — chip «Semántica» en «Buscar»
 > (ON por defecto): expansión de la consulta con sinónimos locales («sueldo» → «salario/nómina»,
@@ -213,7 +213,7 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 | **G2** ✅ | **Sugerencias proactivas v1**: duplicados (hash), capturas/Escritorio, grandes y olvidados | «Resultados que se pagan» (+ GB) con riesgo cero (undo) | Medio |
 | **G3** ✅ | **Reglas visibles** (pantalla + export/import) | Confianza y control; explota lo ya aprendido (27 reglas reales ya) | Bajo-Medio |
 | **G4** ✅ | **N5: menú de barra + atajo global + Quick Action Finder** (v1: menú + ⌥Espacio; la Quick Action llega con el DMG) | La app pasa de «ventana» a «presencia» (lo pide el mercado) | Bajo-Medio |
-| **G5** ✅ | **Espacios/colecciones** (v1: colecciones por búsquedas; etiquetas Finder = G5.1) | «Organizar sin mover»; encaja con Inicio y omnibox | Medio-Alto |
+| **G5** ✅ | **Espacios/colecciones** (v1 + G5.1 etiquetas Finder ✅: colecciones por búsquedas y etiquetado Finder opt-in) | «Organizar sin mover»; encaja con Inicio y omnibox | Medio-Alto |
 | **G6** ✅ | **Archivo en frío + informe semanal** | Consolida «mantenimiento continuo» del entorno | Bajo |
 | **G7** ✅ | **Búsqueda semántica local + chat + MCP** (v1: expansión/vectores/chat; G7.2 MCP ✅; G7.3 re-extracción de contenido ✅; G7.4 reindexado conservador ✅) | Diferencial avanzado (DEVONthink 4/Eagle ya lo venden) | Alto |
 
@@ -251,7 +251,8 @@ FilesMagicAI, Foldora, Declutter, renamer.ai, Sortio, VaultSort…
 1. ¿Inicio como **ventana principal** (recomendado) o como **pestaña** dentro del buscador actual?
 2. Sugerencias proactivas: ¿**aprobar-para-ejecutar** (recomendado) o ejecutar con undo inmediato?
 3. Espacios/colecciones con **etiquetas Finder nativas**: ¿sí (visibles en Finder, sin lock-in) o
-   solo internas? *(v1: internas; la decisión sigue abierta para G5.1.)*
+   solo internas? *(v1: internas. **Decisión (28-sep): sí, opt-in e ida única (app → fichero)** —
+   implementado en G5.1 con botón «Etiquetar/Quitar etiqueta» por colección.)*
 4. Precio/posicionamiento: ¿39–49 € único (sistema) o tier gratis + Pro (sugerencias/colecciones)?
 
 ---

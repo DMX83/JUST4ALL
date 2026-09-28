@@ -151,6 +151,8 @@ final class SearchViewModel: ObservableObject {
     @Published private(set) var suggestions: [ProactiveSuggestion] = []
     /// Progreso mientras se aplica una sugerencia («Verificando duplicados… 3/12»).
     @Published private(set) var suggestionsBusy: String?
+    /// G5.1 — progreso del etiquetado Finder («Etiquetando «Trading»…»).
+    @Published private(set) var tagBusy: String?
     /// G5 — colecciones guardadas (organizar sin mover) y nº de resultados de cada una.
     @Published private(set) var collections: [SavedCollection] = []
     @Published private(set) var collectionCounts: [String: Int] = [:]
@@ -902,6 +904,46 @@ final class SearchViewModel: ObservableObject {
             let name = Self.fold($0.name)
             return name.contains(folded) || folded.contains(name)
         }
+    }
+
+    // MARK: - G5.1 Etiquetas Finder (colección visible fuera de la app)
+
+    /// Tope de ficheros por operación de etiquetado (seguridad y feedback acotado).
+    static let tagFileLimit = 500
+
+    /// Ficheros de una colección (solo ficheros) para el etiquetado.
+    func collectionFiles(_ collection: SavedCollection, limit: Int = SearchViewModel.tagFileLimit) async -> [String] {
+        let request = IndexSearchRequest(
+            query: collection.query,
+            filters: IndexSearchFilters(),
+            limit: limit,
+            includeContent: false
+        )
+        let hits = (try? await index.search(request)) ?? []
+        return hits.filter { !$0.entry.isDirectory }.map(\.entry.path)
+    }
+
+    /// Aplica o quita la etiqueta Finder (nombre de la colección) en sus ficheros.
+    /// Ida única (app → fichero): aditivo, reversible y sin journal (no mueve nada).
+    func applyFinderTag(to collection: SavedCollection, remove: Bool) async {
+        guard tagBusy == nil else { return }
+        tagBusy = remove ? "Quitando «\(collection.name)»…" : "Etiquetando «\(collection.name)»…"
+        defer { tagBusy = nil }
+
+        let paths = await collectionFiles(collection)
+        let tagName = collection.name
+        let result = await Task.detached(priority: .userInitiated) {
+            FinderTags.apply([tagName], to: paths.map { URL(fileURLWithPath: $0) }, removing: remove)
+        }.value
+
+        var message = remove
+            ? "«\(tagName)»: etiqueta quitada en \(result.updated) fichero(s)"
+            : "«\(tagName)»: etiqueta escrita en \(result.updated) fichero(s)"
+        if result.unchanged > 0 { message += " · \(result.unchanged) ya estaban así" }
+        if result.failed > 0 { message += " · \(result.failed) con error" }
+        if paths.count >= Self.tagFileLimit { message += " (tope de \(Self.tagFileLimit))" }
+        lastOutcomeMessage = message
+        J4Log.info(.app, "Etiquetas Finder — \(message)")
     }
 
     private static func fold(_ value: String) -> String {

@@ -661,6 +661,14 @@
   `IndexCrawler.reindex` conserva textos/vectores (snapshot en tablas temp + re-vinculado por
   ruta; antes el «Reindexar» los borraba en silencio — incidente real del 27-sep con 3.950
   ficheros) + mantenimiento post-crawl en `SearchViewModel`. Suite 211 (210 + 1 skip; +15 tests).
+- G5.1 (28-sep): **etiquetas Finder opt-in por colección** — decisión del usuario (opción A):
+  botón 🏷 por colección («Etiquetar en Finder»/«Quitar etiqueta») con confirmación + recuento y
+  resultado en el pie; escribe el nombre de la colección como xattr `_kMDItemUserTags`
+  (`FinderTags` en J4ICore: plist binario, color «Nombre\nÍndice», aditivo sin duplicar por
+  nombre, lotes con fallos contados, tope 500; quitar borra el atributo si era la única
+  etiqueta). Validado en vivo de punta a punta: «QA Etiqueta» → 1 fichero (mdls/mdfind lo ven;
+  tras quitar, xattr eliminado) y reversión completa de «Trading» (98 → 0). Suite 215
+  (214 + 1 skip; +4 tests). Capturas `docs/design/G5.1/`.
 
 ## Lecciones y trampas
 

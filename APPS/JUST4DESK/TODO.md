@@ -314,7 +314,9 @@ Fuente de verdad del trabajo activo. Plan por fases (F0–F6).
   (Dock/Inicio). Validado en vivo. Suite 167. (Quick Action de Finder: con el empaquetado.)
 - [x] G5 (v1): colecciones («organizar sin mover») — búsquedas guardadas con contador vivo en
   Inicio, fila en el omnibox y marcador en «Buscar». Validado en vivo. Suite 172.
-- [ ] G5.1: etiquetas Finder nativas (opcional; decisión del usuario, EVOLUCION §7.3).
+- [x] G5.1 (28-sep): etiquetas Finder opt-in — menú 🏷 por colección (etiquetar/quitar con
+  confirmación y recuento; aditivo, reversible, tope 500). Validado en vivo (mdls/xattr).
+  Suite 215. Capturas `docs/design/G5.1/`.
 - [x] G6 (v1): archivo en frío — «Grandes y sin cambios» → `90_Archivo/<ruta relativa>` con
   journal/undo y confirmación; informe semanal en Inicio → [Informe] con Copiar/Exportar
   Markdown. Suite 177. Capturas `docs/design/G6/`.

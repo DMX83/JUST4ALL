@@ -561,7 +561,8 @@ Convención por version + build stamp:
   nombre encaja con lo escrito («fisc» → Colección «Fiscal 2026»).
 - **Ventana «Buscar»**: marcador junto al campo → «Guardar esta búsqueda como colección…».
 - Store `CollectionStore` (J4ICore) + 5 tests; suite 172 (171 + 1 skip). Capturas en
-  `docs/design/G5/`. Pendiente G5.1: **etiquetas Finder nativas** (decisión abierta §7.3).
+  `docs/design/G5/`. G5.1 (28-sep): **etiquetas Finder nativas** implementadas (opt-in,
+  decisión §7.3) — ver sección G5.1.
 
 ### Added — G6 (archivo en frío + informe semanal) (25-sep, noche)
 
@@ -629,3 +630,20 @@ Convención por version + build stamp:
   contenido y vectores). Se detectó porque un reindexado del 27-sep dejó los 3.950 ficheros sin
   textos ni vectores; tras el arreglo se recuperaron solos al arrancar.
 - +3 tests (`ReindexPreservationTests`); suite **211** (210 + 1 skip).
+
+### Added — G5.1 (etiquetas Finder opt-in) (28-sep)
+
+- **Etiquetado Finder por colección (ida única app → fichero)**: botón 🏷 en cada fila de
+  «Colecciones» (y en el menú contextual) con «Etiquetar en Finder» / «Quitar etiqueta»;
+  confirmación con recuento, tope de 500 ficheros por lote y resultado en el pie
+  («etiqueta escrita en N fichero(s)»). Se escribe el nombre de la colección como **metadato
+  del fichero** (`com.apple.metadata:_kMDItemUserTags`): **aditivo** (no pisa etiquetas
+  existentes y no duplica por nombre aunque cambie el color) y **reversible**; nunca mueve ni
+  toca el contenido. Sin journal: al no mover nada, «Quitar etiqueta» restaura el estado
+  (y elimina el atributo si la etiqueta era la única).
+- `FinderTags` (J4ICore): xattr vía `setxattr`/`getxattr`/`removexattr` con plist binario
+  (soporta color «Nombre\nÍndice»); lotes con contadores updated/unchanged/failed.
+- **Validado en vivo** (colección de prueba «QA Etiqueta» → 1 fichero): `mdls`/`mdfind` ven la
+  etiqueta y tras «Quitar etiqueta» el xattr desaparece; reversión completa también sobre
+  «Trading» (98 → 0). Capturas en `docs/design/G5.1/`.
+- +4 tests (`FinderTagsTests`); suite **215** (214 + 1 skip).
