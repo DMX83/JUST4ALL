@@ -55,8 +55,13 @@ Tres zonas apiladas en el panel (~≥220pt de ancho útil):
   Deshacer), «Abrir en panel» y refresco. Validado en vivo (búsqueda «certificado» → 16
   resultados; ciclo de módulos y persistencia). OJO: el contenido del panel arranca a 44pt del
   borde superior porque la toolbar (fullSizeContentView) tapa los primeros ~38pt.
-- **F2 — ciclo de revisión**: cola «sin clasificar / por revisar», reglas favoritas por carpeta,
-  actividad en vivo con progreso, arrastrar un documento de un panel al hub para proponer destino.
+- **F2 — ciclo de revisión** ✅ **IMPLEMENTADA (v2.3.1, 29-sep)**: cola «POR REVISAR» (dudosos de
+  `99_SinClasificar` del último destino de ordenación — persistido en `j4f.lastOrderingDestination`,
+  contados con `QuarantineListing` de J4ICore; «Ver en panel» navega el panel activo) +
+  **ACTIVIDAD** en vivo (espejo de la barra inferior del commander, con barra de progreso) +
+  pulido F1 (Enter abre el primer resultado, Esc limpia el buscador, menús contextuales en
+  resultados y bandeja, foco automático al buscador al cambiar de módulo). PENDIENTE del plan F2:
+  reglas favoritas por carpeta y arrastrar un documento de un panel al hub para proponer destino.
 - **F3 — módulos extra**: `PICT` (acciones rápidas sobre la imagen seleccionada: mejorar/convertir/
   redimensionar — requiere exponer el pipeline de JUST4PICT o mover parte a J4SHARED), `Notas` /
   `Workspaces`.

@@ -36,6 +36,12 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
     private let orderButton = NSButton()
     private let openInboxButton = NSButton()
     private let refreshButton = NSButton()
+    // F2 — cola «por revisar» y actividad en curso.
+    private let reviewLabel = NSTextField(labelWithString: "")
+    private let reviewButton = NSButton()
+    private var reviewFolder: URL?
+    private let activityLabel = NSTextField(labelWithString: "")
+    private let activityBar = NSProgressIndicator()
 
     // MARK: - Datos
 
@@ -97,6 +103,48 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
         configure(table: inboxTable, rowHeight: 34, label: "Bandeja de descargas")
         configure(scroll: inboxScroll, document: inboxTable)
 
+        // F2 — «por revisar»: dudosos de 99_SinClasificar del último destino de ordenación.
+        reviewLabel.translatesAutoresizingMaskIntoConstraints = false
+        reviewLabel.font = .systemFont(ofSize: 10.5, weight: .semibold)
+        reviewLabel.textColor = .secondaryLabelColor
+        reviewLabel.lineBreakMode = .byTruncatingMiddle
+        reviewLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        reviewButton.translatesAutoresizingMaskIntoConstraints = false
+        reviewButton.title = "Ver en panel"
+        reviewButton.bezelStyle = .rounded
+        reviewButton.controlSize = .small
+        reviewButton.isHidden = true
+        reviewButton.target = self
+        reviewButton.action = #selector(onReviewClicked)
+        reviewButton.toolTip = "Abre 99_SinClasificar en el panel de ficheros para revisarlo"
+
+        let reviewRow = NSStackView(views: [reviewLabel, reviewButton])
+        reviewRow.orientation = .horizontal
+        reviewRow.spacing = 6
+        reviewRow.translatesAutoresizingMaskIntoConstraints = false
+
+        // F2 — actividad: mismos datos que la barra inferior del commander (trabajo en curso).
+        activityLabel.translatesAutoresizingMaskIntoConstraints = false
+        activityLabel.font = .systemFont(ofSize: 10.5)
+        activityLabel.textColor = .tertiaryLabelColor
+        activityLabel.lineBreakMode = .byTruncatingMiddle
+        activityLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        activityBar.translatesAutoresizingMaskIntoConstraints = false
+        activityBar.style = .bar
+        activityBar.isIndeterminate = false
+        activityBar.minValue = 0
+        activityBar.maxValue = 1
+        activityBar.controlSize = .small
+        activityBar.isHidden = true
+
+        let activityRow = NSStackView(views: [activityLabel, activityBar])
+        activityRow.orientation = .horizontal
+        activityRow.spacing = 6
+        activityRow.translatesAutoresizingMaskIntoConstraints = false
+        activityBar.widthAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
+
         orderButton.translatesAutoresizingMaskIntoConstraints = false
         orderButton.title = "Ordenar…"
         orderButton.bezelStyle = .rounded
@@ -129,9 +177,14 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
         addSubview(searchField)
         addSubview(searchStatus)
         addSubview(resultsScroll)
+        addSubview(reviewRow)
         addSubview(inboxHeader)
         addSubview(inboxScroll)
+        addSubview(activityRow)
         addSubview(buttonRow)
+
+        resultsTable.menu = makeContextMenu(for: resultsTable)
+        inboxTable.menu = makeContextMenu(for: inboxTable)
 
         NSLayoutConstraint.activate([
             searchField.topAnchor.constraint(equalTo: topAnchor),
@@ -145,9 +198,13 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
             resultsScroll.topAnchor.constraint(equalTo: searchStatus.bottomAnchor, constant: 4),
             resultsScroll.leadingAnchor.constraint(equalTo: leadingAnchor),
             resultsScroll.trailingAnchor.constraint(equalTo: trailingAnchor),
-            resultsScroll.bottomAnchor.constraint(equalTo: inboxHeader.topAnchor, constant: -10),
+            resultsScroll.bottomAnchor.constraint(equalTo: reviewRow.topAnchor, constant: -8),
             resultsScroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 60),
 
+            reviewRow.leadingAnchor.constraint(equalTo: leadingAnchor),
+            reviewRow.trailingAnchor.constraint(equalTo: trailingAnchor),
+
+            inboxHeader.topAnchor.constraint(equalTo: reviewRow.bottomAnchor, constant: 8),
             inboxHeader.leadingAnchor.constraint(equalTo: leadingAnchor),
             inboxHeader.trailingAnchor.constraint(equalTo: trailingAnchor),
 
@@ -156,13 +213,19 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
             inboxScroll.trailingAnchor.constraint(equalTo: trailingAnchor),
             inboxScroll.heightAnchor.constraint(equalToConstant: 150),
 
-            buttonRow.topAnchor.constraint(equalTo: inboxScroll.bottomAnchor, constant: 6),
+            activityRow.topAnchor.constraint(equalTo: inboxScroll.bottomAnchor, constant: 4),
+            activityRow.leadingAnchor.constraint(equalTo: leadingAnchor),
+            activityRow.trailingAnchor.constraint(equalTo: trailingAnchor),
+
+            buttonRow.topAnchor.constraint(equalTo: activityRow.bottomAnchor, constant: 6),
             buttonRow.leadingAnchor.constraint(equalTo: leadingAnchor),
             buttonRow.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
 
         setSearchStatusIdle()
         updateInboxHeader()
+        updateReview(count: 0, folderName: nil, folder: nil)
+        updateActivity(text: nil, progress: nil)
     }
 
     private func configure(table: NSTableView, rowHeight: CGFloat, label: String) {
@@ -213,6 +276,29 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
     }
 
+    /// Enter abre el primer resultado; Esc limpia el buscador.
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        guard control === searchField else { return false }
+        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+            if let first = results.first {
+                onOpenURL?(URL(fileURLWithPath: first.path))
+            } else if !searchField.stringValue.isEmpty {
+                NSSound.beep()
+            }
+            return true
+        }
+        if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+            pendingSearch?.cancel()
+            searchField.stringValue = ""
+            lastSearchQuery = ""
+            results = []
+            resultsTable.reloadData()
+            setSearchStatusIdle()
+            return true
+        }
+        return false
+    }
+
     /// Llamado por el commander con los resultados de la búsqueda global.
     func presentSearchResults(_ hits: [IndexedSearchService.Hit], for query: String) {
         guard query == lastSearchQuery else { return } // respuesta de una consulta anterior
@@ -256,6 +342,96 @@ final class DeskMiniPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
 
     private func updateInboxHeader() {
         inboxHeader.stringValue = "BANDEJA · \(inboxURL.lastPathComponent.uppercased()) (\(inboxItems.count))"
+    }
+
+    // MARK: - Colas F2 (revisión + actividad)
+
+    /// Foco directo al buscador (el commander lo pide al cambiar al módulo).
+    func focusSearch() {
+        window?.makeFirstResponder(searchField)
+    }
+
+    /// Actualiza la cola «por revisar» (dudosos de 99_SinClasificar del último destino).
+    func updateReview(count: Int, folderName: String?, folder: URL?) {
+        reviewFolder = folder
+        reviewButton.isHidden = folder == nil
+        if let folderName {
+            reviewLabel.stringValue = count == 0
+                ? "POR REVISAR · nada pendiente en \(folderName) ✓"
+                : "POR REVISAR · \(count) en \(folderName)"
+        } else {
+            reviewLabel.stringValue = "POR REVISAR · aún sin ordenaciones (aquí aparecerán los dudosos)"
+        }
+    }
+
+    /// Actividad en curso (mismos datos que la barra inferior del commander).
+    func updateActivity(text: String?, progress: Double?) {
+        if let text, !text.isEmpty {
+            activityLabel.stringValue = "ACTIVIDAD · \(text)"
+        } else {
+            activityLabel.stringValue = "ACTIVIDAD · sin trabajos en curso"
+        }
+        if let progress {
+            activityBar.isHidden = false
+            activityBar.doubleValue = max(0, min(1, progress))
+        } else {
+            activityBar.isHidden = true
+        }
+    }
+
+    @objc private func onReviewClicked() {
+        if let reviewFolder {
+            onOpenURL?(reviewFolder)
+        }
+    }
+
+    // MARK: - Menús contextuales
+
+    private func makeContextMenu(for table: NSTableView) -> NSMenu {
+        let menu = NSMenu()
+        let open = NSMenuItem(title: "Abrir", action: #selector(menuOpen(_:)), keyEquivalent: "")
+        open.target = self
+        open.representedObject = table
+        let parent = NSMenuItem(title: "Abrir la carpeta contenedora", action: #selector(menuOpenParent(_:)), keyEquivalent: "")
+        parent.target = self
+        parent.representedObject = table
+        menu.addItem(open)
+        menu.addItem(parent)
+        if table === inboxTable {
+            menu.addItem(.separator())
+            let order = NSMenuItem(title: "Ordenar la bandeja…", action: #selector(menuOrderInbox(_:)), keyEquivalent: "")
+            order.target = self
+            menu.addItem(order)
+        }
+        return menu
+    }
+
+    private func url(forRow row: Int, in table: NSTableView) -> URL? {
+        if table === resultsTable, row >= 0, row < results.count {
+            return URL(fileURLWithPath: results[row].path)
+        }
+        if table === inboxTable, row >= 0, row < inboxItems.count {
+            return inboxItems[row].url
+        }
+        return nil
+    }
+
+    @objc private func menuOpen(_ sender: NSMenuItem) {
+        guard let table = sender.representedObject as? NSTableView,
+              let url = url(forRow: table.clickedRow, in: table) else { return }
+        onOpenURL?(url)
+    }
+
+    @objc private func menuOpenParent(_ sender: NSMenuItem) {
+        guard let table = sender.representedObject as? NSTableView,
+              let url = url(forRow: table.clickedRow, in: table) else { return }
+        var isDirectory: ObjCBool = false
+        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+        onOpenURL?(isDirectory.boolValue ? url : url.deletingLastPathComponent())
+    }
+
+    @objc private func menuOrderInbox(_ sender: NSMenuItem) {
+        onOrderFolder?(inboxURL)
     }
 
     // MARK: - Acciones

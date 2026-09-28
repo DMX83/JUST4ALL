@@ -23,6 +23,9 @@ final class OrderingWindowController: NSWindowController, NSTableViewDataSource,
     private let aiCheck = NSButton(checkboxWithTitle: "Usar IA para los dudosos", target: nil, action: nil)
     private var recomputeTask: Task<Void, Never>?
 
+    /// v2.3 (Panel Hub F2) — destino elegido (raxiz donde viven las categorías y los dudosos).
+    var currentDestination: URL { destinationRoot }
+
     init(folder: URL, onFinished: @escaping (Int) -> Void) {
         self.folder = folder
         self.destinationRoot = folder

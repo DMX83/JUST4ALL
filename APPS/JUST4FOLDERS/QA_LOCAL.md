@@ -50,6 +50,11 @@
   (~/IDMX83/..., ~/JUST4DESK/09_Identidad/...); bandeja de Downloads con 4 elementos y antiguedad
   («hace 3 sem», «hace 1 m»...); botones Ordenar…/Abrir en panel/⟳. Nota: el contenido del panel
   arranca a 44pt del borde superior (la toolbar fullSizeContentView oculta los primeros ~38pt).
+- [x] Panel Hub F2 (v2.3.1): con destino real (~/JUST4DESK) la fila POR REVISAR muestra
+  «nada pendiente en JUST4DESK ✓» y «Ver en panel» navego el panel activo a 99_SinClasificar
+  (verificado en captura: «1: 99_SinClasificar»); ACTIVIDAD en reposo («sin trabajos en curso»);
+  Enter/Esc y menus contextuales implementados. OJO al testear clics: el primer clic de un
+  helper externo puede consumirse activando la app (el segundo ya entra).
 - [x] Hueco inferior cerrado: los paneles ocupan todo el alto disponible (antes ~250 pt muertos
   a causa del stack de estado estirado; v2.2d: altura exacta por filas visibles).
 - [x] Estilos visuales en vivo: cambio a Oceano reflejado al instante (chip, toggles, sidebar);

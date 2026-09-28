@@ -808,7 +808,12 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         orderingWindow?.close()
         let controller = OrderingWindowController(folder: folder) { [weak self] moved in
             guard let self else { return }
+            // v2.3 (F2) — recuerda dónde quedan los «sin clasificar» del último destino.
+            if let destination = self.orderingWindow?.currentDestination {
+                UserDefaults.standard.set(destination.path, forKey: "j4f.lastOrderingDestination")
+            }
             self.orderingWindow = nil
+            self.refreshDeskReview()
             self.statusLabel.stringValue = moved > 0
                 ? "Ordenados \(moved) fichero(s). «Deshacer última ordenación» en el menú Operaciones."
                 : "Nada que ordenar."
@@ -838,6 +843,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         statusLabel.stringValue = message
         leftPanel.reloadAfterExternalChange()
         rightPanel.reloadAfterExternalChange()
+        refreshDeskReview()
     }
 
     /// v1.2 — alterna la vista aplanada del panel activo (menú Navegación, ⌥⌘F).
@@ -2760,6 +2766,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     @objc private func onPreviewModuleChanged(_ sender: NSSegmentedControl) {
         previewModule = sender.selectedSegment == 1 ? "desk" : "preview"
         applyPreviewModule()
+        if previewModule == "desk" {
+            deskMiniPanel.focusSearch()
+        }
     }
 
     /// Aplica el módulo guardado y sincroniza selector/contenido.
@@ -2771,6 +2780,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         UserDefaults.standard.set(previewModule, forKey: "j4f.previewModule")
         if desk {
             deskMiniPanel.refreshInbox()
+            refreshDeskReview()
             statusLabel.stringValue = "Módulo DESK: bandeja + buscador del índice."
         } else {
             updatePreviewPane()
@@ -2802,6 +2812,19 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         } else {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    /// v2.3 (F2) — cola «por revisar»: dudosos en 99_SinClasificar del último destino de ordenación.
+    private func refreshDeskReview() {
+        guard let path = UserDefaults.standard.string(forKey: "j4f.lastOrderingDestination") else {
+            deskMiniPanel.updateReview(count: 0, folderName: nil, folder: nil)
+            return
+        }
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        let items = QuarantineListing.itemURLs(rootURL: root)
+        let strays = root.appendingPathComponent(DefaultTaxonomy.quarantineRelativePath, isDirectory: true)
+        let folder = FileManager.default.fileExists(atPath: strays.path) ? strays : nil
+        deskMiniPanel.updateReview(count: items.count, folderName: root.lastPathComponent, folder: folder)
     }
 
     private func togglePreviewPane() {
@@ -2853,9 +2876,14 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         jobProgressLabel.isHidden = finished
         (jobProgressBar.superview as? NSStackView)?.isHidden = finished
         refreshBottomStackHeight()
-        guard !finished else { return }
+        guard !finished else {
+            // v2.3 (F2) — la actividad del módulo DESK refleja el mismo trabajo.
+            deskMiniPanel.updateActivity(text: nil, progress: nil)
+            return
+        }
         jobProgressBar.doubleValue = max(0, min(1, snapshot.progress))
         jobProgressLabel.stringValue = "\(snapshot.type.rawValue.uppercased()) \(snapshot.processedItems)/\(snapshot.totalItems) (\(pct)%)"
+        deskMiniPanel.updateActivity(text: jobProgressLabel.stringValue, progress: snapshot.progress)
     }
 
     override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel) -> Bool { true }

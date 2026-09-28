@@ -37,8 +37,13 @@
   cap 300, doble clic abre), bandeja de Descargas (14 recientes con antigüedad), «Ordenar…»
   (ventana v2.0 con diario/Deshacer) y «Abrir en panel»; persistente (`j4f.previewModule`).
   OJO: el contenido del panel arranca a 44pt del borde superior (la toolbar tapa los primeros ~38pt).
-- [ ] **Panel Hub F2/F3** (`PANEL_HUB.md`): cola «sin clasificar / por revisar», actividad en
-  vivo con progreso, reglas favoritas por carpeta y módulos extra (PICT con acciones rápidas).
+- [x] **Panel Hub F2 (v2.3.1)**: cola **POR REVISAR** (dudosos de `99_SinClasificar` del último
+  destino de ordenación, recordado en `j4f.lastOrderingDestination`; «Ver en panel» navega el
+  panel activo — reusa `QuarantineListing` de J4ICore) + **ACTIVIDAD** (trabajo en curso con
+  barra, espejo de la barra inferior) + pulido F1 (Enter abre el primer resultado, Esc limpia,
+  menús contextuales en resultados y bandeja, foco automático al buscador al cambiar de módulo).
+- [ ] **Panel Hub F3** (`PANEL_HUB.md`): reglas favoritas por carpeta, arrastrar documento al
+  hub para proponer destino y módulos extra (PICT con acciones rápidas).
 - [ ] Menor conocido: la última columna («Tipo») puede recortar un carácter si el ancho queda
   justo; arrastrar el divisor lo resuelve. Reproducir con AppKit puro antes de tocarlo.
 
