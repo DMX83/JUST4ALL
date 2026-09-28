@@ -1,0 +1,38 @@
+name: CI — JUST4DESK
+
+# Build + tests del paquete JUST4DESK (y su dependencia local JUST4FOLDERS vía la compilación).
+# Sustituye a la validación manual con scripts/qa_smoke.sh en cada push que toque estos módulos.
+on:
+  push:
+    paths:
+      - "APPS/JUST4DESK/**"
+      - "APPS/JUST4FOLDERS/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "APPS/JUST4DESK/**"
+      - "APPS/JUST4FOLDERS/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch: {}
+
+jobs:
+  just4desk:
+    name: Build y tests (macOS 14)
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Versión de Swift/Xcode
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Build (APPS/JUST4DESK)
+        working-directory: APPS/JUST4DESK
+        run: swift build
+
+      - name: Tests (APPS/JUST4DESK)
+        working-directory: APPS/JUST4DESK
+        run: swift test
