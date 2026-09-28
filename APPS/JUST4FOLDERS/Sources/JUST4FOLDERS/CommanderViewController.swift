@@ -21,10 +21,17 @@ private struct FileRow {
     let sizeBytes: Int64?
     let modifiedDate: Date?
     let typeDescription: String
+    /// v1.2 — tamaño calculado en background para carpetas (nil = aún no calculado).
+    var folderSizeBytes: Int64? = nil
 
     var sizeDisplay: String {
-        guard let sizeBytes else { return "--" }
-        return ByteCountFormatter.string(fromByteCount: sizeBytes, countStyle: .file)
+        if let sizeBytes {
+            return ByteCountFormatter.string(fromByteCount: sizeBytes, countStyle: .file)
+        }
+        if let folderSizeBytes {
+            return ByteCountFormatter.string(fromByteCount: folderSizeBytes, countStyle: .file)
+        }
+        return "--"
     }
 
     var modifiedDisplay: String {
@@ -1800,6 +1807,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private var quickFilter: String = ""
     /// v1.2 — caché de color de etiqueta Finder por ruta (0 = sin color).
     private let tagColorCache = NSCache<NSString, NSNumber>()
+    /// v1.2 — carpetas cuyo tamaño se está calculando ya (evita peticiones repetidas).
+    private var folderSizeRequests: Set<String> = []
     private var includeHiddenFiles = false
     private var isActivePanel = false
 
@@ -2156,6 +2165,12 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             }
             if let updated = buildRow(for: childURL) {
                 rowMap[childPath] = updated
+            }
+            // v1.2 — un cambio dentro invalida el total cacheado de las carpetas afectadas.
+            Task { await FolderSizeCalculator.shared.invalidate(path: childPath) }
+            if var row = rowMap[childPath], row.isDirectory {
+                row.folderSizeBytes = nil
+                rowMap[childPath] = row
             }
         }
 
@@ -2577,6 +2592,43 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
     }
 
+    // MARK: - Tamaños de carpeta (v1.2, background)
+
+    private var sizeColumnIndex: Int {
+        tableView.tableColumns.firstIndex { $0.identifier.rawValue == "size" } ?? -1
+    }
+
+    private func requestFolderSize(for url: URL) {
+        let path = url.standardizedFileURL.path
+        guard !folderSizeRequests.contains(path) else { return }
+        folderSizeRequests.insert(path)
+        Task { [weak self] in
+            let size = await FolderSizeCalculator.shared.size(of: url, includeHidden: false)
+            await MainActor.run {
+                guard let self else { return }
+                self.folderSizeRequests.remove(path)
+                self.applyFolderSize(size, forPath: path)
+            }
+        }
+    }
+
+    private func applyFolderSize(_ size: Int64, forPath path: String) {
+        updateFolderSize(in: &allRows, path: path, size: size)
+        updateFolderSize(in: &flatRows, path: path, size: size)
+        guard let idx = rows.firstIndex(where: { $0.url.standardizedFileURL.path == path }) else { return }
+        rows[idx].folderSizeBytes = size
+        let column = sizeColumnIndex
+        if column >= 0 {
+            tableView.reloadData(forRowIndexes: IndexSet(integer: idx), columnIndexes: IndexSet(integer: column))
+        }
+    }
+
+    private func updateFolderSize(in array: inout [FileRow], path: String, size: Int64) {
+        if let idx = array.firstIndex(where: { $0.url.standardizedFileURL.path == path }) {
+            array[idx].folderSizeBytes = size
+        }
+    }
+
     private func buildRow(for url: URL) -> FileRow? {
         let keys: Set<URLResourceKey> = [
             .isDirectoryKey,
@@ -2635,6 +2687,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         case "modified": text = item.modifiedDisplay
         case "type": text = item.typeDescription
         default: text = item.name
+        }
+
+        // v1.2 — tamaño de carpeta en background (solo para lo visible).
+        if columnId == "size" && item.isDirectory && item.folderSizeBytes == nil {
+            requestFolderSize(for: item.url)
         }
 
         let identifier = NSUserInterfaceItemIdentifier("Cell-\(columnId)")
