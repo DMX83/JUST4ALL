@@ -544,7 +544,16 @@ final class SearchViewModel: ObservableObject {
         J4Log.debug(.ingest, "Unidad estable detectada: «\(url.lastPathComponent)».")
         let outcome = await pipeline.processItem(url)
         lastOutcomeMessage = Self.outcomeMessage(for: outcome)
+        announceFiled(outcome)
         await refreshActivity()
+    }
+
+    /// N5 — aviso del sistema ««X» → «Y»» solo para archivados reales (no duplicados, errores
+    /// ni simulaciones). El interruptor se gestiona desde Ajustes → Organización.
+    private func announceFiled(_ outcome: FilingCoordinator.Outcome) {
+        guard outcome.action == "move" else { return }
+        let name = (outcome.sourcePath as NSString).lastPathComponent
+        FilingNotifier.shared.notifyFiled(name: name, category: outcome.categoryPath)
     }
 
     private static func outcomeMessage(for outcome: FilingCoordinator.Outcome) -> String {
@@ -838,6 +847,7 @@ final class SearchViewModel: ObservableObject {
             case "error": failed += 1
             default: skipped += 1
             }
+            announceFiled(outcome)
         }
         var message = "Enviados: \(moved) archivado(s)"
         if quarantined > 0 { message += " · \(quarantined) por revisar" }

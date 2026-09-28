@@ -75,6 +75,9 @@ final class J4IAppDelegate: NSObject, NSApplicationDelegate {
         } else {
             J4Log.info(.app, "Atajo global ⌥Espacio activo (buscador rápido).")
         }
+
+        // N5 — avisos del sistema (archivados): configura el delegate y pide permiso una vez.
+        FilingNotifier.shared.activate()
     }
 
     /// G4 — «Enviar a JUST4DESK» desde el Finder (arrastrar al icono del Dock): los ficheros van

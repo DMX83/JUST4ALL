@@ -117,6 +117,8 @@ private struct OrganizationSettingsView: View {
     @State private var sourcePaths: [String] = FilingConfiguration.sourcePaths
     @State private var simulation = FilingConfiguration.simulationMode
     @State private var paused = FilingConfiguration.organizationPaused
+    /// N5 — avisos del sistema al archivar (misma clave que usa `FilingNotifier`).
+    @AppStorage(FilingNotifier.defaultsKey) private var notifyFiled = true
 
     var body: some View {
         ScrollView {
@@ -186,6 +188,9 @@ private struct OrganizationSettingsView: View {
                         .onChange(of: paused) { _, newValue in
                             NotificationCenter.default.post(name: .j4iSetPaused, object: newValue)
                         }
+                    Divider()
+                    Toggle("Avisar al archivar (notificación del sistema)", isOn: $notifyFiled)
+                    SettingsNote("Los avisos requieren la app instalada con su identificador (el DMG); en ejecución de desarrollo no se muestran. Apagado, la organización sigue funcionando igual.")
                     SettingsNote("Los cambios se aplican al momento en la ventana principal (y quedan guardados).")
                 }
             }
