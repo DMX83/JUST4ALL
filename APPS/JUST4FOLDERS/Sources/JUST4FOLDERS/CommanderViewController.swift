@@ -140,6 +140,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let rightWatcher = DirectoryWatchService()
     private let diagnosticsExporter = DiagnosticsExporter()
     private var taskManagerWindow: TaskManagerWindowController?
+    /// v1.2 — ventana de renombrado en lote (se libera al terminar o cerrar).
+    private var batchRenameWindow: BatchRenameWindowController?
+    /// v1.2 — ventana de duplicados (una a la vez).
+    private var duplicatesWindow: DuplicatesWindowController?
 
     private var activeSide: PanelSide = .left {
         didSet {
@@ -193,6 +197,45 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NotificationCenter.default.addObserver(self, selector: #selector(focusPathBar), name: .j4fFocusPathBar, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onPreferencesChanged), name: .j4fPreferencesChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onToggleFlatViewRequested), name: .j4fToggleFlatView, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onBatchRenameRequested), name: .j4fBatchRename, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onFindDuplicatesRequested), name: .j4fFindDuplicates, object: nil)
+    }
+
+    /// v1.2 — renombrado en lote del panel activo (menú Operaciones ⇧⌘R o menú contextual).
+    @objc private func onBatchRenameRequested() {
+        let urls = activePanel.selectedURLs()
+        guard !urls.isEmpty else {
+            statusLabel.stringValue = "Selecciona al menos un elemento para renombrar en lote."
+            NSSound.beep()
+            return
+        }
+        let controller = BatchRenameWindowController(urls: urls) { [weak self] renamed in
+            guard let self else { return }
+            self.statusLabel.stringValue = "Renombrados \(renamed) elemento(s) en lote."
+            self.activePanel.reloadAfterExternalChange()
+            self.batchRenameWindow = nil
+        }
+        batchRenameWindow = controller
+        controller.window?.center()
+        controller.showWindow(nil)
+    }
+
+    /// v1.2 — duplicados bajo la carpeta del panel activo (menú Operaciones ⇧⌘D).
+    @objc private func onFindDuplicatesRequested() {
+        openDuplicates(for: activePanel.currentDirectoryURL)
+    }
+
+    /// v1.2 — abre la ventana de duplicados para el subárbol de `root`.
+    func openDuplicates(for root: URL) {
+        duplicatesWindow?.close()
+        let controller = DuplicatesWindowController(root: root) { [weak self] in
+            guard let self else { return }
+            self.duplicatesWindow = nil
+            self.activePanel.reloadAfterExternalChange()
+        }
+        duplicatesWindow = controller
+        controller.window?.center()
+        controller.showWindow(nil)
     }
 
     /// v1.2 — alterna la vista aplanada del panel activo (menú Navegación, ⌥⌘F).
@@ -446,6 +489,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     @objc private func commitPathField() {
         isEditingPathField = false
         activePanel.openPath(pathField.stringValue)
+        // UX: tras ir a una ruta, el foco vuelve a la tabla (filtro rápido/navegación con teclado).
+        activePanel.focusTable()
     }
 
     @objc private func goBack() {
@@ -2024,6 +2069,16 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         onStatus?("Etiquetas quitadas en \(updated) elemento(s).")
     }
 
+    @objc private func contextBatchRename() {
+        activatePanel()
+        NotificationCenter.default.post(name: .j4fBatchRename, object: nil)
+    }
+
+    @objc private func contextFindDuplicates() {
+        activatePanel()
+        NotificationCenter.default.post(name: .j4fFindDuplicates, object: nil)
+    }
+
     func selectedURLs() -> [URL] {
         let selected = Array(tableView.selectedRowIndexes).compactMap { (idx: Int) -> URL? in
             guard idx >= 0, idx < rows.count else { return nil }
@@ -2107,6 +2162,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     func setIncludeHidden(_ includeHidden: Bool) {
         guard includeHiddenFiles != includeHidden else { return }
         includeHiddenFiles = includeHidden
+        loadDirectory(currentURL, pushHistory: false)
+    }
+
+    /// Recarga tras cambios hechos por ventanas auxiliares (rename en lote, duplicados…).
+    func reloadAfterExternalChange() {
         loadDirectory(currentURL, pushHistory: false)
     }
 
@@ -2371,6 +2431,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         menu.addItem(withTitle: "Renombrar", action: #selector(contextRename), keyEquivalent: "")
         menu.addItem(withTitle: "Eliminar (Papelera)", action: #selector(contextDeleteToTrash), keyEquivalent: "")
         menu.addItem(withTitle: "Eliminar definitivamente", action: #selector(contextDeletePermanent), keyEquivalent: "")
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Renombrar en lote…", action: #selector(contextBatchRename), keyEquivalent: "")
+        menu.addItem(withTitle: "Buscar duplicados…", action: #selector(contextFindDuplicates), keyEquivalent: "")
         for item in menu.items {
             item.target = self
         }

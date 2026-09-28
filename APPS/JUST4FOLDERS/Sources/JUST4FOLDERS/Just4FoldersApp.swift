@@ -33,6 +33,10 @@ final class Just4FoldersAppDelegate: NSObject, NSApplicationDelegate {
 extension Notification.Name {
     /// v1.2 — alterna la vista aplanada del panel activo (menú Navegación, ⌥⌘F).
     static let j4fToggleFlatView = Notification.Name("j4f.toggleFlatView")
+    /// v1.2 — renombrado en lote del panel activo (menú Operaciones, ⇧⌘R).
+    static let j4fBatchRename = Notification.Name("j4f.batchRename")
+    /// v1.2 — búsqueda de duplicados bajo la carpeta del panel activo (menú Operaciones, ⇧⌘D).
+    static let j4fFindDuplicates = Notification.Name("j4f.findDuplicates")
 }
 
 @main
@@ -58,6 +62,16 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fToggleFlatView, object: nil)
                 }
                 .keyboardShortcut("f", modifiers: [.command, .option])
+            }
+            CommandMenu("Operaciones") {
+                Button("Renombrar en lote…") {
+                    NotificationCenter.default.post(name: .j4fBatchRename, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                Button("Buscar duplicados…") {
+                    NotificationCenter.default.post(name: .j4fFindDuplicates, object: nil)
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
             }
         }
     }

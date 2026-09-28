@@ -48,6 +48,13 @@ swift run
 - Vista aplanada (**v1.2, 28-sep**): boton «Aplanada» por panel (o ⌥⌘F) que lista al instante
   todos los ficheros del subarbol desde el indice (`listByPathPrefix`: recorrido por ruta, ms con
   300k+ entradas); columna Tipo = ruta relativa, filtro en vivo y refresco silencioso por watcher.
+- Filtro rapido (**v1.2**): teclea sobre la tabla para filtrar la lista actual (⌫ borra, Esc limpia).
+- Renombrar en lote (**v1.2**, ⇧⌘R): buscar/reemplazar o regex con previsualizacion en vivo,
+  deteccion de conflictos y ejecucion en dos fases (permite intercambios de nombre).
+- Duplicados (**v1.2**, ⇧⌘D): tamano + SHA-256 en streaming, grupos con bytes recuperables,
+  revelar en Finder y mover a la Papelera con confirmacion (nunca borrado permanente).
+- Etiquetas Finder (**v1.2**): color del nombre por etiqueta + submenu para poner/quitar los 7 colores.
+- Tamanos de carpeta (**v1.2**): calculo en background con cache LRU y refresco al cambiar el contenido.
 - Sidebar con ubicaciones autorizadas, favoritos y recientes.
 - Reautorizacion guiada de bookmarks invalidos/stale.
 - Deteccion de volumen read-only / NTFS con aviso en UI.

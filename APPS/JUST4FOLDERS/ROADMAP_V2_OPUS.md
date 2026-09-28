@@ -42,17 +42,17 @@ Leyenda: ✅ hecho · 🟡 en curso/parcial · 🔴 pendiente · ➕ ventaja nue
 | Cola de operaciones con progreso | 🟡 (J4FOps listo; UI parcial) | — | motor propio |
 | **Búsqueda instantánea** | ✅ **v1.1 (28-sep)**: J4IIndex compartido | ✅ FTS5 | ➕ Opus depende de Everything; nosotros lo tenemos |
 | Flat view filtrado en vivo | ✅ **(28-sep, v1.2)** | — | botón «Aplanada» por panel + ⌥⌘F |
-| Batch rename (regex/macros) | 🔴 | — | propuesto v1.2 |
-| Duplicados | 🔴 | ✅ (hash, G2) | compartible |
+| Batch rename (regex/macros) | ✅ **(28-sep, v1.2)** | — | regex + preview en vivo (⇧⌘R) |
+| Duplicados | ✅ **(28-sep, v1.2)** | ✅ (hash, G2) | tamaño + SHA-256 streaming |
 | Sync / comparar carpetas | 🔴 | — | v2.x, solo si se pide |
 | Archivos comprimidos navegables | 🔴 | — | evaluar `unzip`/libarchive (v2.x) |
 | Visor / preview | 🟡 QuickLook fácil | ✅ QuickLook | integrar |
-| Labels/tags/ratings | 🔴 | 🟡 (etiquetas Finder, G5.1) | alinear |
-| Colores/grupos/estados | 🔴 | — | v1.2 (filtros + colores) |
+| Labels/tags/ratings | ✅ etiquetas Finder **(v1.2)** | 🟡 (etiquetas Finder, G5.1) | color por fila + toggle |
+| Colores/grupos/estados | ✅ colores por etiqueta **(v1.2)** | — | grupos/estados pendientes |
 | Folder formats / temas | 🔴 | — | v2.0 (guardar estado por carpeta) |
 | Toolbars/hotkeys configurables | 🟡 (toolbar fija) | — | v2.0 |
 | Scripting/extensibilidad | 🔴 | ➕ **MCP** (agentes) | ➕ Shortcuts/JXA/MCP > scripting propietario |
-| Cálculo de tamaños de carpeta | 🟡 (info) | — | v1.2 (background) |
+| Cálculo de tamaños de carpeta | ✅ background **(v1.2)** | — | caché LRU + invalidación watcher |
 | Índice propio + IA | — | ➕ semántica + chat | ➕ fusible: «ordena esta carpeta» |
 
 **El hueco de mercado:** en macOS no hay un Opus. Hay comandantes buenos (Nimble Commander,
@@ -81,11 +81,17 @@ IA + automatización por agentes**. Ese es el moat.
   «Tipo» = ruta relativa, filtro incremental en vivo y refresco silencioso por watcher.
   De paso, motor: `removeEntries` por lotes (antes 5 DELETE por path; el replay de FSEvents
   saturaba el actor y bloqueaba búsquedas) y refresh del watcher coalescido + troceado.
-- **Filtro rápido de panel** (teclas: escribir filtra la lista actual; Esc limpia).
-- **Batch rename** con regex + previsualización (debajo: motor de rename de J4FOps).
-- **Colores/etiquetas de estado** por fila (reusar etiquetas Finder de J4ICore: `FinderTags`).
-- **Tamaños de carpeta** en background (cola J4FOps, cache LRU).
-- Duplicados (portar el detector hash de DESK G2 al commander).
+- ✅ **Filtro rápido de panel:** teclear sobre la tabla filtra la lista actual (⌫ borra, Esc
+  limpia); el foco vuelve a la tabla tras ir a una ruta (⌘L).
+- ✅ **Batch rename (⇧⌘R):** buscar/reemplazar o regex, con previsualización en vivo, detección
+  de conflictos (disco + colisiones internas) y ejecución en dos fases vía temporales (permite
+  intercambios de nombre sin colisiones); guardado en `J4FOps.BatchRenamer` (plan puro + tests).
+- ✅ **Colores/etiquetas:** color del nombre por etiqueta Finder (caché por ruta) y submenú
+  «Etiquetas» (7 colores + quitar) con toggle; `FinderTags.TagEntry`/`addColored` reutilizable por DESK.
+- ✅ **Tamaños de carpeta en background:** caché LRU + single-flight + invalidación por watcher
+  (`J4FOps.FolderSizeCalculator`); la columna Tamaño se rellena sin bloquear el listado.
+- ✅ **Duplicados (⇧⌘D):** tamaño + SHA-256 en streaming; grupos con bytes recuperables,
+  «seleccionar sobrantes», revelar en Finder y mover a la Papelera con confirmación.
 
 ### v2.0 — Diferenciación IA (lo que Opus no tiene)
 - «**Ordenar esta carpeta**»: la taxonomía de DESK (journal + undo) aplicada desde el commander

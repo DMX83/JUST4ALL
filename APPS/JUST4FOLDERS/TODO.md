@@ -35,11 +35,17 @@
 - [x] **Motor J4IIndex:** `removeEntries` por lotes (tabla temporal → un DELETE por tabla; antes
   5 DELETE por path y el replay de FSEvents saturaba el actor) y refresh del watcher coalescido
   + troceado con `yield`.
-- [ ] Filtro rápido de panel (escribir filtra; Esc limpia) — evaluar si el filtro actual basta.
-- [ ] Batch rename con regex + previsualización.
-- [ ] Colores/etiquetas por fila (FinderTags).
-- [ ] Tamaños de carpeta en background (cola J4FOps, cache LRU).
-- [ ] Duplicados (portar el detector hash de DESK G2).
+- [x] **Filtro rápido de panel:** escribir sobre la tabla filtra la lista (⌫ borra, Esc limpia);
+  el foco vuelve a la tabla tras ir a una ruta con ⌘L.
+- [x] **Batch rename con regex + previsualización** (⇧⌘R): plan puro con detección de conflictos
+  (disco + colisiones internas), preview en vivo con motivos, ejecución en dos fases
+  (temporales → final, permite intercambios) y rollback best-effort.
+- [x] **Colores/etiquetas Finder por fila:** color por primera etiqueta (caché) + submenú
+  «Etiquetas» (7 colores + quitar) con toggle por selección; API `TagEntry`/`addColored` en J4ICore.
+- [x] **Tamaños de carpeta en background:** `FolderSizeCalculator` (caché LRU 4096, single-flight,
+  invalidación de ancestros por watcher); la columna Tamaño se rellena en vivo.
+- [x] **Duplicados** (⇧⌘D): tamaño + SHA-256 en streaming; grupos ordenados por desperdicio,
+  «seleccionar sobrantes», revelar en Finder y mover a la Papelera con confirmación.
 
 ## MVP-0 — Fundaciones
 
