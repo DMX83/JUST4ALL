@@ -25,6 +25,17 @@ final class FolderFormatStoreTests: XCTestCase {
         XCTAssertNil(store.format(for: "/tmp/demo"))
     }
 
+    func testColumnWidthsRoundTrip() throws {
+        let store = FolderFormatStore(url: url, capacity: 10)
+        store.set(FolderFormat(columnWidths: ["name": 220, "size": 80]), for: "/tmp/columnas")
+
+        // v2.1.1 — los anchos manuales sobreviven al guardado y al JSON.
+        let reopened = FolderFormatStore(url: url, capacity: 10)
+        XCTAssertEqual(reopened.format(for: "/tmp/columnas")?.columnWidths?["name"], 220)
+        XCTAssertEqual(reopened.format(for: "/tmp/columnas")?.columnWidths?["size"], 80)
+        XCTAssertNil(FolderFormat().columnWidths)
+    }
+
     func testPersistsAcrossInstances() throws {
         let store = FolderFormatStore(url: url, capacity: 10)
         store.set(.init(flatView: true, sortColumn: "modified", ascending: false), for: "/tmp/persistente")

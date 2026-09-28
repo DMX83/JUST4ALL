@@ -344,11 +344,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         static let mkdir = NSToolbarItem.Identifier("j4f.toolbar.mkdir")
         static let rename = NSToolbarItem.Identifier("j4f.toolbar.rename")
         static let deletePermanent = NSToolbarItem.Identifier("j4f.toolbar.deletePermanent")
-        static let addLocation = NSToolbarItem.Identifier("j4f.toolbar.addLocation")
         static let tasks = NSToolbarItem.Identifier("j4f.toolbar.tasks")
         static let refresh = NSToolbarItem.Identifier("j4f.toolbar.refresh")
         static let diagnostics = NSToolbarItem.Identifier("j4f.toolbar.diagnostics")
-        static let infoCurrent = NSToolbarItem.Identifier("j4f.toolbar.infoCurrent")
         static let search = NSToolbarItem.Identifier("j4f.toolbar.search")
     }
 
@@ -407,7 +405,6 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private weak var bodySplit: NSSplitView?
     /// v2.1 — split de paneles (autocuración del reparto 50/50).
     private weak var panelsSplit: NSSplitView?
-    private let pathField = NSTextField(string: "")
     private let statusLabel = NSTextField(labelWithString: "Listo")
     private let volumeWarningLabel = NSTextField(labelWithString: "")
     private let searchField = NSSearchField()
@@ -436,7 +433,12 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private lazy var homeDirectoryURL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).standardizedFileURL
     private var expandedTreePathsBySide: [PanelSide: Set<String>] = [.left: [], .right: []]
     private var selectedTreePathBySide: [PanelSide: String] = [:]
-    private var isEditingPathField = false
+    // v2.1.1 — pista cuando no hay ubicaciones autorizadas + menús de la barra lateral.
+    private var sidebarLocationsEmptyHint: NSTextField?
+    private weak var authorizedSidebarMenu: NSMenu?
+    private weak var favoritesSidebarMenu: NSMenu?
+    private weak var recentsSidebarMenu: NSMenu?
+    private weak var reauthSidebarMenu: NSMenu?
     private var cooperativeIndexTask: Task<Void, Never>?
     private var cooperativeIndexDebounceWorkItem: DispatchWorkItem?
     private var isCooperativeIndexing = false
@@ -452,7 +454,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         configureCallbacks()
         applyPreferences(initial: true)
         loadSidebarLocations()
-        updatePathFieldFromActivePanel()
+        refreshToolbarValidation()
         syncDirectoryTreeToActivePanel()
         scheduleCooperativeIndexing()
         NotificationCenter.default.addObserver(self, selector: #selector(focusPathBar), name: .j4fFocusPathBar, object: nil)
@@ -760,6 +762,11 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         configureToolbarIfNeeded()
         installKeyMonitorIfNeeded()
         healSplitLayoutIfNeeded()
+        // v2.1.1 — la restauración de frames del split ocurre después del primer layout;
+        // un segundo intento diferido evita que el preview quede gigante al arrancar.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.healSplitLayoutIfNeeded()
+        }
     }
 
     /// v2.1 — autocuración del layout de la ventana: si la barra lateral o el preview quedaron
@@ -802,12 +809,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     private func configureLayout() {
-        let topBar = NSStackView()
-        topBar.orientation = .horizontal
-        topBar.spacing = 8
-        topBar.translatesAutoresizingMaskIntoConstraints = false
-
-        // v2.1 — chip del panel activo (IZQ/DER): fondo suave de marca, sin texto «debug».
+        // v2.1.1 — la dirección vive dentro de cada panel (barra editable). La fila superior
+        // se elimina: el chip del panel activo pasa junto al estado inferior.
         activeIndicatorLabel.font = J4FDesign.microFont()
         activeIndicatorLabel.textColor = J4FDesign.brand
         activeIndicatorLabel.alignment = .center
@@ -820,37 +823,15 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         activeIndicatorLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 36).isActive = true
         activeIndicatorLabel.heightAnchor.constraint(equalToConstant: 18).isActive = true
 
-        pathField.placeholderString = "Ruta (⌘L)"
-        pathField.isEditable = true
-        pathField.isSelectable = true
-        pathField.isBezeled = true
-        pathField.delegate = self
-        pathField.target = self
-        pathField.action = #selector(commitPathField)
-        pathField.setAccessibilityLabel("Barra de ruta")
-
         statusLabel.font = .systemFont(ofSize: 11)
         statusLabel.textColor = .secondaryLabelColor
+        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
         statusLabel.setAccessibilityLabel("Estado")
         volumeWarningLabel.font = .systemFont(ofSize: 11, weight: .semibold)
         volumeWarningLabel.textColor = .systemOrange
         volumeWarningLabel.isHidden = true
         volumeWarningLabel.setAccessibilityLabel("Advertencia de volumen")
-
-        // v2.1 — «Ir» como icono compacto (antes texto suelto que flotaba a la derecha).
-        let pathGoButton = NSButton(
-            image: NSImage(systemSymbolName: "arrow.turn.down.right", accessibilityDescription: nil) ?? NSImage(),
-            target: self,
-            action: #selector(commitPathField)
-        )
-        pathGoButton.bezelStyle = .rounded
-        pathGoButton.controlSize = .small
-        pathGoButton.toolTip = "Ir a la ruta (Enter)"
-        pathGoButton.setAccessibilityLabel("Ir a la ruta")
-
-        topBar.addArrangedSubview(activeIndicatorLabel)
-        topBar.addArrangedSubview(pathField)
-        topBar.addArrangedSubview(pathGoButton)
 
         let panelsSplit = NSSplitView()
         panelsSplit.translatesAutoresizingMaskIntoConstraints = false
@@ -882,15 +863,21 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         // Las prioridades hacen que al redimensionar cedan los paneles, no la barra/preview.
         bodySplit.setHoldingPriority(.defaultHigh, forSubviewAt: 0)
         bodySplit.setHoldingPriority(.defaultLow, forSubviewAt: 1)
-        bodySplit.setHoldingPriority(.defaultHigh, forSubviewAt: 2)
         bodySplit.autosaveName = "j4f.split.body"
         self.bodySplit = bodySplit
         configurePreviewPane()
         bodySplit.addArrangedSubview(previewPane)
+        // v2.1.1 — IMPORTANTE: la prioridad del preview debe fijarse DESPUÉS de añadirlo
+        // (antes se llamaba con índice 2 inexistente y el preview se quedaba con la prioridad
+        // por defecto: absorbía todo el crecimiento de la ventana y quedaba gigante).
+        bodySplit.setHoldingPriority(.defaultHigh, forSubviewAt: 2)
+        // v2.1.1 — y un ancho preferido explícito: al crecer la ventana el espacio extra va a
+        // los paneles. Prioridad 750: por debajo del arrastre manual de la divisoria.
+        let previewWidth = previewPane.widthAnchor.constraint(equalToConstant: 232)
+        previewWidth.priority = .defaultHigh
+        previewWidth.isActive = true
 
-        let container = NSStackView()
-        container.orientation = .vertical
-        container.spacing = 10
+        let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
 
         // Ola 2 — barra de progreso del trabajo activo (encima del estado).
@@ -909,23 +896,45 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         jobProgressRow.translatesAutoresizingMaskIntoConstraints = false
         jobProgressBar.widthAnchor.constraint(greaterThanOrEqualToConstant: 160).isActive = true
 
-        container.addArrangedSubview(topBar)
-        container.addArrangedSubview(bodySplit)
-        // v2.1 — el split debe llenar el ancho del contenedor (los stack views no lo estiran solos).
-        bodySplit.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
-        container.addArrangedSubview(volumeWarningLabel)
-        container.addArrangedSubview(jobProgressRow)
-        container.addArrangedSubview(statusLabel)
+        // v2.1.1 — chip del panel activo + estado en una sola fila (sin tira superior vacía).
+        let statusRow = NSStackView(views: [activeIndicatorLabel, statusLabel])
+        statusRow.orientation = .horizontal
+        statusRow.spacing = 8
+        statusRow.alignment = .centerY
+        statusRow.translatesAutoresizingMaskIntoConstraints = false
 
+        // v2.1.1 — fila inferior compacta (avisos + progreso + estado).
+        let bottomStack = NSStackView(views: [volumeWarningLabel, jobProgressRow, statusRow])
+        bottomStack.orientation = .vertical
+        bottomStack.spacing = 6
+        bottomStack.alignment = .leading
+        bottomStack.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(bodySplit)
+        container.addSubview(bottomStack)
         view.addSubview(container)
 
+        // v2.1.1 — layout directo (sin NSStackView exterior): el stack «fitting-size» ignoraba
+        // los pins y el contenido quedaba centrado/encogido de forma no determinista.
         NSLayoutConstraint.activate([
             container.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
             container.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
             container.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
             container.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
+
+            bodySplit.topAnchor.constraint(equalTo: container.topAnchor),
+            bodySplit.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            bodySplit.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            bodySplit.bottomAnchor.constraint(equalTo: bottomStack.topAnchor, constant: -10),
             bodySplit.heightAnchor.constraint(greaterThanOrEqualToConstant: 420),
-            pathField.widthAnchor.constraint(greaterThanOrEqualToConstant: 280)
+
+            bottomStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            bottomStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            bottomStack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
+            statusRow.widthAnchor.constraint(equalTo: bottomStack.widthAnchor),
+            jobProgressRow.widthAnchor.constraint(lessThanOrEqualTo: bottomStack.widthAnchor),
+            volumeWarningLabel.widthAnchor.constraint(lessThanOrEqualTo: bottomStack.widthAnchor)
         ])
     }
 
@@ -937,23 +946,18 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         container.translatesAutoresizingMaskIntoConstraints = false
         // v2.1 — sin esto el reparto por «gravity areas» estira las tablas y deja huecos enormes.
         container.distribution = .fill
-        container.alignment = .width
-        J4FDesign.styleCard(container, radius: J4FDesign.Radius.medium)
-
-        let addLocationButton = NSButton(title: "Añadir ubicación", target: self, action: #selector(addAuthorizedLocation))
-        addLocationButton.bezelStyle = .rounded
-        addLocationButton.controlSize = .small
-        addLocationButton.font = .systemFont(ofSize: 11)
-        addLocationButton.setAccessibilityLabel("Autorizar ubicación para el sandbox")
-
-        let infoCurrentButton = NSButton(title: "Info de carpeta", target: self, action: #selector(showCurrentDirectoryInfo))
-        infoCurrentButton.bezelStyle = .rounded
-        infoCurrentButton.controlSize = .small
-        infoCurrentButton.font = .systemFont(ofSize: 11)
-        infoCurrentButton.setAccessibilityLabel("Mostrar información de la carpeta actual")
+        // v2.1.1 — alignAncho real: cada fila se ancla al ancho del contenedor (la antigua
+        // alignment = .width alineaba las etiquetas al borde derecho y desbordaba textos largos).
+        container.alignment = .leading
+        container.edgeInsets = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        // v2.1.1 — el fondo lo pone el NSVisualEffectView (material sidebar); sin tarjeta propia.
+        func addRow(_ view: NSView) {
+            container.addArrangedSubview(view)
+            view.widthAnchor.constraint(equalTo: container.widthAnchor, constant: -16).isActive = true
+        }
 
         directoryTree.headerView = nil
-        directoryTree.selectionHighlightStyle = .regular
+        directoryTree.selectionHighlightStyle = .sourceList
         directoryTree.rowSizeStyle = .small
         directoryTree.delegate = self
         directoryTree.dataSource = self
@@ -976,30 +980,32 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         sidebarTreeScroll = treeScroll
         sidebarTreeHeightConstraint = treeHeight
 
-        let sidebarActions = NSStackView(views: [addLocationButton, infoCurrentButton])
-        sidebarActions.orientation = .horizontal
-        sidebarActions.spacing = 6
-        sidebarActions.distribution = .fillEqually
-
-        container.addArrangedSubview(sidebarActions)
-
         // v2.1 — barra de navegación de verdad: destinos (Ubicaciones/Favoritos/Recientes),
         // reautorización solo cuando hace falta y el árbol como sección colapsable al final.
-        container.addArrangedSubview(sidebarSectionLabel("UBICACIONES"))
-        container.addArrangedSubview(makeTableScroll(for: authorizedTable, accessibilityLabel: "Ubicaciones autorizadas"))
+        // Las acciones sueltas (añadir ubicación / info) viven ahora en el clic derecho.
+        addRow(sidebarSectionLabel("UBICACIONES"))
+        addRow(makeTableScroll(for: authorizedTable, accessibilityLabel: "Ubicaciones autorizadas"))
+        // v2.1.1 — sin ubicaciones no hay ruido: una pista discreta explica cómo añadirlas.
+        let locationsHint = NSTextField(labelWithString: "Sin ubicaciones. Clic derecho → «Añadir a Ubicaciones».")
+        locationsHint.font = J4FDesign.captionFont()
+        locationsHint.textColor = .tertiaryLabelColor
+        locationsHint.lineBreakMode = .byWordWrapping
+        locationsHint.maximumNumberOfLines = 2
+        sidebarLocationsEmptyHint = locationsHint
+        addRow(locationsHint)
 
         let reauthLabel = sidebarSectionLabel("REAUTORIZAR")
         let reauthScroll = makeTableScroll(for: reauthTable, accessibilityLabel: "Pendientes de reautorizar")
         sidebarReauthLabel = reauthLabel
         sidebarReauthScroll = reauthScroll
-        container.addArrangedSubview(reauthLabel)
-        container.addArrangedSubview(reauthScroll)
+        addRow(reauthLabel)
+        addRow(reauthScroll)
 
-        container.addArrangedSubview(sidebarSectionLabel("FAVORITOS"))
-        container.addArrangedSubview(makeTableScroll(for: favoritesTable, accessibilityLabel: "Favoritos"))
+        addRow(sidebarSectionLabel("FAVORITOS"))
+        addRow(makeTableScroll(for: favoritesTable, accessibilityLabel: "Favoritos"))
 
-        container.addArrangedSubview(sidebarSectionLabel("RECIENTES"))
-        container.addArrangedSubview(makeTableScroll(for: recentsTable, accessibilityLabel: "Recientes"))
+        addRow(sidebarSectionLabel("RECIENTES"))
+        addRow(makeTableScroll(for: recentsTable, accessibilityLabel: "Recientes"))
 
         treeSidebarDisclosureButton.bezelStyle = .inline
         treeSidebarDisclosureButton.controlSize = .small
@@ -1009,16 +1015,45 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         let treeSpacer = NSView()
         treeSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         treeSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        let treeHeader = NSStackView(views: [sidebarSectionLabel("ÁRBOL"), treeSpacer, treeSidebarDisclosureButton])
+        let treeTitle = sidebarSectionLabel("ÁRBOL")
+        treeTitle.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let treeHeader = NSStackView(views: [treeTitle, treeSpacer, treeSidebarDisclosureButton])
         treeHeader.orientation = .horizontal
         treeHeader.spacing = 4
-        container.addArrangedSubview(treeHeader)
-        container.addArrangedSubview(treeScroll)
+        addRow(treeHeader)
+        addRow(treeScroll)
 
         updateReauthSectionVisibility()
         applySidebarTreeState()
+        sidebarLocationsEmptyHint?.isHidden = !authorizedLocations.isEmpty
 
-        return container
+        // v2.1.1 — cada destino tiene su menú contextual (abrir, revelar, copiar, quitar).
+        authorizedTable.menu = makeSidebarMenu(for: authorizedTable, removeTitle: "Quitar de Ubicaciones")
+        favoritesTable.menu = makeSidebarMenu(for: favoritesTable, removeTitle: "Quitar de Favoritos")
+        recentsTable.menu = makeSidebarMenu(for: recentsTable, removeTitle: "Quitar de Recientes", includeClearRecents: true)
+        reauthTable.menu = makeSidebarMenu(for: reauthTable, removeTitle: nil, includeReauth: true)
+        authorizedSidebarMenu = authorizedTable.menu
+        favoritesSidebarMenu = favoritesTable.menu
+        recentsSidebarMenu = recentsTable.menu
+        reauthSidebarMenu = reauthTable.menu
+
+        // v2.1.1 — aspecto nativo: material de barra lateral sobre la ventana (como Finder).
+        let effect = NSVisualEffectView()
+        effect.material = .sidebar
+        effect.blendingMode = .behindWindow
+        effect.state = .followsWindowActiveState
+        effect.wantsLayer = true
+        effect.layer?.cornerRadius = J4FDesign.Radius.medium
+        effect.layer?.masksToBounds = true
+        effect.translatesAutoresizingMaskIntoConstraints = false
+        effect.addSubview(container)
+        NSLayoutConstraint.activate([
+            container.leadingAnchor.constraint(equalTo: effect.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: effect.trailingAnchor),
+            container.topAnchor.constraint(equalTo: effect.topAnchor),
+            container.bottomAnchor.constraint(equalTo: effect.bottomAnchor)
+        ])
+        return effect
     }
 
     @objc private func toggleSidebarTree() {
@@ -1053,7 +1088,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private func makeTableScroll(for table: NSTableView, accessibilityLabel: String) -> NSScrollView {
         table.headerView = nil
         table.usesAlternatingRowBackgroundColors = false
-        table.selectionHighlightStyle = .regular
+        table.selectionHighlightStyle = .sourceList
+        table.backgroundColor = .clear
+        table.rowHeight = 24
         table.target = self
         table.doubleAction = #selector(openSelectedSidebarLocation(_:))
         table.dataSource = self
@@ -1069,29 +1106,127 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         let scroll = NSScrollView()
         scroll.documentView = table
         scroll.hasVerticalScroller = true
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.heightAnchor.constraint(equalToConstant: 64).isActive = true
         scroll.setAccessibilityLabel(accessibilityLabel)
         return scroll
     }
 
+    /// v2.1.1 — menú contextual de una sección de la barra lateral.
+    private func makeSidebarMenu(
+        for table: NSTableView,
+        removeTitle: String?,
+        includeClearRecents: Bool = false,
+        includeReauth: Bool = false
+    ) -> NSMenu {
+        let menu = NSMenu(title: "Ubicación")
+
+        func add(_ title: String, _ action: Selector) {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            item.representedObject = table
+            menu.addItem(item)
+        }
+
+        add("Abrir en el panel activo", #selector(sidebarMenuOpen(_:)))
+        add("Mostrar en Finder", #selector(sidebarMenuReveal(_:)))
+        add("Copiar ruta", #selector(sidebarMenuCopyPath(_:)))
+        if includeReauth {
+            menu.addItem(.separator())
+            add("Reautorizar…", #selector(sidebarMenuReauthorize(_:)))
+        }
+        if removeTitle != nil || includeClearRecents {
+            menu.addItem(.separator())
+        }
+        if let removeTitle {
+            add(removeTitle, #selector(sidebarMenuRemove(_:)))
+        }
+        if includeClearRecents {
+            add("Limpiar recientes", #selector(sidebarMenuClearRecents(_:)))
+        }
+        return menu
+    }
+
+    private func sidebarClickedURL(_ table: NSTableView) -> URL? {
+        let row = table.clickedRow >= 0 ? table.clickedRow : table.selectedRow
+        guard row >= 0 else { return nil }
+        if table == authorizedTable { return authorizedLocations[safe: row] }
+        if table == favoritesTable { return favoriteLocations[safe: row] }
+        if table == recentsTable { return recentLocations[safe: row] }
+        if table == reauthTable, let path = failedBookmarks[safe: row]?.path, !path.isEmpty {
+            return URL(fileURLWithPath: path)
+        }
+        return nil
+    }
+
+    @objc private func sidebarMenuOpen(_ sender: NSMenuItem) {
+        guard let table = sender.representedObject as? NSTableView, let url = sidebarClickedURL(table) else { return }
+        _ = beginSecurityScope(for: url)
+        activePanel.openURL(url)
+    }
+
+    @objc private func sidebarMenuReveal(_ sender: NSMenuItem) {
+        guard let table = sender.representedObject as? NSTableView, let url = sidebarClickedURL(table) else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    @objc private func sidebarMenuCopyPath(_ sender: NSMenuItem) {
+        guard let table = sender.representedObject as? NSTableView, let url = sidebarClickedURL(table) else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url.path, forType: .string)
+        statusLabel.stringValue = "Ruta copiada: \(url.path)"
+    }
+
+    @objc private func sidebarMenuRemove(_ sender: NSMenuItem) {
+        guard let table = sender.representedObject as? NSTableView, let url = sidebarClickedURL(table) else { return }
+        if table == authorizedTable {
+            bookmarkStore.remove(path: url.path)
+            loadSidebarLocations()
+            statusLabel.stringValue = "Ubicación quitada: \(url.lastPathComponent)"
+        } else if table == favoritesTable {
+            favoriteStore.remove(path: url.path)
+            favoriteLocations = favoriteStore.list().map { URL(fileURLWithPath: $0) }
+            favoritesTable.reloadData()
+            statusLabel.stringValue = "Favorito quitado: \(url.lastPathComponent)"
+        } else if table == recentsTable {
+            recentStore.remove(path: url.path)
+            recentLocations = recentStore.list().map { URL(fileURLWithPath: $0) }
+            recentsTable.reloadData()
+            statusLabel.stringValue = "Reciente quitado: \(url.lastPathComponent)"
+        }
+    }
+
+    @objc private func sidebarMenuClearRecents(_ sender: NSMenuItem) {
+        clearRecentLocations()
+    }
+
+    @objc private func sidebarMenuReauthorize(_ sender: NSMenuItem) {
+        guard let table = sender.representedObject as? NSTableView, table == reauthTable else { return }
+        let row = table.clickedRow >= 0 ? table.clickedRow : table.selectedRow
+        guard row >= 0 else { return }
+        reauthTable.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        reauthorizeSelectedBookmark()
+    }
+
     private func configureCallbacks() {
         leftPanel.onActivate = { [weak self] in
             self?.activeSide = .left
-            self?.updatePathFieldFromActivePanel()
+            self?.refreshToolbarValidation()
         }
         rightPanel.onActivate = { [weak self] in
             self?.activeSide = .right
-            self?.updatePathFieldFromActivePanel()
+            self?.refreshToolbarValidation()
         }
 
         leftPanel.onStatus = { [weak self] text in
             self?.statusLabel.stringValue = "◀  \(text)"
-            self?.updatePathFieldFromActivePanel()
+            self?.refreshToolbarValidation()
         }
         rightPanel.onStatus = { [weak self] text in
             self?.statusLabel.stringValue = "▶  \(text)"
-            self?.updatePathFieldFromActivePanel()
+            self?.refreshToolbarValidation()
         }
         leftPanel.onSelectionChanged = { [weak self] in
             guard let self else { return }
@@ -1111,7 +1246,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         leftPanel.onDirectoryChanged = { [weak self] url in
             self?.registerRecent(url: url)
             self?.updateVolumeWarning(for: url)
-            self?.updatePathFieldFromActivePanel()
+            self?.refreshToolbarValidation()
             self?.updateWatcher(for: .left, directory: url)
             self?.scheduleCooperativeIndexing()
             if self?.activeSide == .left {
@@ -1121,7 +1256,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         rightPanel.onDirectoryChanged = { [weak self] url in
             self?.registerRecent(url: url)
             self?.updateVolumeWarning(for: url)
-            self?.updatePathFieldFromActivePanel()
+            self?.refreshToolbarValidation()
             self?.updateWatcher(for: .right, directory: url)
             self?.scheduleCooperativeIndexing()
             if self?.activeSide == .right {
@@ -1134,6 +1269,37 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
         rightPanel.onPasteRequested = { [weak self] in
             self?.pasteItemsFromClipboardToActivePanel()
+        }
+        // v2.1.1 — acciones de contexto que coordinan ambos paneles y el estado global.
+        leftPanel.onOpenInOtherPanel = { [weak self] url in
+            self?.rightPanel.openURL(url)
+            self?.statusLabel.stringValue = "Abierto en el panel derecho: \(url.lastPathComponent)"
+        }
+        rightPanel.onOpenInOtherPanel = { [weak self] url in
+            self?.leftPanel.openURL(url)
+            self?.statusLabel.stringValue = "Abierto en el panel izquierdo: \(url.lastPathComponent)"
+        }
+        leftPanel.onAddLocationRequested = { [weak self] url in self?.authorizeLocation(prefilled: url) }
+        rightPanel.onAddLocationRequested = { [weak self] url in self?.authorizeLocation(prefilled: url) }
+        leftPanel.onToggleFavoriteRequested = { [weak self] url in self?.toggleFavorite(for: url) }
+        rightPanel.onToggleFavoriteRequested = { [weak self] url in self?.toggleFavorite(for: url) }
+        leftPanel.isFavoriteProvider = { [weak self] url in
+            guard let self else { return false }
+            return self.favoriteStore.list().contains(url.standardizedFileURL.path)
+        }
+        rightPanel.isFavoriteProvider = { [weak self] url in
+            guard let self else { return false }
+            return self.favoriteStore.list().contains(url.standardizedFileURL.path)
+        }
+        leftPanel.onQuickLookRequested = { [weak self] in
+            guard let self else { return }
+            self.activeSide = .left
+            _ = self.toggleQuickLookPreview()
+        }
+        rightPanel.onQuickLookRequested = { [weak self] in
+            guard let self else { return }
+            self.activeSide = .right
+            _ = self.toggleQuickLookPreview()
         }
         leftPanel.onSearchWillStart = { [weak self] in
             self?.pauseCooperativeIndexingForSearch()
@@ -1160,16 +1326,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
     }
 
+    /// ⌘L — edita la dirección en el propio panel activo (una sola barra, dentro del panel).
     @objc private func focusPathBar() {
-        view.window?.makeFirstResponder(pathField)
-        pathField.currentEditor()?.selectAll(nil)
-    }
-
-    @objc private func commitPathField() {
-        isEditingPathField = false
-        activePanel.openPath(pathField.stringValue)
-        // UX: tras ir a una ruta, el foco vuelve a la tabla (filtro rápido/navegación con teclado).
-        activePanel.focusTable()
+        activePanel.beginEditingPath()
     }
 
     @objc private func goBack() {
@@ -1391,13 +1550,18 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         statusLabel.stringValue = "Job en cola (\(mode.rawValue)): \(jobId.uuidString.prefix(8))"
     }
 
-    @objc private func addAuthorizedLocation() {
+    /// v2.1.1 — autoriza una carpeta (bookmark de sandbox). Con `prefilled` el panel de selección
+    /// se abre ya situado en la carpeta propuesta (acción «Añadir a Ubicaciones» del clic derecho).
+    private func authorizeLocation(prefilled: URL?) {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Autorizar"
         panel.message = "Selecciona una carpeta para autorizar su acceso en sandbox."
+        if let prefilled {
+            panel.directoryURL = prefilled.deletingLastPathComponent()
+        }
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
@@ -1409,6 +1573,20 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             statusLabel.stringValue = "Error al guardar bookmark: \(J4FError.from(error).userMessage)"
             NSSound.beep()
         }
+    }
+
+    /// v2.1.1 — añade o quita una carpeta de Favoritos (menú contextual del panel).
+    private func toggleFavorite(for url: URL) {
+        let path = url.standardizedFileURL.path
+        if favoriteStore.list().contains(path) {
+            favoriteStore.remove(path: path)
+            statusLabel.stringValue = "Favorito quitado: \(url.lastPathComponent)"
+        } else {
+            favoriteStore.add(path: path)
+            statusLabel.stringValue = "Favorito añadido: \(url.lastPathComponent)"
+        }
+        favoriteLocations = favoriteStore.list().map { URL(fileURLWithPath: $0) }
+        favoritesTable.reloadData()
     }
 
     @objc private func searchChanged(_ sender: NSSearchField) {
@@ -1562,6 +1740,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             logger.warning("Bookmarks sin resolver: \(report.failedLocations.map(\.path).joined(separator: ", "), privacy: .public)")
         }
         updateReauthSectionVisibility()
+        sidebarLocationsEmptyHint?.isHidden = !authorizedLocations.isEmpty
         for url in authorizedLocations {
             _ = beginSecurityScope(for: url)
         }
@@ -1670,9 +1849,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         rightPanel.setActive(activeSide == .right)
     }
 
-    private func updatePathFieldFromActivePanel() {
-        if isEditingPathField { return }
-        pathField.stringValue = activePanel.currentPath
+    private func refreshToolbarValidation() {
         view.window?.toolbar?.validateVisibleItems()
     }
 
@@ -1680,7 +1857,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         captureDirectoryTreeState(for: activeSide)
         activeSide = (activeSide == .left) ? .right : .left
         activePanel.focusTable()
-        updatePathFieldFromActivePanel()
+        refreshToolbarValidation()
         syncDirectoryTreeToActivePanel()
     }
 
@@ -1753,10 +1930,6 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         applyPreferences(initial: false)
     }
 
-    @objc private func showCurrentDirectoryInfo() {
-        activePanel.showInfoForCurrentDirectory()
-    }
-
     @objc private func goHome() {
         activePanel.openURL(homeDirectoryURL)
     }
@@ -1768,10 +1941,22 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         BufferSizer.shared.setPreferredBigBytes(preferences.preferredBigBufferMB * 1024 * 1024)
         syncDirectoryTreeToActivePanel()
         scheduleCooperativeIndexing()
+        applyVisualStyle(preferences.visualStyle)
 
         if !initial {
-            statusLabel.stringValue = "Preferencias aplicadas."
+            statusLabel.stringValue = "Preferencias aplicadas. Estilo: \(preferences.visualStyle.title)."
         }
+    }
+
+    /// v2.1.1 — estilo visual (Ajustes ▸ Apariencia): reaplica los acentos de marca en vivo.
+    private func applyVisualStyle(_ style: J4FVisualStyle) {
+        J4FDesign.currentStyle = style
+        activeIndicatorLabel.textColor = J4FDesign.brand
+        activeIndicatorLabel.layer?.backgroundColor = J4FDesign.brandSoft.cgColor
+        leftPanel.reapplyBrandStyle()
+        rightPanel.reapplyBrandStyle()
+        // La barra lateral tinta iconos con el color de marca (se reconstruye con el nuevo).
+        loadSidebarLocations()
     }
 
     private func scheduleCooperativeIndexing() {
@@ -2278,8 +2463,20 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
                 activePanel.selectAllItems()
                 return true
             }
+            if chars == "c" {
+                activePanel.copySelectionToClipboard()
+                return true
+            }
+            if chars == "x" {
+                activePanel.cutSelectionToClipboard()
+                return true
+            }
             if chars == "v" {
                 pasteItemsFromClipboardToActivePanel()
+                return true
+            }
+            if chars == "d" {
+                activePanel.duplicateSelection()
                 return true
             }
         }
@@ -2483,6 +2680,17 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             return
         }
         let destination = activePanel.currentDirectoryURL
+        let pasteboard = NSPasteboard.general
+        // v2.1.1 — si el portapapeles viene de un «Cortar», pegar MUEVE (y consume el corte).
+        let isCut = pasteboard.data(forType: FilePanelViewController.cutPasteboardType) != nil
+            || pasteboard.data(forType: FilePanelViewController.finderCutType) != nil
+        if isCut {
+            pasteboard.setData(nil, forType: FilePanelViewController.cutPasteboardType)
+            pasteboard.setData(nil, forType: FilePanelViewController.finderCutType)
+            enqueueFileJob(type: .move, selected: urls, destination: destination)
+            statusLabel.stringValue = "Moviendo \(urls.count) elemento(s) a panel \(activeSide.rawValue)…"
+            return
+        }
         if shouldUseSystemCopy(sources: urls, destination: destination) {
             runSystemCopy(sources: urls, destination: destination)
             return
@@ -2492,7 +2700,14 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     private func clipboardFileURLs() -> [URL] {
-        guard let text = NSPasteboard.general.string(forType: .string), !text.isEmpty else {
+        let pasteboard = NSPasteboard.general
+        // v2.1.1 — primero URLs de archivo reales (Finder, esta app); después rutas en texto.
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+           !urls.isEmpty {
+            let fm = FileManager.default
+            return urls.filter { fm.fileExists(atPath: $0.path) }
+        }
+        guard let text = pasteboard.string(forType: .string), !text.isEmpty else {
             return []
         }
 
@@ -2618,8 +2833,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             ToolbarID.back, ToolbarID.forward, ToolbarID.home, .flexibleSpace,
             ToolbarID.newTab, ToolbarID.copy, ToolbarID.move, ToolbarID.delete,
             ToolbarID.mkdir, ToolbarID.rename, ToolbarID.deletePermanent,
-            .flexibleSpace, ToolbarID.refresh, ToolbarID.infoCurrent, .space,
-            ToolbarID.tasks, ToolbarID.diagnostics, .space, ToolbarID.addLocation, ToolbarID.search
+            .flexibleSpace, ToolbarID.refresh, .space,
+            ToolbarID.tasks, ToolbarID.diagnostics, .space, ToolbarID.search
         ]
     }
 
@@ -2706,12 +2921,6 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             item.image = NSImage(systemSymbolName: "trash.slash", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(deleteSelectionPermanently)
-        case ToolbarID.addLocation:
-            item.label = "Add Location"
-            item.toolTip = "Autorizar nueva ubicacion"
-            item.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: nil)
-            item.target = self
-            item.action = #selector(addAuthorizedLocation)
         case ToolbarID.tasks:
             item.label = "Tasks"
             item.toolTip = "Abrir Task Manager"
@@ -2724,12 +2933,6 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             item.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(manualRefresh)
-        case ToolbarID.infoCurrent:
-            item.label = "Info"
-            item.toolTip = "Informacion de carpeta actual"
-            item.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: nil)
-            item.target = self
-            item.action = #selector(showCurrentDirectoryInfo)
         case ToolbarID.diagnostics:
             item.label = "Diagnostics"
             item.toolTip = "Exportar diagnostico"
@@ -2773,27 +2976,48 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView ?? NSTableCellView()
         cell.identifier = identifier
 
+        let imageView: NSImageView
         let label: NSTextField
-        if let existing = cell.textField {
-            label = existing
+        if let existingLabel = cell.textField, let existingImage = cell.imageView {
+            label = existingLabel
+            imageView = existingImage
         } else {
+            // v2.1.1 — filas con icono (aspecto de barra lateral nativa).
+            imageView = NSImageView()
+            imageView.translatesAutoresizingMaskIntoConstraints = false
+            cell.imageView = imageView
+            cell.addSubview(imageView)
             label = NSTextField(labelWithString: "")
             label.translatesAutoresizingMaskIntoConstraints = false
+            label.font = .systemFont(ofSize: 12)
+            label.lineBreakMode = .byTruncatingMiddle
             cell.textField = label
             cell.addSubview(label)
             NSLayoutConstraint.activate([
-                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 6),
+                imageView.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 4),
+                imageView.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                imageView.widthAnchor.constraint(equalToConstant: 16),
+                imageView.heightAnchor.constraint(equalToConstant: 16),
+                label.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 6),
                 label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -6),
                 label.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
             ])
         }
 
         let url: URL?
+        var symbolName = "clock"
+        var tint = NSColor.secondaryLabelColor
         if tableView == authorizedTable {
             url = authorizedLocations[safe: row]
+            symbolName = "folder.fill"
+            tint = J4FDesign.brand
         } else if tableView == favoritesTable {
             url = favoriteLocations[safe: row]
+            symbolName = "star.fill"
+            tint = .systemYellow
         } else if tableView == reauthTable {
+            symbolName = "exclamationmark.triangle.fill"
+            tint = .systemOrange
             if let path = failedBookmarks[safe: row]?.path, !path.isEmpty {
                 url = URL(fileURLWithPath: path)
             } else {
@@ -2803,8 +3027,12 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             url = recentLocations[safe: row]
         }
 
+        let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 11, weight: .regular)
+        imageView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(symbolConfiguration)
+        imageView.contentTintColor = tint
         label.stringValue = url?.lastPathComponent.isEmpty == false ? (url?.lastPathComponent ?? "--") : (url?.path ?? "--")
-        label.lineBreakMode = .byTruncatingMiddle
+        label.toolTip = url?.path
         return cell
     }
 
@@ -2832,19 +3060,6 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             activePanel.setSearchQuery(field.stringValue)
             return
         }
-        if let field = obj.object as? NSTextField, field == pathField {
-            isEditingPathField = true
-        }
-    }
-
-    func controlTextDidBeginEditing(_ obj: Notification) {
-        guard let field = obj.object as? NSTextField, field == pathField else { return }
-        isEditingPathField = true
-    }
-
-    func controlTextDidEndEditing(_ obj: Notification) {
-        guard let field = obj.object as? NSTextField, field == pathField else { return }
-        isEditingPathField = false
     }
 
     private func promptForText(title: String, message: String, defaultValue: String) -> String? {
@@ -2871,7 +3086,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 }
 
-private final class FilePanelViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSCollectionViewDataSource, NSCollectionViewDelegate {
+private final class FilePanelViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSCollectionViewDataSource, NSCollectionViewDelegate, NSTextFieldDelegate {
     var onActivate: (() -> Void)?
     var onStatus: ((String) -> Void)?
     var onDirectoryChanged: ((URL) -> Void)?
@@ -2886,10 +3101,15 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     var isGlobalSearchActive: (() -> Bool)?
     /// Raíces a asegurar antes de una búsqueda global (paneles + ubicaciones autorizadas).
     var indexRootsProvider: (() -> [URL])?
+    // v2.1.1 — acciones de contexto que coordina el commander (otro panel, favoritos, sandbox).
+    var onOpenInOtherPanel: ((URL) -> Void)?
+    var onAddLocationRequested: ((URL?) -> Void)?
+    var onToggleFavoriteRequested: ((URL) -> Void)?
+    var isFavoriteProvider: ((URL) -> Bool)?
+    var onQuickLookRequested: (() -> Void)?
 
     private let side: PanelSide
     private let tableView = FocusAwareTableView()
-    private let titleLabel = NSTextField(labelWithString: "")
     private let rowCountLabel = NSTextField(labelWithString: "")
     private let tabsControl = NSSegmentedControl()
     private let indexedSearch = IndexedSearchService.shared
@@ -2942,9 +3162,26 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     /// Ola 1 — breadcrumb clicable.
     private let breadcrumbRow = NSStackView()
     private var breadcrumbURLs: [URL] = []
+    // v2.1.1 — barra de dirección única: [◀ ▶] + ruta navegable (breadcrumb) o editable (campo).
+    private let addressBackButton = NSButton()
+    private let addressForwardButton = NSButton()
+    private let addressPathContainer = NSView()
+    private let pathEditField = NSTextField(string: "")
+    private var isEditingAddress = false
+    // v2.1.1 — anchos de columna ajustados a mano (se recuerdan por carpeta; sin refit agresivo).
+    private var userAdjustedColumns = false
+    private var isFittingColumns = false
+    private var columnResizeSaveWorkItem: DispatchWorkItem?
     /// Ola 3 — hover por fila y submenú de workspaces.
     private var hoveredRow = -1
     private weak var contextMenu: NSMenu?
+    /// v2.1.1 — etiquetas estables de los ítems del menú contextual (para habilitar/renombrar).
+    private enum ContextTag: Int {
+        case openInTab = 1, openInOther, openWith, quickLook, showInFinder, openTerminal
+        case newFolder, rename, duplicate, compress
+        case cut, copy, paste, trash, deletePermanent
+        case copyPath, favorite, addLocation, info, tags, share, tools, workspaces
+    }
     private var hoverMonitor: Any?
     /// Ola 3 — galería: modo de vista, colección y scroll propios.
     private enum ViewMode: String { case list, gallery }
@@ -3412,32 +3649,52 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     @discardableResult
     func pasteItemsFromClipboard() throws -> Int {
-        let pb = NSPasteboard.general
-        guard let text = pb.string(forType: .string), !text.isEmpty else { return 0 }
+        let pasteboard = NSPasteboard.general
+        var sources: [URL] = []
+        // v2.1.1 — primero URLs de archivo (Finder y esta app); después rutas en texto.
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+           !urls.isEmpty {
+            sources = urls
+        } else if let text = pasteboard.string(forType: .string), !text.isEmpty {
+            sources = text
+                .split(whereSeparator: \.isNewline)
+                .compactMap { line in
+                    let value = String(line).trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !value.isEmpty else { return nil }
+                    return URL(fileURLWithPath: value)
+                }
+        }
 
-        let lines = text
-            .split(whereSeparator: \.isNewline)
-            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        guard !sources.isEmpty else { return 0 }
 
-        guard !lines.isEmpty else { return 0 }
+        let isCut = pasteboard.data(forType: Self.cutPasteboardType) != nil
+            || pasteboard.data(forType: Self.finderCutType) != nil
 
         let fm = FileManager.default
         var pasted = 0
-        for line in lines {
-            let src = URL(fileURLWithPath: line)
-            guard fm.fileExists(atPath: src.path) else { continue }
-            let proposed = currentURL.appendingPathComponent(src.lastPathComponent, isDirectory: isDirectory(src))
+        for source in sources {
+            let normalized = source.standardizedFileURL
+            guard fm.fileExists(atPath: normalized.path) else { continue }
+            let proposed = currentURL.appendingPathComponent(normalized.lastPathComponent, isDirectory: isDirectory(normalized))
             let destination = availableDestination(for: proposed)
             do {
-                try fm.copyItem(at: src, to: destination)
+                if isCut {
+                    try fm.moveItem(at: normalized, to: destination)
+                } else {
+                    try fm.copyItem(at: normalized, to: destination)
+                }
                 pasted += 1
             } catch {
-                onStatus?("Error pegando \(src.lastPathComponent): \(J4FError.from(error).userMessage)")
+                onStatus?("Error pegando \(normalized.lastPathComponent): \(J4FError.from(error).userMessage)")
             }
         }
 
         if pasted > 0 {
+            if isCut {
+                // El corte se consume con el primer pegado (como en Finder).
+                pasteboard.setData(nil, forType: Self.cutPasteboardType)
+                pasteboard.setData(nil, forType: Self.finderCutType)
+            }
             loadDirectory(currentURL, pushHistory: false)
         }
         return pasted
@@ -3627,9 +3884,6 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         view.layer?.borderColor = NSColor.separatorColor.cgColor
         view.translatesAutoresizingMaskIntoConstraints = false
 
-        titleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
-        titleLabel.stringValue = "Panel \(side.rawValue)"
-
         rowCountLabel.font = J4FDesign.microFont()
         rowCountLabel.textColor = .tertiaryLabelColor
 
@@ -3647,7 +3901,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tableView.onBackgroundClicked = { [weak self] in
             self?.selectRootDirectory()
         }
-        tableView.headerView = NSTableHeaderView(frame: .zero)
+        // v2.1.1 — altura explícita: un NSTableHeaderView con frame cero se queda en 0pt y la
+        // cabecera no se ve (el usuario no puede descubrir las columnas ni redimensionarlas).
+        let header = J4FFittingHeaderView(frame: NSRect(x: 0, y: 0, width: 100, height: 24))
+        header.ownerPanel = self
+        tableView.headerView = header
         tableView.usesAlternatingRowBackgroundColors = false
         tableView.style = .inset
         tableView.rowHeight = 22
@@ -3674,8 +3932,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         addColumn(id: "size", title: "Tamaño", width: 65)
         addColumn(id: "modified", title: "Modificado", width: 100)
         addColumn(id: "type", title: "Tipo", width: 80)
-        // Diseño (v2.0): las columnas caben y se reparten el ancho del panel entre todas.
-        tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
+        // v2.1.1 — el reparto lo hace fitColumnsToWidth (contra el viewport real y respetando
+        // los anchos manuales del usuario); AppKit no debe tocar los anchos por su cuenta.
+        tableView.columnAutoresizingStyle = .noColumnAutoresizing
         configureColumnMenu()
 
         tableView.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
@@ -3710,18 +3969,57 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         galleryScrollView.translatesAutoresizingMaskIntoConstraints = false
         galleryScrollView.isHidden = true
 
-        let header = NSStackView()
-        header.orientation = .horizontal
-        header.spacing = 8
-        header.translatesAutoresizingMaskIntoConstraints = false
-        // P3 diseño — jerarquía: carpeta protagonista y contador discreto a la derecha.
-        titleLabel.lineBreakMode = .byTruncatingMiddle
+        // v2.1.1 — barra de dirección: atrás/adelante + ruta navegable y editable + contador.
+        addressBackButton.image = NSImage(systemSymbolName: "chevron.left", accessibilityDescription: nil)
+        addressBackButton.bezelStyle = .inline
+        addressBackButton.controlSize = .small
+        addressBackButton.target = self
+        addressBackButton.action = #selector(addressBackPressed)
+        addressBackButton.toolTip = "Atrás"
+        addressBackButton.setAccessibilityLabel("Atrás")
+        addressForwardButton.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
+        addressForwardButton.bezelStyle = .inline
+        addressForwardButton.controlSize = .small
+        addressForwardButton.target = self
+        addressForwardButton.action = #selector(addressForwardPressed)
+        addressForwardButton.toolTip = "Adelante"
+        addressForwardButton.setAccessibilityLabel("Adelante")
+        addressBackButton.widthAnchor.constraint(equalToConstant: 22).isActive = true
+        addressForwardButton.widthAnchor.constraint(equalToConstant: 22).isActive = true
+
         rowCountLabel.font = J4FDesign.microFont()
         rowCountLabel.textColor = .tertiaryLabelColor
         rowCountLabel.setContentHuggingPriority(.required, for: .horizontal)
-        header.addArrangedSubview(titleLabel)
-        header.addArrangedSubview(NSView())
-        header.addArrangedSubview(rowCountLabel)
+        rowCountLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        pathEditField.font = .systemFont(ofSize: 11)
+        pathEditField.controlSize = .small
+        pathEditField.isHidden = true
+        // v2.1.1 — OJO: sin esto el campo conserva AUTORESIZING (w==8) y choca con los pins
+        // (los 20 «Unable to simultaneously satisfy» de la barra de dirección venían de aquí).
+        pathEditField.translatesAutoresizingMaskIntoConstraints = false
+        pathEditField.delegate = self
+        pathEditField.target = self
+        pathEditField.action = #selector(commitPathEditing)
+        pathEditField.lineBreakMode = .byTruncatingMiddle
+        pathEditField.setAccessibilityLabel("Editar dirección (Enter para ir, Esc para cancelar)")
+
+        addressPathContainer.translatesAutoresizingMaskIntoConstraints = false
+        addressPathContainer.addSubview(breadcrumbRow)
+        addressPathContainer.addSubview(pathEditField)
+        addressPathContainer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        addressPathContainer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let addressDoubleClick = NSClickGestureRecognizer(target: self, action: #selector(addressDoubleClicked))
+        addressDoubleClick.numberOfClicksRequired = 2
+        addressPathContainer.addGestureRecognizer(addressDoubleClick)
+
+        let addressRow = NSStackView(views: [addressBackButton, addressForwardButton, addressPathContainer, rowCountLabel])
+        addressRow.orientation = .horizontal
+        addressRow.spacing = 6
+        addressRow.alignment = .centerY
+        addressRow.distribution = .fill
+        addressRow.translatesAutoresizingMaskIntoConstraints = false
+        addressPathContainer.widthAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
 
         let tabsRow = NSStackView()
         tabsRow.orientation = .horizontal
@@ -3732,6 +4030,15 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         breadcrumbRow.orientation = .horizontal
         breadcrumbRow.spacing = 2
         breadcrumbRow.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            breadcrumbRow.leadingAnchor.constraint(equalTo: addressPathContainer.leadingAnchor),
+            breadcrumbRow.trailingAnchor.constraint(equalTo: addressPathContainer.trailingAnchor),
+            breadcrumbRow.centerYAnchor.constraint(equalTo: addressPathContainer.centerYAnchor),
+            pathEditField.leadingAnchor.constraint(equalTo: addressPathContainer.leadingAnchor),
+            pathEditField.trailingAnchor.constraint(equalTo: addressPathContainer.trailingAnchor),
+            pathEditField.centerYAnchor.constraint(equalTo: addressPathContainer.centerYAnchor),
+            addressPathContainer.heightAnchor.constraint(equalToConstant: 22)
+        ])
         // v2.1 — toggle plano con icono (antes checkbox genérico).
         flatToggleButton.setButtonType(.toggle)
         flatToggleButton.bezelStyle = .inline
@@ -3749,8 +4056,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
         let panelColumn = NSView()
         panelColumn.translatesAutoresizingMaskIntoConstraints = false
-        panelColumn.addSubview(header)
-        panelColumn.addSubview(breadcrumbRow)
+        panelColumn.addSubview(addressRow)
         panelColumn.addSubview(tabsRow)
         panelColumn.addSubview(scrollView)
         panelColumn.addSubview(galleryScrollView)
@@ -3788,15 +4094,12 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         configureEmptyState(over: scrollView)
 
         NSLayoutConstraint.activate([
-            header.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
-            header.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
-            header.topAnchor.constraint(equalTo: panelColumn.topAnchor, constant: 8),
-            breadcrumbRow.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
-            breadcrumbRow.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
-            breadcrumbRow.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 4),
+            addressRow.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
+            addressRow.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
+            addressRow.topAnchor.constraint(equalTo: panelColumn.topAnchor, constant: 6),
             tabsRow.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
             tabsRow.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
-            tabsRow.topAnchor.constraint(equalTo: breadcrumbRow.bottomAnchor, constant: 4),
+            tabsRow.topAnchor.constraint(equalTo: addressRow.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: panelColumn.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: panelColumn.trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: tabsRow.bottomAnchor, constant: 8),
@@ -3920,17 +4223,52 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tableView.reloadData(forRowIndexes: IndexSet(integer: index), columnIndexes: IndexSet(integer: column))
     }
 
+    /// v2.1.1 — menú contextual estilo Finder+: abrir/abrir con/compartir, operaciones de archivo,
+    /// portapapeles real y las acciones que antes vivían en botones sueltos (favoritos/ubicaciones).
     private func makeContextMenu() -> NSMenu {
         let menu = NSMenu(title: "Acciones")
         menu.delegate = self
+        // El habilitado/renombrado se controla a mano en menuNeedsUpdate (no autoenable).
+        menu.autoenablesItems = false
         contextMenu = menu
-        menu.addItem(withTitle: "Abrir", action: #selector(openSelected), keyEquivalent: "")
-        menu.addItem(withTitle: "Abrir en Finder", action: #selector(contextOpenInFinder), keyEquivalent: "")
+
+        func add(_ title: String, _ action: Selector, tag: ContextTag? = nil) {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            if let tag {
+                item.tag = tag.rawValue
+            }
+            menu.addItem(item)
+        }
+
+        add("Abrir", #selector(openSelected))
+        add("Abrir en pestaña nueva", #selector(contextOpenInNewTab), tag: .openInTab)
+        add("Abrir en el panel \(side == .left ? "derecho" : "izquierdo")", #selector(contextOpenInOtherPanel), tag: .openInOther)
+        let openWithItem = NSMenuItem(title: "Abrir con", action: nil, keyEquivalent: "")
+        openWithItem.tag = ContextTag.openWith.rawValue
+        menu.addItem(openWithItem)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Copiar ruta", action: #selector(contextCopyPath), keyEquivalent: "")
-        menu.addItem(withTitle: "Pegar", action: #selector(contextPasteItems), keyEquivalent: "")
-        menu.addItem(withTitle: "Información", action: #selector(contextShowInfo), keyEquivalent: "")
+        add("Ver (QuickLook)", #selector(contextQuickLook), tag: .quickLook)
+        add("Mostrar en Finder", #selector(contextOpenInFinder), tag: .showInFinder)
+        add("Abrir en Terminal", #selector(contextOpenInTerminal), tag: .openTerminal)
+        menu.addItem(.separator())
+        add("Nueva carpeta", #selector(contextCreateFolder), tag: .newFolder)
+        add("Renombrar", #selector(contextRename), tag: .rename)
+        add("Duplicar", #selector(contextDuplicateSelection), tag: .duplicate)
+        add("Comprimir", #selector(contextCompressSelection), tag: .compress)
+        menu.addItem(.separator())
+        add("Cortar", #selector(contextCutSelectionAction), tag: .cut)
+        add("Copiar", #selector(contextCopySelectionAction), tag: .copy)
+        add("Pegar", #selector(contextPasteItems), tag: .paste)
+        add("Mover a la Papelera", #selector(contextDeleteToTrash), tag: .trash)
+        add("Borrar inmediatamente", #selector(contextDeletePermanent), tag: .deletePermanent)
+        menu.addItem(.separator())
+        add("Copiar ruta", #selector(contextCopyPath), tag: .copyPath)
+        add("Añadir a Favoritos", #selector(contextToggleFavoriteAction), tag: .favorite)
+        add("Añadir a Ubicaciones", #selector(contextAddToLocationsAction), tag: .addLocation)
+        add("Información", #selector(contextShowInfo), tag: .info)
         let tagsItem = NSMenuItem(title: "Etiquetas", action: nil, keyEquivalent: "")
+        tagsItem.tag = ContextTag.tags.rawValue
         let tagsMenu = NSMenu(title: "Etiquetas")
         for (name, _) in Self.tagPalette {
             let item = NSMenuItem(title: name, action: #selector(contextApplyTag(_:)), keyEquivalent: "")
@@ -3944,14 +4282,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tagsMenu.addItem(clearTagsItem)
         tagsItem.submenu = tagsMenu
         menu.addItem(tagsItem)
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Nueva carpeta", action: #selector(contextCreateFolder), keyEquivalent: "")
-        menu.addItem(withTitle: "Renombrar", action: #selector(contextRename), keyEquivalent: "")
-        menu.addItem(withTitle: "Eliminar (Papelera)", action: #selector(contextDeleteToTrash), keyEquivalent: "")
-        menu.addItem(withTitle: "Eliminar definitivamente", action: #selector(contextDeletePermanent), keyEquivalent: "")
+        let shareItem = NSMenuItem(title: "Compartir", action: nil, keyEquivalent: "")
+        shareItem.tag = ContextTag.share.rawValue
+        menu.addItem(shareItem)
         menu.addItem(.separator())
         // P3 diseño — las utilidades viven en un submenú «Herramientas».
         let toolsItem = NSMenuItem(title: "Herramientas", action: nil, keyEquivalent: "")
+        toolsItem.tag = ContextTag.tools.rawValue
         let toolsMenu = NSMenu(title: "Herramientas")
         let toolEntries: [(title: String, action: Selector)] = [
             ("Renombrar en lote…", #selector(contextBatchRename)),
@@ -3968,6 +4305,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         menu.addItem(toolsItem)
         // Ola 3 — workspaces (el submenú se reconstruye en menuNeedsUpdate).
         let workspacesItem = NSMenuItem(title: "Workspaces", action: nil, keyEquivalent: "")
+        workspacesItem.tag = ContextTag.workspaces.rawValue
         workspacesItem.submenu = NSMenu(title: "Workspaces")
         menu.addItem(workspacesItem)
         for item in menu.items {
@@ -3978,7 +4316,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     // MARK: - Columnas configurables (Ola 2)
 
-    /// Menú en la cabecera: mostrar/ocultar columnas y ajustar al ancho.
+    /// Menú en la cabecera: mostrar/ocultar columnas, ajustar cada una al contenido y repartir a la ventana.
     private func configureColumnMenu() {
         let menu = NSMenu(title: "Columnas")
         menu.delegate = self
@@ -3989,10 +4327,30 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             menu.addItem(item)
         }
         menu.addItem(.separator())
-        let fit = NSMenuItem(title: "Ajustar columnas", action: #selector(fitColumnsToWidth), keyEquivalent: "")
+        for id in ["name", "size", "modified", "type"] {
+            let item = NSMenuItem(
+                title: "Ajustar «\(Self.columnTitle(for: id))» al contenido",
+                action: #selector(sizeColumnToContent(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = id
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        let fit = NSMenuItem(title: "Ajustar columnas a la ventana", action: #selector(fitColumnsToWidth), keyEquivalent: "")
         fit.target = self
         menu.addItem(fit)
         tableView.headerView?.menu = menu
+    }
+
+    /// v2.1.1 — «Ajustar «X» al contenido»: sin tocar el resto (también con doble clic en el divisor).
+    @objc private func sizeColumnToContent(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String,
+              let column = tableView.tableColumns.first(where: { $0.identifier.rawValue == id }) else { return }
+        column.sizeToFit()
+        markColumnsAdjustedByUser()
+        tableView.reloadData()
     }
 
     nonisolated static func columnTitle(for id: String) -> String {
@@ -4013,31 +4371,37 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     /// v2.1 — anchos base de las columnas (proporción canónica para el reparto).
-    static let baseColumnWidths: [String: CGFloat] = ["name": 180, "size": 65, "modified": 100, "type": 80]
+    static let baseColumnWidths: [String: CGFloat] = ["name": 180, "size": 66, "modified": 118, "type": 74]
 
-    @objc private func fitColumnsToWidth() {
+    /// v2.1.1 — reparto proporcional de columnas contra el viewport real.
+    /// Sin anchos manuales reparte desde las proporciones base; con anchos del usuario comprime
+    /// respetando las proporciones que él dejó (solo cuando no caben).
+    private func applyColumnFit(useCurrentProportions: Bool) {
         let visible = tableView.tableColumns.filter { !$0.isHidden }
         guard !visible.isEmpty else { return }
         // OJO: `tableView.bounds` crece con las columnas; el ancho útil es el del viewport.
         let viewport = tableView.enclosingScrollView?.contentSize.width ?? tableView.bounds.width
         let available = viewport - 26  // margen extra: el scroller vertical se superpone al borde
         guard available > 200 else { return }
-        // Reparto determinista desde los anchos base (sin efecto trinquete al repetir el ajuste).
-        // El nombre conserva un suelo mayor: en ventanas pequeñas aparece scroll horizontal
-        // antes que nombres ilegibles.
-        let baseTotal = visible.reduce(CGFloat(0)) { $0 + (Self.baseColumnWidths[$1.identifier.rawValue] ?? $1.width) }
+        let weights = visible.map { column -> CGFloat in
+            if useCurrentProportions {
+                return max(column.width, 1)
+            }
+            return Self.baseColumnWidths[column.identifier.rawValue] ?? column.width
+        }
+        let baseTotal = weights.reduce(CGFloat(0), +)
         var widths: [(NSTableColumn, CGFloat)] = []
         var assigned: CGFloat = 0
-        for column in visible {
-            let base = Self.baseColumnWidths[column.identifier.rawValue] ?? column.width
+        for (index, column) in visible.enumerated() {
             let floor: CGFloat = column.identifier.rawValue == "name" ? 110 : 52
-            let width = max(floor, base * available / baseTotal)
+            let width = max(floor, weights[index] * available / baseTotal)
             widths.append((column, width))
             assigned += width
         }
         if assigned > available, let first = widths.first {
             widths[0] = (first.0, max(110, first.1 - (assigned - available)))
         }
+        isFittingColumns = true
         var didChange = false
         for (column, width) in widths {
             if abs(column.width - width) > 0.5 {
@@ -4045,11 +4409,22 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             }
             column.width = width
         }
+        isFittingColumns = false
         lastFittedViewport = viewport
         // Sin recargar, las celdas ya creadas conservan el frame viejo (texto solapado).
         if didChange {
             tableView.reloadData()
+            // v2.1.1 — y re-tile explícito: sin él las celdas visibles conservaban el ancho
+            // anterior (p. ej. «Folde»/«1D» tras un fit con viewport transitorio).
+            tableView.tile()
         }
+    }
+
+    /// v2.1.1 — «Ajustar columnas a la ventana»: descarta los anchos manuales y reparte de nuevo.
+    @objc private func fitColumnsToWidth() {
+        userAdjustedColumns = false
+        applyColumnFit(useCurrentProportions: false)
+        saveFormat()
     }
 
     /// v2.1 — refit de columnas pedido desde el commander (tras ajustes de divisorias).
@@ -4057,15 +4432,29 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         fitColumnsIfNeeded()
     }
 
+    /// v2.1.1 — durante el arranque el layout pasa por anchos transitorios (p. ej. paneles a
+    /// 283pt antes de asentarse): un refit en ese instante deja las columnas encogidas. Este
+    /// reintento vuelve a ajustar cuando el viewport ya es el definitivo.
+    private func scheduleSettledColumnRefit() {
+        settledRefitWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.fitColumnsIfNeeded() }
+        settledRefitWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
+    }
+
     override func viewDidLayout() {
         super.viewDidLayout()
         fitColumnsIfNeeded()
+        scheduleSettledColumnRefit()
     }
 
     private var lastFittedViewport: CGFloat = 0
+    private var settledRefitWorkItem: DispatchWorkItem?
 
     /// v2.1 — si las columnas no caben en el ancho visible (p. ej. con el árbol de panel
     /// apretando la tabla) o el viewport cambió, se reparten proporcionalmente.
+    /// v2.1.1 — con anchos manuales solo se comprime cuando el viewport cambia (nunca mientras
+    /// el usuario arrastra bordes; si se pasa, aparece scroll horizontal como en Finder).
     private func fitColumnsIfNeeded() {
         let visible = tableView.tableColumns.filter { !$0.isHidden }
         guard !visible.isEmpty else { return }
@@ -4073,9 +4462,41 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         guard viewport > 100 else { return }
         let total = visible.reduce(CGFloat(0)) { $0 + $1.width }
         let viewportChanged = abs(viewport - lastFittedViewport) > 2
-        if viewportChanged || total > viewport - 8 {
-            fitColumnsToWidth()
+        if userAdjustedColumns {
+            if viewportChanged {
+                if total > viewport - 8 {
+                    applyColumnFit(useCurrentProportions: true)
+                } else {
+                    lastFittedViewport = viewport
+                }
+            }
+        } else if viewportChanged || total > viewport - 8 {
+            applyColumnFit(useCurrentProportions: false)
         }
+    }
+
+    /// v2.1.1 — el usuario ha tocado los anchos: se recuerdan por carpeta (con pequeño retardo).
+    func markColumnsAdjustedByUser() {
+        guard !isFittingColumns, !isRestoringFormat else { return }
+        userAdjustedColumns = true
+        lastFittedViewport = tableView.enclosingScrollView?.contentSize.width ?? lastFittedViewport
+        columnResizeSaveWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.saveFormat() }
+        columnResizeSaveWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+    }
+
+    func tableViewColumnDidResize(_ notification: Notification) {
+        // v2.1.1 — el marcado de «anchos del usuario» lo hace la cabecera SOLO en arrastres
+        // reales de un divisor (aquí llegaban también los cambios programáticos/transitorios).
+    }
+
+    private func currentColumnWidths() -> [String: CGFloat] {
+        var widths: [String: CGFloat] = [:]
+        for column in tableView.tableColumns {
+            widths[column.identifier.rawValue] = column.width
+        }
+        return widths
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -4089,7 +4510,90 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
         if menu === contextMenu {
             rebuildWorkspacesSubmenu(in: menu)
+            rebuildOpenWithSubmenu(in: menu)
+            rebuildShareSubmenu(in: menu)
+            updateContextMenuState(menu)
         }
+    }
+
+    /// v2.1.1 — habilitados y títulos dinámicos del menú contextual.
+    private func updateContextMenuState(_ menu: NSMenu) {
+        let selected = selectedURLs()
+        let singleDir = singleSelectedDirectory()
+        let target = contextTargetURL() ?? selected.first ?? currentURL
+        let isFavorite = isFavoriteProvider?(target) ?? false
+        let pasteboard = NSPasteboard.general
+        let canPaste = pasteboard.canReadItem(withDataConformingToTypes: [
+            NSPasteboard.PasteboardType.fileURL.rawValue,
+            NSPasteboard.PasteboardType.string.rawValue
+        ])
+        for item in menu.items {
+            switch ContextTag(rawValue: item.tag) {
+            case .openInTab, .openInOther, .openWith, .openTerminal:
+                item.isEnabled = singleDir != nil
+            case .quickLook, .showInFinder, .copyPath, .duplicate, .compress, .cut, .copy, .trash, .deletePermanent:
+                item.isEnabled = !selected.isEmpty
+            case .rename:
+                item.isEnabled = selected.count == 1
+            case .paste:
+                item.isEnabled = canPaste
+            case .favorite:
+                item.title = isFavorite ? "Quitar de Favoritos" : "Añadir a Favoritos"
+                item.isEnabled = true
+            case .tags:
+                item.isEnabled = !selected.isEmpty
+            default:
+                item.isEnabled = true
+            }
+        }
+    }
+
+    /// v2.1.1 — «Abrir con ▸»: aplicaciones que pueden abrir el elemento seleccionado.
+    private func rebuildOpenWithSubmenu(in menu: NSMenu) {
+        guard let item = menu.items.first(where: { $0.tag == ContextTag.openWith.rawValue }) else { return }
+        let submenu = NSMenu(title: "Abrir con")
+        var apps: [URL] = []
+        if let target = contextTargetURL() ?? selectedURLs().first {
+            apps = NSWorkspace.shared.urlsForApplications(toOpen: target).sorted {
+                $0.deletingPathExtension().lastPathComponent.localizedCaseInsensitiveCompare($1.deletingPathExtension().lastPathComponent) == .orderedAscending
+            }
+        }
+        for app in apps.prefix(10) {
+            let entry = NSMenuItem(title: app.deletingPathExtension().lastPathComponent, action: #selector(contextOpenWithApplication(_:)), keyEquivalent: "")
+            entry.target = self
+            entry.representedObject = app
+            let icon = NSWorkspace.shared.icon(forFile: app.path)
+            icon.size = NSSize(width: 16, height: 16)
+            entry.image = icon
+            submenu.addItem(entry)
+        }
+        if submenu.items.isEmpty {
+            let empty = NSMenuItem(title: "Sin aplicaciones", action: nil, keyEquivalent: "")
+            empty.isEnabled = false
+            submenu.addItem(empty)
+        }
+        item.submenu = submenu
+    }
+
+    /// v2.1.1 — «Compartir ▸»: servicios del sistema para la selección.
+    private func rebuildShareSubmenu(in menu: NSMenu) {
+        guard let item = menu.items.first(where: { $0.tag == ContextTag.share.rawValue }) else { return }
+        let submenu = NSMenu(title: "Compartir")
+        let items: [Any] = selectedURLs().isEmpty ? [currentURL] : selectedURLs()
+        let services = NSSharingService.sharingServices(forItems: items)
+        for service in services.prefix(10) {
+            let entry = NSMenuItem(title: service.menuItemTitle, action: #selector(contextShareWithService(_:)), keyEquivalent: "")
+            entry.target = self
+            entry.representedObject = service
+            entry.image = service.image
+            submenu.addItem(entry)
+        }
+        if submenu.items.isEmpty {
+            let empty = NSMenuItem(title: "Sin servicios disponibles", action: nil, keyEquivalent: "")
+            empty.isEnabled = false
+            submenu.addItem(empty)
+        }
+        item.submenu = submenu
     }
 
     /// Ola 3 — lista los workspaces guardados dentro del menú contextual.
@@ -4127,6 +4631,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         let col = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(rawValue: id))
         col.title = title
         col.width = width
+        // v2.1.1 — el usuario puede arrastrar los bordes: topes sanos y sin colapso accidental.
+        col.minWidth = (id == "name") ? 110 : 52
+        col.maxWidth = 1600
+        col.resizingMask = [.userResizingMask]
         col.sortDescriptorPrototype = NSSortDescriptor(key: id, ascending: true)
         tableView.addTableColumn(col)
     }
@@ -4252,28 +4760,84 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         setFlatView(flatToggleButton.state == .on)
     }
 
+    /// v2.1.1 — reaplica los tints de marca (al cambiar el estilo visual en Ajustes).
+    func reapplyBrandStyle() {
+        flatToggleButton.contentTintColor = flatView ? J4FDesign.brand : .secondaryLabelColor
+    }
+
     // MARK: - Folder formats (v2.0: recordar la vista por carpeta)
 
-    /// P3 diseño — cabecera: carpeta protagonista (negrita) y ruta padre en secundario.
+    /// v2.1.1 — la dirección vive en UNA sola barra por panel: breadcrumb navegable que pasa a
+    /// campo editable con doble clic (o ⌘L), más atrás/adelante en el propio panel.
     private func updateHeaderTitle(for url: URL) {
-        let name = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
-        let attributed = NSMutableAttributedString(
-            string: name,
-            attributes: [
-                .foregroundColor: NSColor.labelColor,
-                .font: J4FDesign.titleFont()
-            ]
-        )
-        attributed.append(NSAttributedString(
-            string: "   " + url.deletingLastPathComponent().path,
-            attributes: [
-                .foregroundColor: NSColor.tertiaryLabelColor,
-                .font: J4FDesign.captionFont()
-            ]
-        ))
-        titleLabel.attributedStringValue = attributed
-        titleLabel.toolTip = url.path
         updateBreadcrumb(for: url)
+        addressBackButton.isEnabled = canGoBack
+        addressForwardButton.isEnabled = canGoForward
+        addressPathContainer.toolTip = "\(url.path) — doble clic para escribir una ruta (⌘L)"
+        if isEditingAddress {
+            // Navegación externa mientras se edita: la barra vuelve al modo ruta.
+            endAddressEditing(updateField: false)
+        }
+    }
+
+    // MARK: - Edición de la dirección (v2.1.1)
+
+    /// ⌘L — activa la edición de la ruta en este panel (el foco pasa al campo).
+    func beginEditingPath() {
+        guard view.window != nil, !isEditingAddress else { return }
+        isEditingAddress = true
+        pathEditField.stringValue = currentURL.path
+        pathEditField.isHidden = false
+        breadcrumbRow.isHidden = true
+        view.window?.makeFirstResponder(pathEditField)
+        pathEditField.currentEditor()?.selectAll(nil)
+    }
+
+    @objc private func commitPathEditing() {
+        guard isEditingAddress else { return }
+        let value = pathEditField.stringValue
+        endAddressEditing(updateField: false)
+        openPath(value)
+        focusTable()
+    }
+
+    private func cancelAddressEditing() {
+        guard isEditingAddress else { return }
+        endAddressEditing(updateField: true)
+        focusTable()
+    }
+
+    private func endAddressEditing(updateField: Bool) {
+        isEditingAddress = false
+        pathEditField.isHidden = true
+        breadcrumbRow.isHidden = false
+        if updateField {
+            pathEditField.stringValue = ""
+        }
+    }
+
+    @objc private func addressDoubleClicked() {
+        activatePanel()
+        beginEditingPath()
+    }
+
+    @objc private func addressBackPressed() {
+        activatePanel()
+        goBack()
+    }
+
+    @objc private func addressForwardPressed() {
+        activatePanel()
+        goForward()
+    }
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard let field = obj.object as? NSTextField, field == pathEditField else { return }
+        // Enter ya pasó por commitPathEditing (isEditingAddress = false); aquí solo se cubre
+        // la pérdida de foco (clic fuera), que equivale a cancelar.
+        if isEditingAddress {
+            cancelAddressEditing()
+        }
     }
 
     /// Ola 1 — breadcrumb clicable (clic en un segmento para saltar a esa carpeta).
@@ -4292,7 +4856,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 accumulated = (accumulated as NSString).appendingPathComponent(component)
             }
             let isLast = index == components.count - 1
-            let button = NSButton(title: component == "/" ? FileManager.default.displayName(atPath: "/") : component, target: self, action: #selector(breadcrumbClicked(_:)))
+            let button = NSButton(title: component == "/" ? "/" : component, target: self, action: #selector(breadcrumbClicked(_:)))
             button.bezelStyle = .inline
             button.controlSize = .small
             button.font = .systemFont(ofSize: 11, weight: isLast ? .semibold : .regular)
@@ -4300,7 +4864,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             button.isEnabled = !isLast
             breadcrumbURLs.append(URL(fileURLWithPath: accumulated, isDirectory: true))
             button.tag = breadcrumbURLs.count - 1
-            button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            // v2.1.1 — la carpeta actual (último segmento) no se comprime; los ancestros sí.
+            button.setContentCompressionResistancePriority(isLast ? .defaultHigh : .defaultLow, for: .horizontal)
             button.lineBreakMode = .byTruncatingMiddle
             breadcrumbRow.addArrangedSubview(button)
             if !isLast {
@@ -4320,9 +4885,15 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     /// Restaura el formato guardado de una carpeta (sin disparar guardados intermedios).
     private func restoreFormat(for url: URL) {
-        guard let format = folderFormatStore.format(for: url.standardizedFileURL.path) else { return }
+        let format = folderFormatStore.format(for: url.standardizedFileURL.path)
         isRestoringFormat = true
         defer { isRestoringFormat = false }
+        // v2.1.1 — sin anchos guardados se vuelve al reparto automático.
+        userAdjustedColumns = false
+        guard let format else {
+            lastFittedViewport = tableView.enclosingScrollView?.contentSize.width ?? lastFittedViewport
+            return
+        }
 
         sortColumn = format.sortColumn
         ascending = format.ascending
@@ -4336,6 +4907,17 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         for column in tableView.tableColumns {
             column.isHidden = format.hiddenColumns?.contains(column.identifier.rawValue) ?? false
         }
+        if let widths = format.columnWidths, !widths.isEmpty {
+            isFittingColumns = true
+            for column in tableView.tableColumns {
+                if let width = widths[column.identifier.rawValue] {
+                    column.width = max(column.minWidth, min(column.maxWidth, width))
+                }
+            }
+            isFittingColumns = false
+            userAdjustedColumns = true
+        }
+        lastFittedViewport = tableView.enclosingScrollView?.contentSize.width ?? lastFittedViewport
         applyGalleryMode(format.viewMode == "gallery")
     }
 
@@ -4349,7 +4931,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 ascending: ascending,
                 includeHidden: includeHiddenFiles,
                 hiddenColumns: tableView.tableColumns.filter { $0.isHidden }.map { $0.identifier.rawValue },
-                viewMode: viewMode == .gallery ? "gallery" : nil
+                viewMode: viewMode == .gallery ? "gallery" : nil,
+                columnWidths: userAdjustedColumns ? currentColumnWidths() : nil
             ),
             for: currentURL.standardizedFileURL.path
         )
@@ -4675,7 +5258,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
 
         let identifier = NSUserInterfaceItemIdentifier("Cell-\(columnId)")
-        let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView ?? NSTableCellView()
+        // v2.1.1 — sin reciclado de celdas: las reutilizadas conservaban medidas viejas tras un
+        // ajuste de columnas (p. ej. «Folde» recortado aunque la columna ya era ancha, incluso
+        // con reloadData+tile). Con ~30 filas visibles, crear celdas nuevas no cuesta nada.
+        let cell = NSTableCellView()
         cell.identifier = identifier
 
         let label: NSTextField
@@ -4800,6 +5386,14 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        // v2.1.1 — Esc en la barra de dirección cancela la edición (Enter lo gestiona la acción).
+        if control == pathEditField {
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                cancelAddressEditing()
+                return true
+            }
+            return false
+        }
         if commandSelector == #selector(insertNewline(_:)) {
             openSelected()
             return true
@@ -5239,6 +5833,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     func menuWillOpen(_ menu: NSMenu) {
         activatePanel()
+        // v2.1.1 — con autoenablesItems = false, este callback garantiza el estado del menú.
+        if menu === contextMenu {
+            rebuildWorkspacesSubmenu(in: menu)
+            rebuildOpenWithSubmenu(in: menu)
+            rebuildShareSubmenu(in: menu)
+            updateContextMenuState(menu)
+        }
         let clicked = tableView.clickedRow
         let mousePointInTable = tableView.convert(NSEvent.mouseLocation, from: nil)
         let rowAtMouse = tableView.row(at: mousePointInTable)
@@ -5381,6 +5982,213 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         if !originalSelection.isEmpty {
             tableView.selectRowIndexes(originalSelection, byExtendingSelection: false)
         }
+    }
+
+    // MARK: - Acciones del menú contextual ampliado (v2.1.1)
+
+    private func singleSelectedDirectory() -> URL? {
+        let selected = selectedURLs()
+        guard selected.count == 1, isDirectory(selected[0]) else { return nil }
+        return selected[0]
+    }
+
+    @objc private func contextOpenInNewTab() {
+        guard let dir = singleSelectedDirectory() else { NSSound.beep(); return }
+        tabURLs.append(dir)
+        tabCustomTitles.append(nil)
+        activeTabIndex = tabURLs.count - 1
+        historyBack.removeAll()
+        historyForward.removeAll()
+        refreshTabsControl()
+        loadDirectory(dir, pushHistory: false)
+        onStatus?("Abierta en pestaña nueva: \(dir.lastPathComponent)")
+    }
+
+    @objc private func contextOpenInOtherPanel() {
+        guard let dir = singleSelectedDirectory() else { NSSound.beep(); return }
+        onOpenInOtherPanel?(dir)
+    }
+
+    @objc private func contextQuickLook() {
+        onQuickLookRequested?()
+    }
+
+    @objc private func contextOpenInTerminal() {
+        let directory = singleSelectedDirectory() ?? currentURL
+        let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
+        let configuration = NSWorkspace.OpenConfiguration()
+        NSWorkspace.shared.open([directory], withApplicationAt: terminal, configuration: configuration) { [weak self] _, error in
+            guard let error else { return }
+            DispatchQueue.main.async {
+                self?.onStatus?("No se pudo abrir Terminal: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @objc private func contextOpenWithApplication(_ sender: NSMenuItem) {
+        guard let appURL = sender.representedObject as? URL else { return }
+        let targets = selectedURLs()
+        let items = targets.isEmpty ? [currentURL] : targets
+        let configuration = NSWorkspace.OpenConfiguration()
+        for url in items {
+            NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: configuration)
+        }
+        onStatus?("Abriendo \(items.count) elemento(s) con \(appURL.deletingPathExtension().lastPathComponent)…")
+    }
+
+    @objc private func contextShareWithService(_ sender: NSMenuItem) {
+        guard let service = sender.representedObject as? NSSharingService else { return }
+        let items: [Any] = selectedURLs().isEmpty ? [currentURL] : selectedURLs()
+        service.perform(withItems: items)
+    }
+
+    @objc private func contextDuplicateSelection() {
+        duplicateSelection()
+    }
+
+    @objc private func contextCompressSelection() {
+        compressSelection()
+    }
+
+    @objc private func contextCopySelectionAction() {
+        copySelectionToClipboard()
+    }
+
+    @objc private func contextToggleFavoriteAction() {
+        let url = contextTargetURL() ?? selectedURLs().first ?? currentURL
+        onToggleFavoriteRequested?(url)
+    }
+
+    @objc private func contextAddToLocationsAction() {
+        let url = contextTargetURL() ?? selectedURLs().first ?? currentURL
+        onAddLocationRequested?(url)
+    }
+
+    // MARK: - Portapapeles y operaciones rápidas (v2.1.1)
+
+    /// v2.1.1 — tipos de portapapeles que marcan «cortar»: al pegar, los elementos se mueven
+    /// (el propio y el de Finder, para que un corte hecho en Finder también mueva aquí).
+    static let cutPasteboardType = NSPasteboard.PasteboardType("com.dmx83.just4folders.cut")
+    static let finderCutType = NSPasteboard.PasteboardType("com.apple.finder.pboard.cut")
+
+    /// ⌘C — copia al portapapeles como URLs de archivo (pegable en Finder y en esta app).
+    func copySelectionToClipboard() {
+        let selected = selectedURLs()
+        guard !selected.isEmpty else { NSSound.beep(); return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects(selected as [NSURL])
+        onStatus?("Copiado(s) al portapapeles: \(selected.count)")
+    }
+
+    /// ⌘X — corta al portapapeles: al pegar, los elementos se MUEVEN (el corte se consume).
+    func cutSelectionToClipboard() {
+        let selected = selectedURLs()
+        guard !selected.isEmpty else { NSSound.beep(); return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects(selected as [NSURL])
+        pasteboard.setData(Data(), forType: Self.cutPasteboardType)
+        onStatus?("Cortado(s): \(selected.count) — se moverán al pegar.")
+    }
+
+    @objc private func contextCutSelectionAction() {
+        cutSelectionToClipboard()
+    }
+
+    /// ⌘D — duplica la selección junto a los originales («nombre-1.ext», sin pisar nada).
+    func duplicateSelection() {
+        let selected = selectedURLs()
+        guard !selected.isEmpty else { return }
+        let fm = FileManager.default
+        var created = 0
+        for source in selected {
+            let proposed = source.deletingLastPathComponent()
+                .appendingPathComponent(source.lastPathComponent, isDirectory: isDirectory(source))
+            let destination = availableDestination(for: proposed)
+            do {
+                try fm.copyItem(at: source, to: destination)
+                created += 1
+            } catch {
+                onStatus?("No se pudo duplicar \(source.lastPathComponent): \(J4FError.from(error).userMessage)")
+            }
+        }
+        if created > 0 {
+            loadDirectory(currentURL, pushHistory: false)
+            onStatus?("Duplicado(s): \(created)")
+        }
+    }
+
+    /// «Comprimir» — zip nativo (/usr/bin/zip) junto a los originales.
+    func compressSelection() {
+        let selected = selectedURLs()
+        guard !selected.isEmpty else { return }
+        let baseName: String
+        if selected.count == 1 {
+            baseName = (selected[0].lastPathComponent as NSString).deletingPathExtension
+        } else {
+            baseName = "Archivo"
+        }
+        let destination = availableDestination(for: currentURL.appendingPathComponent(baseName + ".zip"))
+        let allSameParent = selected.allSatisfy {
+            $0.deletingLastPathComponent().standardizedFileURL == selected[0].deletingLastPathComponent().standardizedFileURL
+        }
+        let workDirectory = allSameParent ? selected[0].deletingLastPathComponent() : nil
+        let absolutePaths = selected.map(\.path)
+        let relativeNames = selected.map { $0.lastPathComponent }
+        onStatus?("Comprimiendo \(selected.count) elemento(s)…")
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+            process.currentDirectoryURL = workDirectory
+            process.arguments = ["-r", "-y", "-q", destination.path] + (workDirectory != nil ? relativeNames : absolutePaths)
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = pipe
+            do {
+                try process.run()
+                process.waitUntilExit()
+                let ok = process.terminationStatus == 0
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    if ok {
+                        self.loadDirectory(self.currentURL, pushHistory: false)
+                        self.onStatus?("Creado \(destination.lastPathComponent)")
+                    } else {
+                        self.onStatus?("No se pudo comprimir (zip salió con estado \(process.terminationStatus))")
+                        NSSound.beep()
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self?.onStatus?("No se pudo comprimir: \(J4FError.from(error).userMessage)")
+                }
+            }
+        }
+    }
+
+    // Selectores estándar (menú Edición): funcionan cuando el foco está en la tabla.
+    @objc func copy(_ sender: Any?) {
+        copySelectionToClipboard()
+    }
+
+    @objc func cut(_ sender: Any?) {
+        cutSelectionToClipboard()
+    }
+
+    @objc func paste(_ sender: Any?) {
+        do {
+            let pasted = try pasteItemsFromClipboard()
+            if pasted == 0 {
+                onStatus?("No hay rutas válidas para pegar.")
+            }
+        } catch {
+            onStatus?("No se pudo pegar: \(J4FError.from(error).userMessage)")
+        }
+    }
+
+    @objc func duplicate(_ sender: Any?) {
+        duplicateSelection()
     }
 
     private func presentInfoAlert(_ alert: NSAlert) {
@@ -5628,5 +6436,41 @@ private final class FocusAwareTableView: NSTableView {
 extension FilePanelViewController: FocusAwareTableViewDelegate {
     func tableDidLayout() {
         fitColumnsIfNeeded()
+        scheduleSettledColumnRefit()
+    }
+}
+
+/// v2.1.1 — cabecera con gesto de Finder: doble clic en el divisor de una columna la ajusta
+/// al contenido (el resto del comportamiento es el estándar). Además distingue el ARRASTRE
+/// real de un divisor: solo entonces los anchos pasan a considerarse «del usuario» (antes
+/// cualquier cambio programático los marcaba y los transitorios del arranque quedaban fijados).
+private final class J4FFittingHeaderView: NSTableHeaderView {
+    weak var ownerPanel: FilePanelViewController?
+
+    override func mouseDown(with event: NSEvent) {
+        guard let table = tableView else {
+            super.mouseDown(with: event)
+            return
+        }
+        let point = convert(event.locationInWindow, from: nil)
+        var dividerIndex: Int?
+        for (index, column) in table.tableColumns.enumerated() where !column.isHidden {
+            if abs(point.x - headerRect(ofColumn: index).maxX) <= 5 {
+                dividerIndex = index
+                break
+            }
+        }
+        if event.clickCount == 2, let dividerIndex {
+            let column = table.tableColumns[dividerIndex]
+            column.sizeToFit()
+            table.reloadData()
+            ownerPanel?.markColumnsAdjustedByUser()
+            return
+        }
+        super.mouseDown(with: event)
+        if dividerIndex != nil {
+            // El arrastre terminó (super.mouseDown bloquea hasta el mouseUp).
+            ownerPanel?.markColumnsAdjustedByUser()
+        }
     }
 }

@@ -1,5 +1,22 @@
 # TODO — JUST4FOLDERS (v1.0 App Store)
 
+## v2.2 — Navegación, portapapeles y estilos (28-sep, noche)
+
+- [x] **Barra de dirección única por panel**: atrás/adelante + breadcrumb clicable; doble clic o
+  ⌘L editan la ruta (Enter va, Esc cancela); sin tira superior compartida (chip junto al estado).
+- [x] **Barra lateral de navegación con clic derecho**: sin botones sueltos (Añadir ubicación /
+  Info viven en menús contextuales, incluido «Quitar de Ubicaciones»).
+- [x] **Portapapeles real**: ⌘C/⌘X/⌘V/⌘D + pegar desde Finder + cortar=mover al pegar +
+  Comprimir (zip) + Duplicar; «Pegar» se deshabilita sin contenido válido.
+- [x] **Columnas**: redimensión manual persistente por carpeta; doble clic en el divisor =
+  ajustar al contenido; el marcado de «anchos del usuario» solo con arrastre real.
+- [x] **Estilos visuales en Ajustes ▸ Apariencia** (Esmeralda/Océano/Amatista/Grafito/Sistema),
+  aplicados en vivo.
+- [x] **Fixes de layout**: el pathEditField con autoresizing envenenaba el solver (contenido no
+  llenaba la ventana); refit de columnas tras asentarse; limpieza de anchos guardados envenenados.
+- [ ] Menor conocido: la última columna («Tipo») puede recortar un carácter si el ancho queda
+  justo; arrastrar el divisor lo resuelve. Reproducir con AppKit puro antes de tocarlo.
+
 ## v2.1 — UI: navegación + layout a prueba de balas (28-sep, noche)
 
 - [x] **Barra lateral de navegación**: secciones UBICACIONES / FAVORITOS / RECIENTES con las

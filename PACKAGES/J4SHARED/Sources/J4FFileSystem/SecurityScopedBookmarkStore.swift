@@ -69,6 +69,15 @@ public struct SecurityScopedBookmarkStore {
         try persist(current)
     }
 
+    /// v2.1.1 — quita una ubicación autorizada (menú contextual de la barra lateral).
+    public func remove(path: String) {
+        var current = list()
+        let before = current.count
+        current.removeAll { $0.path == path }
+        guard current.count != before else { return }
+        try? persist(current)
+    }
+
     public func resolveAll() -> [URL] {
         resolveReport().resolvedURLs
     }

@@ -13,6 +13,8 @@ public struct FolderFormat: Codable, Sendable, Equatable {
     public var hiddenColumns: [String]?
     /// Ola 3 — modo de vista por carpeta: "gallery" o nil (lista).
     public var viewMode: String?
+    /// v2.1.1 — anchos de columna ajustados a mano (nil = reparto automático proporcional).
+    public var columnWidths: [String: CGFloat]?
 
     public init(
         flatView: Bool = false,
@@ -20,7 +22,8 @@ public struct FolderFormat: Codable, Sendable, Equatable {
         ascending: Bool = true,
         includeHidden: Bool = false,
         hiddenColumns: [String]? = nil,
-        viewMode: String? = nil
+        viewMode: String? = nil,
+        columnWidths: [String: CGFloat]? = nil
     ) {
         self.flatView = flatView
         self.sortColumn = sortColumn
@@ -28,6 +31,7 @@ public struct FolderFormat: Codable, Sendable, Equatable {
         self.includeHidden = includeHidden
         self.hiddenColumns = hiddenColumns
         self.viewMode = viewMode
+        self.columnWidths = columnWidths
     }
 }
 

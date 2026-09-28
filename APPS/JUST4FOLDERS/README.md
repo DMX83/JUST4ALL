@@ -47,6 +47,27 @@ swift run
   (reparto contra el viewport real) y autocuracion de divisorias; el contenido ahora llena la
   ventana a cualquier tamano.
 
+## Novedades v2.2 (navegacion + portapapeles + estilos)
+
+- **Barra de direccion por panel**: atras/adelante + breadcrumb navegable; **doble clic** (o ⌘L)
+  la convierte en campo editable (Enter va, Esc cancela). La tira superior con la ruta
+  compartida desaparece: el chip del panel activo vive ahora junto al estado.
+- **Barra lateral de navegacion**: sin botones sueltos; acciones por **clic derecho** (abrir,
+  revelar, copiar ruta, quitar de Ubicaciones/Favoritos, limpiar recientes, reautorizar).
+- **Portapapeles completo**: ⌘C/⌘X/⌘V/⌘D; copiar/pegar funciona tambien con archivos copiados
+  en **Finder**, **cortar+mover** (el corte se consume al pegar) y «Comprimir» (zip) en el menu.
+- **Menu contextual estilo Finder+** revisado: Abrir/Abrir con/Ver/Mostrar en Finder/Terminal,
+  Nueva carpeta/Renombrar/Duplicar/Comprimir, Cortar/Copiar/Pegar, Papelera/Borrar, Copiar ruta,
+  Favoritos/Ubicaciones/Informacion, Etiquetas, Compartir y Herramientas.
+- **Columnas por carpeta**: anchos manuales persistentes (arrastra el divisor), doble clic en el
+  divisor = ajustar al contenido, «Ajustar columnas a la ventana» en la cabecera.
+- **Ajustes ▸ Apariencia**: estilos visuales (Esmeralda, Oceano, Amatista, Grafito, Color del
+  sistema) aplicados en vivo (chip, toggles, barra lateral).
+- **Fix de layout importante**: el campo de edicion de la direccion conservaba constraints de
+  autoresizing y envenenaba al solver (20 conflictos; el contenido no llenaba la ventana en
+  algunos estados). Ademas: refit de columnas tras asentarse el layout y limpieza de anchos
+  envenenados guardados.
+
 ## MVP actual
 
 - Seleccion de carpeta origen y destino.

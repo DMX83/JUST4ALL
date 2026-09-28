@@ -94,4 +94,31 @@ final class J4FFileSystemTests: XCTestCase {
         XCTAssertEqual(listed, 100_000)
         XCTAssertLessThan(elapsed, 300, "100k listing took too long: \(elapsed)s")
     }
+
+    func testBookmarkStoreRemoveDeletesMatchingLocation() throws {
+        let suiteName = "j4f-bookmarks-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            XCTFail("No se pudo crear el dominio de pruebas")
+            return
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SecurityScopedBookmarkStore(defaults: defaults, key: "test.bookmarks")
+        let dirA = tempRoot.appendingPathComponent("bm-a", isDirectory: true)
+        let dirB = tempRoot.appendingPathComponent("bm-b", isDirectory: true)
+        try FileManager.default.createDirectory(at: dirA, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: dirB, withIntermediateDirectories: true)
+
+        try store.save(url: dirA)
+        try store.save(url: dirB)
+        XCTAssertEqual(store.list().count, 2)
+
+        // v2.1.1 — quitar una ubicación deja las demás intactas.
+        store.remove(path: dirA.path)
+        XCTAssertEqual(store.list().map(\.path), [dirB.path])
+
+        // Quitar una ruta inexistente no altera la lista.
+        store.remove(path: "/tmp/j4f-no-existe")
+        XCTAssertEqual(store.list().count, 1)
+    }
 }

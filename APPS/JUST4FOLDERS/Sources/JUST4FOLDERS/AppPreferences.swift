@@ -1,5 +1,6 @@
 import Foundation
 import J4FOps
+import J4FUI
 
 extension Notification.Name {
     static let j4fPreferencesChanged = Notification.Name("j4f.preferences.changed")
@@ -35,21 +36,25 @@ struct J4FPreferences {
         static let deleteBehavior = "j4f.pref.deleteBehavior"
         static let showHiddenFiles = "j4f.pref.showHiddenFiles"
         static let preferredBigBufferMB = "j4f.pref.preferredBigBufferMB"
+        static let visualStyle = "j4f.pref.visualStyle"
     }
 
     var deleteBehavior: DeleteBehaviorPreference
     var showHiddenFiles: Bool
     var preferredBigBufferMB: Int
+    var visualStyle: J4FVisualStyle
 
     static func load(defaults: UserDefaults = .standard) -> J4FPreferences {
         let behaviorRaw = defaults.string(forKey: Keys.deleteBehavior) ?? DeleteBehaviorPreference.trashIfPossible.rawValue
         let behavior = DeleteBehaviorPreference(rawValue: behaviorRaw) ?? .trashIfPossible
         let showHidden = defaults.object(forKey: Keys.showHiddenFiles) as? Bool ?? false
         let buffer = defaults.object(forKey: Keys.preferredBigBufferMB) as? Int ?? 4
+        let style = J4FVisualStyle(rawValue: defaults.string(forKey: Keys.visualStyle) ?? "") ?? .esmeralda
         return J4FPreferences(
             deleteBehavior: behavior,
             showHiddenFiles: showHidden,
-            preferredBigBufferMB: max(1, min(8, buffer))
+            preferredBigBufferMB: max(1, min(8, buffer)),
+            visualStyle: style
         )
     }
 }

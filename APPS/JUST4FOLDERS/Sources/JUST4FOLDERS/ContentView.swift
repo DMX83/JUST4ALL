@@ -18,4 +18,14 @@ private struct CommanderContainerView: NSViewControllerRepresentable {
     func updateNSViewController(_ nsViewController: CommanderViewController, context: Context) {
         // No-op in MVP-1; controller is stateful and self-managed.
     }
+
+    // v2.1.1 — sin esto, el hosting usa el tamaño «fitting» del NSView y el contenido vuelve a
+    // quedar centrado sin llenar la ventana (pasaba con restricciones internas del split).
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        nsViewController: CommanderViewController,
+        context: Context
+    ) -> CGSize? {
+        CGSize(width: proposal.width ?? 1320, height: proposal.height ?? 860)
+    }
 }
