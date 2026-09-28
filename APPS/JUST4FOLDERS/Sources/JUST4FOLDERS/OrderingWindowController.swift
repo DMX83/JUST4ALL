@@ -18,6 +18,10 @@ final class OrderingWindowController: NSWindowController, NSTableViewDataSource,
     private var destinationRoot: URL
     private var files: [URL] = []
     private var plan: [FolderOrderer.Item] = []
+    /// v2.0 — asesor IA opcional: nil si no hay clave (`DEEPSEEK_API_KEY` o `.env.secrets`).
+    private let advisor: (any FilingAdvising)? = DeepSeekFilingAdvice()
+    private let aiCheck = NSButton(checkboxWithTitle: "Usar IA para los dudosos", target: nil, action: nil)
+    private var recomputeTask: Task<Void, Never>?
 
     init(folder: URL, onFinished: @escaping (Int) -> Void) {
         self.folder = folder
@@ -78,6 +82,22 @@ final class OrderingWindowController: NSWindowController, NSTableViewDataSource,
         unknownCheck.action = #selector(recomputeAction)
         unknownCheck.translatesAutoresizingMaskIntoConstraints = false
 
+        // v2.0 — la IA solo se ofrece si hay clave configurada; consulta única por fichero dudoso.
+        aiCheck.state = advisor == nil ? .off : .on
+        aiCheck.isEnabled = advisor != nil
+        aiCheck.font = .systemFont(ofSize: 11)
+        aiCheck.target = self
+        aiCheck.action = #selector(recomputeAction)
+        aiCheck.toolTip = advisor == nil
+            ? "Configura DEEPSEEK_API_KEY (o .env.secrets) para que la IA clasifique los dudosos."
+            : "Consulta a DeepSeek solo los que las reglas no clasifican (se envía únicamente el nombre)."
+        aiCheck.translatesAutoresizingMaskIntoConstraints = false
+
+        let checksRow = NSStackView(views: [unknownCheck, aiCheck])
+        checksRow.orientation = .horizontal
+        checksRow.spacing = 16
+        checksRow.translatesAutoresizingMaskIntoConstraints = false
+
         let columnActual = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("actual"))
         columnActual.title = "Actual"
         columnActual.width = 240
@@ -118,7 +138,7 @@ final class OrderingWindowController: NSWindowController, NSTableViewDataSource,
         buttonsRow.translatesAutoresizingMaskIntoConstraints = false
 
         content.addSubview(destinationRow)
-        content.addSubview(unknownCheck)
+        content.addSubview(checksRow)
         content.addSubview(scrollView)
         content.addSubview(buttonsRow)
 
@@ -127,12 +147,12 @@ final class OrderingWindowController: NSWindowController, NSTableViewDataSource,
             destinationRow.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
             destinationRow.topAnchor.constraint(equalTo: content.topAnchor, constant: 12),
 
-            unknownCheck.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
-            unknownCheck.topAnchor.constraint(equalTo: destinationRow.bottomAnchor, constant: 6),
+            checksRow.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
+            checksRow.topAnchor.constraint(equalTo: destinationRow.bottomAnchor, constant: 6),
 
             scrollView.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
             scrollView.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
-            scrollView.topAnchor.constraint(equalTo: unknownCheck.bottomAnchor, constant: 8),
+            scrollView.topAnchor.constraint(equalTo: checksRow.bottomAnchor, constant: 8),
             scrollView.bottomAnchor.constraint(equalTo: buttonsRow.topAnchor, constant: -10),
 
             buttonsRow.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
@@ -165,10 +185,37 @@ final class OrderingWindowController: NSWindowController, NSTableViewDataSource,
     }
 
     private func recompute() {
+        recomputeTask?.cancel()
         let options = FolderOrderer.Options(categorizeUnknown: unknownCheck.state == .on)
         plan = FolderOrderer.plan(files: files, options: options)
         tableView.reloadData()
         updateSummary()
+
+        // v2.0 — refuerzo con IA para los dudosos (si hay clave y está activado).
+        guard let advisor, aiCheck.state == .on else { return }
+        infoLabel.stringValue += " · consultando IA…"
+        recomputeTask = Task { [weak self] in
+            guard let self else { return }
+            let refined = await FolderOrderer.planAsync(
+                files: self.files,
+                options: options,
+                advisor: advisor,
+                onProgress: { done, total in
+                    Task { @MainActor [weak self] in
+                        self?.infoLabel.stringValue = "IA: \(done)/\(total) dudosos consultados…"
+                    }
+                }
+            )
+            await MainActor.run {
+                self.plan = refined
+                self.tableView.reloadData()
+                self.updateSummary()
+            }
+        }
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        recomputeTask?.cancel()
     }
 
     private func updateSummary() {

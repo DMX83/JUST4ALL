@@ -97,8 +97,9 @@ IA + automatización por agentes**. Ese es el moat.
 - ✅ **«Ordenar esta carpeta» (28-sep):** clasificación con el motor compartido de DESK
   (`RulesFilingClassifier` + `FilingPlanner` + `DefaultTaxonomy`) desde el commander (⌥⌘O):
   preview de categoría/nombre/motivo, **mueve** (crea `01_Fiscal`…`99_SinClasificar`, nunca copia
-  ni borra), diario JSON y «Deshacer última ordenación» (⌥⌘Z). Sin IA todavía: reglas locales
-  (nombre → extensión), el mismo fallback determinista de DESK.
+  ni borra), diario JSON y «Deshacer última ordenación» (⌥⌘Z). IA **opcional** (28-sep): con clave
+  configurada, «Usar IA para los dudosos» consulta a DeepSeek solo los ficheros que las reglas no
+  clasifican (nombre + categorías; validado contra la taxonomía; máx. 40 por lote).
 - Búsqueda **semántica** («los papeles del seguro del coche») y chat del archivo en el panel.
 - ✅ **Folder formats (28-sep):** cada carpeta recuerda su vista (aplanada, orden por columna y
   ocultos) y se restaura al volver (`J4FOps.FolderFormatStore`, JSON con LRU de 500 carpetas);

@@ -53,7 +53,11 @@
   compartidas de DESK (`RulesFilingClassifier` + `FilingPlanner` + `DefaultTaxonomy`),
   previsualiza destino/categoría/nombre y **mueve** (nunca copia ni borra); diario JSON +
   «Deshacer última ordenación» (⌥⌘Z) que restaura los ficheros a su sitio.
-- [ ] Clasificación con IA (DeepSeek de DESK) como mejora de la propuesta por reglas.
+- [x] **Clasificación con IA (DeepSeek)** como mejora de la propuesta por reglas: checkbox
+  «Usar IA para los dudosos» (solo si hay clave `DEEPSEEK_API_KEY` o `.env.secrets`); consulta
+  únicamente los que las reglas no clasifican (máx. 40 por lote), valida la respuesta contra la
+  taxonomía (confianza ≥ 0,5 y categoría permitida) y muestra el motivo «IA: …». Privacidad:
+  solo sale el nombre del fichero y la lista de categorías.
 - [ ] Búsqueda semántica en el panel (embeddings del índice).
 - [x] **Folder formats** (v2.0): cada carpeta recuerda su vista — aplanada, columna/dirección de
   orden y ficheros ocultos — y se restaura al navegar de vuelta (`FolderFormatStore`, JSON con

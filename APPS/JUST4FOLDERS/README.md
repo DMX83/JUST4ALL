@@ -58,6 +58,8 @@ swift run
 - Ordenar carpeta (**v2.0**, ⌥⌘O): clasifica los ficheros con las reglas y la taxonomia compartidas
   de JUST4DESK (`01_Fiscal`, `13_Multimedia`…, `99_SinClasificar`), previsualiza y **mueve**
   (nunca copia ni borra); «Deshacer ultima ordenacion» (⌥⌘Z) con diario.
+- IA opcional en la ordenacion (**v2.0**): con `DEEPSEEK_API_KEY` (o `.env.secrets`), «Usar IA para
+  los dudosos» consulta solo lo que las reglas no clasifican (se envia unicamente el nombre).
 - Folder formats (**v2.0**): cada carpeta recuerda su vista (aplanada, orden, ocultos) y se restaura
   al volver; «Olvidar formato de esta carpeta» en el menu contextual.
 - Sidebar con ubicaciones autorizadas, favoritos y recientes.

@@ -80,6 +80,56 @@ public enum FolderOrderer {
         }
     }
 
+    /// v2.0 — Plan con asesor IA opcional: solo se consultan los «dudosos» (los que las reglas
+    /// mandarían a `99_SinClasificar`), hasta `maxAICalls` por lote. La respuesta se valida con
+    /// `FilingPlanner` (categoría permitida y confianza ≥ 0,5); si no pasa, se queda en cuarentena.
+    public static func planAsync(
+        files: [URL],
+        options: Options = Options(),
+        advisor: (any FilingAdvising)?,
+        maxAICalls: Int = 40,
+        onProgress: (@Sendable (Int, Int) -> Void)? = nil
+    ) async -> [Item] {
+        var items = plan(files: files, options: options)
+        guard let advisor else { return items }
+
+        let candidates: [Int] = items.enumerated().compactMap { index, item in
+            switch item.disposition {
+            case .move(_, _, _, _, let isQuarantine): return isQuarantine ? index : nil
+            case .skip: return index
+            }
+        }
+        let limited = Array(candidates.prefix(max(0, maxAICalls)))
+        guard !limited.isEmpty else { return items }
+
+        let allowed = DefaultTaxonomy.allRelativePaths
+        var done = 0
+        onProgress?(0, limited.count)
+        for index in limited {
+            if Task.isCancelled { break }
+            let url = items[index].url
+            done += 1
+            onProgress?(done, limited.count)
+            guard let proposal = try? await advisor.propose(
+                fileName: url.lastPathComponent,
+                allowedCategories: allowed
+            ) else { continue }
+            let resolved = FilingPlanner.resolve(proposal: proposal, originalFileName: url.lastPathComponent)
+            guard !resolved.isQuarantine else { continue }
+            items[index] = Item(
+                url: url,
+                disposition: .move(
+                    relativePath: resolved.categoryRelativePath,
+                    fileName: resolved.fileName,
+                    reason: "IA: \(resolved.reason)",
+                    confidence: resolved.confidence,
+                    isQuarantine: false
+                )
+            )
+        }
+        return items
+    }
+
     /// Ejecuta el plan: crea las categorías necesarias y mueve cada fichero.
     /// Devuelve cuántos se movieron, los fallos y el diario (para `undo`).
     @discardableResult
