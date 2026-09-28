@@ -16,12 +16,14 @@ Formato de build usado en artefactos:
 - Limpieza de documentacion del modulo para dejar solo contexto vigente en `README.md`.
 - `TODO.md` reescrito como backlog post-MVP (sin historico mezclado).
 - Se añadieron sugerencias nuevas etiquetadas como `[SUGERENCIA NUEVA]` en `TODO.md`.
-- Refactor en curso de `ContentView`: estado extraido a `BatchStateViewModel`, `AIResolutionViewModel` y `PreviewStateViewModel`.
+- Refactor de `ContentView` (2262 → ~1645 lineas): dominio extraido a `BatchItemProcessor`, `AIResolutionEngine`, `OutputPathResolver`, `PreviewCoordinator`, `InputQueueViewModel` y `BatchOutcomeRecorder`; componentes de preview movidos a `PreviewComponents`.
 
 ### Added
 
 - Nuevo `CHANGELOG.md` para trazabilidad de cambios por version/build.
 - Cobertura de test por escena para sharpen selectivo en `LocalPhotoPipelineTests` (bruma, detalle vegetal y texto denso).
+- `PresetVisualRegressionTests`: metrica de regresion visual por preset con ventanas calibradas sobre muestras reales.
+- `scripts/smoke_release.sh`: smoke de release (suite completa + release build + DMG + validacion de `J4ABuildStamp`/version/commit y artefacto en `dist/`), con reporte por corrida en `build/smoke-release-<stamp>.txt`.
 
 ## [0.1.0+20260322114546-6fe34bc] - 2026-03-22
 

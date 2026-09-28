@@ -38,7 +38,7 @@ El backlog historico del MVP queda en `ROADMAP_V1.md` y `JUST4PICT_POSTMVP_CHECK
 
 - [ ] **[SUGERENCIA NUEVA] Telemetria local por build:** guardar resumen JSON por corrida (`buildStamp`, preset, tiempo, memoria max, fallos) para comparar regresiones entre builds.
 - [ ] **[SUGERENCIA NUEVA] Snapshot de receta efectiva por item:** persistir receta final aplicada (incluyendo fallback IA) para reproducibilidad exacta.
-- [ ] **[SUGERENCIA NUEVA] Smoke test de release:** script unico que ejecute build DMG + `swift test` criticos + validacion de `J4ABuildStamp` en `Info.plist`.
+- [x] **Smoke test de release:** `scripts/smoke_release.sh` — suite completa + release build + DMG + validacion de `J4ABuildStamp`/version/commit y artefacto en `dist/`; reporte por corrida (`build/smoke-release-<stamp>.txt`); `--no-dmg` para via rapida (~30 s; full ~40 s).
 - [ ] **[SUGERENCIA NUEVA] Matriz QA por escena:** set fijo de muestras por escena con expected windows mantenibles en un archivo dedicado.
 
 ## Hecho recientemente (resumen operativo)
