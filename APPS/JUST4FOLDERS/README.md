@@ -63,6 +63,9 @@ swift run
   divisor = ajustar al contenido, «Ajustar columnas a la ventana» en la cabecera.
 - **Ajustes ▸ Apariencia**: estilos visuales (Esmeralda, Oceano, Amatista, Grafito, Color del
   sistema) aplicados en vivo (chip, toggles, barra lateral).
+- **Modo de un solo panel (⌘\\)**: alterna Commander ⇄ panel unico (persistente; tambien en el
+  menu Navegacion y la paleta ⌘K). En modo simple, Tab cambia cual de los dos paneles se ve;
+  el reparto de columnas se reajusta solo al cambiar de modo.
 - **Fix de layout importante**: el campo de edicion de la direccion conservaba constraints de
   autoresizing y envenenaba al solver (20 conflictos; el contenido no llenaba la ventana en
   algunos estados). Ademas: refit de columnas tras asentarse el layout y limpieza de anchos

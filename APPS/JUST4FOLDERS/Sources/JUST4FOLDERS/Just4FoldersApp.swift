@@ -43,6 +43,8 @@ extension Notification.Name {
     static let j4fUndoOrdering = Notification.Name("j4f.undoOrdering")
     /// Ola 2 — vista previa lateral (⌥⌘P).
     static let j4fTogglePreview = Notification.Name("j4f.togglePreview")
+    /// v2.2 — alterna un solo panel ⇄ dos paneles (⌘\).
+    static let j4fToggleSinglePanel = Notification.Name("j4f.toggleSinglePanel")
     /// Ola 2 — pestañas: duplicar / renombrar / mover.
     static let j4fDuplicateTab = Notification.Name("j4f.duplicateTab")
     static let j4fRenameTab = Notification.Name("j4f.renameTab")
@@ -99,6 +101,10 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fTogglePanelTree, object: nil)
                 }
                 .keyboardShortcut("e", modifiers: [.command, .option])
+                Button("Un solo panel (Tab alterna izq/der)") {
+                    NotificationCenter.default.post(name: .j4fToggleSinglePanel, object: nil)
+                }
+                .keyboardShortcut("\\", modifiers: .command)
                 Menu("Tamaño de miniaturas") {
                     Button("Pequeñas") { NotificationCenter.default.post(name: .j4fGalleryThumbSize, object: nil, userInfo: ["size": "S"]) }
                     Button("Medianas") { NotificationCenter.default.post(name: .j4fGalleryThumbSize, object: nil, userInfo: ["size": "M"]) }

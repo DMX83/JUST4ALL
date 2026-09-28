@@ -397,8 +397,18 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         didSet {
             updateActiveIndicator()
             updatePreviewPane()
+            // v2.2 — en modo de un solo panel, alternar el activo cambia el panel visible.
+            if singlePanelMode {
+                applyPanelMode()
+            }
         }
     }
+
+    /// v2.2 — modo de un solo panel: solo se muestra el panel activo (Tab alterna cuál se ve).
+    private var singlePanelMode = false
+    private var leftPanelMinWidth: NSLayoutConstraint?
+    private var rightPanelMinWidth: NSLayoutConstraint?
+    static let singlePanelModeKey = "j4f.singlePanelMode"
 
     private let activeIndicatorLabel = NSTextField(labelWithString: "IZQ")
     /// v2.1 — split raíz (autocuración de divisorias).
@@ -465,6 +475,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NotificationCenter.default.addObserver(self, selector: #selector(onOrderFolderRequested), name: .j4fOrderFolder, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onUndoOrderingRequested), name: .j4fUndoOrdering, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onTogglePreviewRequested), name: .j4fTogglePreview, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onToggleSinglePanelRequested), name: .j4fToggleSinglePanel, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onDuplicateTabRequested), name: .j4fDuplicateTab, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onRenameTabRequested), name: .j4fRenameTab, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onMoveTabLeftRequested), name: .j4fMoveTabLeft, object: nil)
@@ -549,6 +560,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             .init(title: "QuickLook (vista rápida)", hint: "Espacio · F3") { [weak self] in _ = self?.toggleQuickLookPreview() },
             .init(title: "Vista aplanada", hint: "⌥⌘F") { [weak self] in self?.onToggleFlatViewRequested() },
             .init(title: "Vista previa lateral", hint: "⌥⌘P") { [weak self] in self?.onTogglePreviewRequested() },
+            .init(title: singlePanelMode ? "Usar dos paneles" : "Usar un solo panel", hint: "⌘\\") { [weak self] in self?.toggleSinglePanelMode() },
             .init(title: "Vista en galería / lista", hint: "⌥⌘G") { [weak self] in self?.onToggleGalleryRequested() },
             .init(title: "Árbol en el panel", hint: "⌥⌘E") { [weak self] in self?.onTogglePanelTreeRequested() },
             .init(title: "Tamaño de miniaturas: cíclico S→M→L", hint: "") {
@@ -571,6 +583,43 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         controller.onClose = { [weak self] in self?.commandPalette = nil }
         commandPalette = controller
         controller.present()
+    }
+
+    // MARK: - Modo de un solo panel (v2.2)
+
+    /// v2.2 — alterna Commander (dos paneles) ⇄ panel único. Persistente; Tab cambia cuál se ve.
+    func toggleSinglePanelMode() {
+        singlePanelMode.toggle()
+        UserDefaults.standard.set(singlePanelMode, forKey: Self.singlePanelModeKey)
+        applyPanelMode()
+        statusLabel.stringValue = singlePanelMode
+            ? "Modo de un solo panel — Tab alterna entre izquierdo y derecho."
+            : "Modo commander: dos paneles."
+    }
+
+    /// v2.2 — muestra solo el panel activo. Los mínimos de 220pt del panel oculto se desactivan
+    /// para que el split lo colapse; el visible ocupa todo el ancho.
+    private func applyPanelMode() {
+        let hideLeft = singlePanelMode && activeSide == .right
+        let hideRight = singlePanelMode && activeSide == .left
+        leftPanel.view.isHidden = hideLeft
+        rightPanel.view.isHidden = hideRight
+        leftPanelMinWidth?.isActive = !hideLeft
+        rightPanelMinWidth?.isActive = !hideRight
+        if !singlePanelMode {
+            healSplitLayoutIfNeeded()
+        }
+        // v2.2 — el viewport cambia drásticamente: reajuste completo en el siguiente ciclo
+        // (cuando el split ya tiene el ancho definitivo), no con el ancho transitorio.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.leftPanel.invalidateColumnFit()
+            self.rightPanel.invalidateColumnFit()
+        }
+    }
+
+    @objc private func onToggleSinglePanelRequested() {
+        toggleSinglePanelMode()
     }
 
     // MARK: - Workspaces (Ola 3)
@@ -781,7 +830,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             bodySplit.setPosition(bodySplit.bounds.width - 232, ofDividerAt: 1)
         }
         // Paneles: si el reparto quedó muy descompensado (p. ej. recuerdos corruptos), 50/50.
-        if let panelsSplit, panelsSplit.bounds.width > 400,
+        // En modo de un solo panel no aplica (uno de los dos está colapsado a propósito).
+        if !singlePanelMode, let panelsSplit, panelsSplit.bounds.width > 400,
            let first = panelsSplit.subviews.first, let last = panelsSplit.subviews.last,
            abs(first.frame.width - last.frame.width) > 60 {
             panelsSplit.setPosition(panelsSplit.bounds.width / 2, ofDividerAt: 0)
@@ -849,6 +899,12 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         panelsSplit.addArrangedSubview(rightPanel.view)
         leftPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
         rightPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
+        // v2.2 — referencias para poder desactivarlas en modo de un solo panel (un panel oculto
+        // con un mínimo requerido de 220pt impediría el colapso del split).
+        leftPanelMinWidth = leftPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220)
+        rightPanelMinWidth = rightPanel.view.widthAnchor.constraint(greaterThanOrEqualToConstant: 220)
+        leftPanelMinWidth?.isActive = true
+        rightPanelMinWidth?.isActive = true
 
         let sidebarView = makeSidebarView()
 
@@ -936,6 +992,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             jobProgressRow.widthAnchor.constraint(lessThanOrEqualTo: bottomStack.widthAnchor),
             volumeWarningLabel.widthAnchor.constraint(lessThanOrEqualTo: bottomStack.widthAnchor)
         ])
+
+        // v2.2 — modo de un solo panel (persistente): solo se ve el panel activo; Tab alterna.
+        singlePanelMode = UserDefaults.standard.bool(forKey: Self.singlePanelModeKey)
+        applyPanelMode()
     }
 
     private func makeSidebarView() -> NSView {
@@ -2477,6 +2537,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             }
             if chars == "d" {
                 activePanel.duplicateSelection()
+                return true
+            }
+            if chars == "\\" {
+                toggleSinglePanelMode()
                 return true
             }
         }
@@ -4429,6 +4493,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     /// v2.1 — refit de columnas pedido desde el commander (tras ajustes de divisorias).
     func refreshColumnLayout() {
+        fitColumnsIfNeeded()
+    }
+
+    /// v2.2 — reparto completo de nuevo (cambio de modo de paneles: el viewport cambia de
+    /// golpe y cualquier reparto previo ya no vale).
+    func invalidateColumnFit() {
+        lastFittedViewport = 0
         fitColumnsIfNeeded()
     }
 
