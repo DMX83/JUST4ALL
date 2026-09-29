@@ -35,6 +35,9 @@ El backlog historico del MVP queda en `ROADMAP_V1.md` y `JUST4PICT_POSTMVP_CHECK
       **Hecho (29-sep)**: `Just4PictCLI` dentro del binario (sin args = app normal), comandos
       `enhance` / `presets` / `version` / `help`, wrapper `scripts/just4pict-cli` que valida
       que el binario tenga CLI (los builds viejos abrían la GUI), +10 tests (suite 102).
+      **Integrado en JUST4FOLDERS (29-sep, v2.3.7)**: submenú «JUST4PICT ▸ → Mejorar con
+      JUST4PICT ▸» (5 presets) en el clic derecho, consumiendo este CLI; validado e2e (JPEG de
+      267 KB → PNG de 3 MB, idéntico al CLI a mano).
 - [ ] Evaluar opcion de preset de export rapido para web/marketplaces con defaults cerrados.
 
 ## Sugerencias nuevas

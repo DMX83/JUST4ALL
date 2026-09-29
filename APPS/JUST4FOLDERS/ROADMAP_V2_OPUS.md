@@ -52,7 +52,9 @@ Leyenda: ✅ hecho · 🟡 en curso/parcial · 🔴 pendiente · ➕ ventaja nue
 | Folder formats / temas | ✅ formats **(28-sep, v2.0)**; temas pendientes | — | aplanada + orden + ocultos por carpeta |
 | Toolbars/hotkeys configurables | 🟡 atajos configurables (⌥⌘K) + paleta ⌘K ✅; toolbar fija | — | v2.2 |
 | Scripting/extensibilidad | 🔴 | ➕ **MCP** (agentes) | ➕ Shortcuts/JXA/MCP > scripting propietario |
-| Cálculo de tamaños de carpeta | ✅ background **(v1.2)** | — | caché LRU + invalidación watcher |
+| Cálculo de tamaños de carpeta | ✅ **asignado en disco + caché (v2.3.10/11)** | — | correcto con ficheros dispersos, sin parpadeo, TTL 6 h |
+| Copias / duplicado | ✅ **clon APFS (v2.3.11)** | — | instantáneo y sin gastar espacio; conserva metadatos |
+| Monitor del sistema | ✅ **en el toolbar (v2.3.6)** | — | CPU · RAM · Disco · I/O · Batería con avisos por color |
 | Índice propio + IA | ✅ «Ordenar esta carpeta» + IA para dudosos + búsqueda semántica (28-sep) | ➕ semántica + chat | reglas+taxonomía compartidas; chat pendiente |
 
 **El hueco de mercado:** en macOS no hay un Opus. Hay comandantes buenos (Nimble Commander,
@@ -110,6 +112,14 @@ IA + automatización por agentes**. Ese es el moat.
   repartidas contra el viewport), portapapeles completo (cortar=mover, zip, duplicar), columnas
   manuales persistentes por carpeta, estilos visuales en Ajustes (5) y **modo de un solo panel**
   (⌘\\, Tab alterna; persistente).
+- ✅ **Pase v2.3.x (29-sep, once versiones en un día)**: **Panel Hub** (módulos Vista previa |
+  DESK | PICT en el panel derecho), toolbar revisado con **monitor del sistema** (CPU · RAM ·
+  Disco · I/O · Batería, avisos por color y menú propio), **pestañas con menú contextual**,
+  vista previa fiable (imágenes en local con ImageIO + reintentos de QuickLook), **orden por
+  Tamaño correcto**, tamaños **asignados en disco** (los ficheros dispersos ya no inflan el
+  total) con caché persistente, y **motor de copia rápido** (clon APFS + `copyfile`, y el
+  progreso deja de reescribir el JSON de trabajos por ítem). Detalle por versión y medidas en
+  `README.md` (v2.3 → v2.3.11), `PANEL_HUB.md` y `PENDIENTES.md`.
 - **Acciones MCP** (agentes operando el gestor) y toolbar configurable: pendientes.
 - Quick Action de Finder / servicios del sistema (integración con el Finder de macOS).
 

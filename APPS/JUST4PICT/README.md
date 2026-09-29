@@ -54,6 +54,12 @@ El wrapper `scripts/just4pict-cli` **verifica que el binario soporte el CLI** an
 (marca incrustada): un build anterior al CLI arrancaría la app con UI y dejaría el comando
 colgado; por eso, si falla, compila primero (`swift build`) y vuelve a probar.
 
+**Integración en JUST4FOLDERS (hecha, v2.3.7)**: el submenú contextual «JUST4PICT ▸ → Mejorar con
+JUST4PICT ▸» de JUST4FOLDERS ejecuta este CLI con 5 presets (Automático · Retrato · Paisaje ·
+Documento · Ecommerce) sobre la selección, en background y sin sobrescribir; se oculta si el CLI
+no está disponible y los presets se deshabilitan si la selección no tiene imágenes. Es el **mismo
+binario y el mismo pipeline**: no hay código duplicado entre ambas apps.
+
 ## Build DMG
 
 ```bash

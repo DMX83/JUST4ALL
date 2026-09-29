@@ -13,7 +13,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 
 - APPS/JUST4PDF: App enfocada en herramientas para PDF.
 - APPS/JUST4CONVERT: App nativa macOS en SwiftUI para conversion multimedia.
-- APPS/JUST4FOLDERS: App nativa macOS (AppKit-first): commander de 2 paneles con indice instantaneo e IA.
+- APPS/JUST4FOLDERS: App nativa macOS (AppKit-first): commander de 2 paneles con indice instantaneo e IA, Panel Hub (DESK/PICT), monitor del sistema y copias instantaneas por clon APFS.
 - APPS/JUST4PICT: App nativa macOS en SwiftUI para mejoramiento automatico de imagenes.
 - APPS/JUST4DESK: App nativa macOS en SwiftUI para busqueda instantanea y organizacion automatica de documentos.
 - App principal (este repo): JUST4ALL en Swift (Sources/ y Resources/).
@@ -26,12 +26,13 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - JUST4FOLDERS: `APPS/JUST4FOLDERS/README.md` y `APPS/JUST4FOLDERS/TODO.md`
 - JUST4PICT: `APPS/JUST4PICT/README.md`, `APPS/JUST4PICT/TODO.md`, `APPS/JUST4PICT/ENHANCE_ARCHITECTURE.md`, `APPS/JUST4PICT/QA_BATCH_LOCAL.md`
 - JUST4DESK: `APPS/JUST4DESK/README.md`, `APPS/JUST4DESK/TODO.md`, `APPS/JUST4DESK/MEMORY.md` (memoria maestra)
+- Estado y pendientes del conjunto (por app, con prioridades): `PENDIENTES.md`
 
 ## Submodulos
 
 - JUST4PDF: App macOS para leer PDFs, convertir PDF↔imagenes y herramientas basicas de PDF.
 - JUST4CONVERT: App nativa macOS para conversion de audio, video e imagenes con cola de trabajos.
-- JUST4FOLDERS: Commander de archivos con indice instantaneo, busqueda global/semantica y organizacion asistida por IA.
+- JUST4FOLDERS: Commander de archivos con indice instantaneo, busqueda global/semantica y organizacion asistida por IA. Incluye Panel Hub (DESK/PICT), monitor del sistema (CPU/RAM/disco/IO/bateria) y motor de copia con clon APFS (v2.3.11).
 - JUST4PICT: App nativa macOS para mejorar imagenes por lotes con presets automaticos.
 - JUST4DESK: App nativa macOS para buscar al instante y archivar automaticamente documentos en una taxonomia ordenada.
 - JUST4ALL: Hub macOS para lanzar subapps con vista de detalles.

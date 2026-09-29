@@ -67,9 +67,13 @@ Tres zonas apiladas en el panel (~≥220pt de ancho útil):
   nunca sobrescribe; «Abrir en JUST4PICT» si está instalada) + **soltar documentos sobre el
   módulo DESK** → propuesta de categoría (reglas + taxonomía compartida) con confirmación y
   movimiento por la cola de trabajos (renombra en colisión; nunca borra) + **destino recordado
-  por carpeta** (`j4f.folderDestinations`, se precarga al abrir «Ordenar»). PENDIENTE: reglas
-  favoritas más ricas (por extensión, no solo destino) y «mejorar» de PICT (requiere exponer el
-  pipeline de JUST4PICT o moverlo a J4SHARED).
+  por carpeta (`j4f.folderDestinations`, se precarga al abrir «Ordenar»).
+  **PICT (v2.3.3–v2.3.7)**: el submenú contextual «JUST4PICT ▸» (convertir a PNG/JPEG y
+  redimensionar con `sips`) gana **«Mejorar con JUST4PICT ▸»** con 5 presets, que ejecuta el
+  **CLI real `just4pict-cli`** (creado en JUST4PICT el 29-sep) sobre la selección, en background y
+  sin sobrescribir: el pipeline PRO se reutiliza sin duplicar código ni depender de la UI de la
+  otra app. El submenú se OCULTA si el CLI no está disponible y los presets se deshabilitan sin
+  imágenes (v2.3.4). PENDIENTE: reglas favoritas más ricas (por extensión, no solo destino).
 
 ## Riesgos / notas
 
@@ -91,3 +95,11 @@ para archivarlo en la taxonomía → Deshacer funciona».
 - Módulo por defecto al arrancar: ¿Vista previa (conservador) o DESK?
 - Bandeja: ¿solo `~/Descargas` o lista configurable de carpetas vigiladas?
 - ¿Los botones del hub también en la toolbar del commander (acceso rápido)?
+
+## Estado (29-sep, v2.3.11)
+
+F1, F2 y F3 están **implementadas y validadas en vivo**; además el módulo PICT reutiliza el CLI
+`just4pict-cli` desde el clic derecho del panel (v2.3.7). Lo que queda del plan es menor: reglas
+favoritas por extensión, unificar el diario de Deshacer del drop del módulo DESK (hoy mueve por la
+cola de trabajos, sin diario) y el selector compacto (la vista previa perdió ~65 pt). Ver
+`PENDIENTES.md`.

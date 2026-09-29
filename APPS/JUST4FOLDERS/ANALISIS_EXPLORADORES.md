@@ -141,6 +141,17 @@ Extra ✅: **hover por fila** sutil (no se dibuja sobre la fila seleccionada).
 | Duplicados | ✗ | ✓ | ✓ | ✗ | ✓ | ✅ |
 | Etiquetas Finder | ✓ | ✗ | ✗ | parcial | ✗ | ✅ |
 | **Archivado con IA + undo** | ✗ | ✗ | ✗ | ✗ | ✗ | ✅ **solo nosotros** |
+| Panel lateral modular (hub DESK/PICT) | ✗ | parcial | ✗ | parcial | parcial | ✅ **v2.3** |
+| Copias/duplicado instantáneos (clon APFS) | ✗ | parcial | ✗ | parcial | ✗ | ✅ **v2.3.11** |
+| Monitor del sistema en el toolbar | ✗ | ✗ | ✗ | ✗ | ✗ | ✅ **v2.3.6** |
+
+### Añadidos v2.3.x (29-sep) — no estaban en el análisis original
+
+- **Panel Hub** (módulos Vista previa | DESK | PICT en el panel derecho), **monitor del sistema**
+  en el toolbar (CPU · RAM · Disco · I/O · Batería, con avisos por color), **pestañas con menú
+  contextual**, **vista previa fiable** (imágenes en local + reintentos de QuickLook), **orden por
+  Tamaño correcto**, **tamaños asignados en disco** con caché persistente y **motor de copia con
+  clon APFS**. Detalle y medidas en `README.md` y `PENDIENTES.md`.
 
 ## 6) Conclusión
 

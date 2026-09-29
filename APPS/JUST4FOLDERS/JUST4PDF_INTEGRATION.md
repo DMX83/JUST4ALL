@@ -85,7 +85,7 @@ Reimplementar merge/compresión/export en Swift con **PDFKit/CoreGraphics** dent
 | **F1** | CLI real (`cli.py`, 4 subcomandos + tests) | JUST4PDF | ✅ **hecho (29-sep)**: commit `6b5cf14`; 7 tests en verde; compress real 1936→1326 B |
 | **F2** | Submenú «JUST4PDF ▸» + runner + detección + validación e2e | FOLDERS | ✅ **hecho (29-sep)**: submenú con reglas de visibilidad, merge validado e2e desde el menú (`~/unido.pdf`, 4 págs) |
 | **F3** | Progreso en cola de trabajos + Quick Actions Finder (v0.3) sobre el mismo CLI | Ambos | Medio |
-| **F4** | Módulo del Panel Hub (opcional): mini acciones PDF sobre la selección (como PICT) | FOLDERS | Bajo si F2 está hecho |
+| **F4** | Módulo del Panel Hub (opcional): mini acciones PDF sobre la selección (como PICT). **Patrón ya probado con PICT**: `just4pict-cli` + «Mejorar con JUST4PICT ▸» (v2.3.7) | FOLDERS | Bajo si F2 está hecho |
 
 ### Estado de validación (29-sep)
 

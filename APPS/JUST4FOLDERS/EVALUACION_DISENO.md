@@ -145,3 +145,21 @@ Validado en vivo (captura): toolbar con separadores, título compacto, header je
 en una fila. Único punto sin acción: sheets vs ventanas auxiliares (decisión de uso).
 
 *(Fuera de alcance: temas, iconografía a medida, i18n completa, accesibilidad formal.)*
+
+---
+
+## Addendum v2.3.x (29-sep) — diseño añadido después del cierre
+
+- **Monitor del sistema en el toolbar** (`SystemMonitor.swift`): jerarquía de etiquetas atenuadas y
+  valores a color pleno con separadores tenues; **avisos por color** (naranja = atención, rojo =
+  saturado, con más peso tipográfico al subir de nivel) y menú propio en el clic derecho
+  (reiniciar máximos registrados / Abrir Monitor de Actividad). La batería se pinta en **verde**
+  al cargar. Tooltip con el detalle (GB usados/totales/libres, MB/s, máximos vistos).
+- **Prioridad de los mensajes de estado**: el aviso del watcher («Actualizado (N cambios)»)
+  ya no pisa un mensaje de operación recién publicado (4 s de protección en el commander).
+- **Columna Tamaño más ancha** (base 84 pt, suelo 68): con el tamaño ya correcto aparecen valores
+  de 3 dígitos («263,94 GB») que antes se recortaban a «26…GB».
+- **Vista previa fiable**: las imágenes se pintan en local con ImageIO (orientación EXIF y
+  reducción a 2600 px) en vez de depender de QuickLook; los demás tipos usan QuickLook, ahora con
+  reintentos. Motivo: QuickLook puede fallar el primer intento con ficheros recién creados y el
+  icono genérico se quedaba pegado.

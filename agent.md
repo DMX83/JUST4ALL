@@ -9,7 +9,7 @@
 - **APPS/**: Contiene subapps independientes:
   - **JUST4PDF**: Herramientas PDF (Python, PySide6)
   - **JUST4CONVERT**: Conversión multimedia (SwiftUI)
-  - **JUST4FOLDERS**: Organización de archivos/carpetas (SwiftUI)
+  - **JUST4FOLDERS**: Organización de archivos/carpetas (AppKit-first, hosting mínimo de SwiftUI)
   - **JUST4PICT**: Mejoramiento de imágenes por lotes (SwiftUI)
   - **JUST4DESK**: Buscador instantáneo + organizador de documentos (SwiftUI)
 - **Sources/JUST4ALL/**: Código fuente del hub principal (Swift)
@@ -44,12 +44,12 @@
 - **Notas**: FLAC pendiente, control de bitrate limitado en AVFoundation.
 
 ### 4. JUST4FOLDERS
-- **Lenguaje**: Swift (SwiftUI, AppKit-first)
-- **Función**: Análisis y organización de archivos por categorías, UI 2 paneles tipo commander, sandboxing, bookmarks, operaciones batch.
-- **Arquitectura**: Modular SPM (J4FCore, J4FFileSystem, J4FOps, J4FUI).
-- **Build**: Xcode/SPM, script DMG.
-- **QA**: Scripts de performance, checklist manual, smoke tests.
-- **Notas**: Motor adaptativo, cache LRU, manejo de volúmenes RO/NTFS.
+- **Lenguaje**: Swift (AppKit-first; el hosting de SwiftUI es mínimo).
+- **Función**: Commander de 2 paneles con índice FTS5 propio (búsqueda global ⌘F y semántica con IA), vista aplanada, rename en lote, duplicados, etiquetas, «Ordenar esta carpeta» con taxonomía compartida de DESK, **Panel Hub** (Vista previa | DESK | PICT), **monitor del sistema** en el toolbar y organización asistida por IA.
+- **Arquitectura**: Modular SPM (J4FCore, J4FFileSystem, J4FOps, J4FUI) + motores compartidos en `PACKAGES/J4SHARED` (J4ICore/J4IIndex).
+- **Build**: Xcode/SPM (`swift build`), script DMG dedicado.
+- **QA**: 61 tests en `J4FOpsTests`, scripts de performance (`perf_100k_listing.sh`), smoke test y checklist manual (`QA_LOCAL.md`).
+- **Notas**: motor adaptativo (lanes big/small, telemetría y auto-tuning), **copias con clon APFS** (`clonefile`/`copyfile`, medido 12,6x en ficheros pequeños) y **caché persistente de tamaños** (`folder-sizes.json`). Última versión: **v2.3.11**.
 
 ### 5. JUST4PICT
 - **Lenguaje**: Swift (SwiftUI)
