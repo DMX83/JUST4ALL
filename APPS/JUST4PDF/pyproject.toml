@@ -18,6 +18,9 @@ dependencies = [
 
 [project.scripts]
 just4pdf = "just4pdf.app:main"
+# CLI sin UI (Quick Actions del Finder / integración con JUST4FOLDERS):
+# merge · compress · pdf2img · img2pdf  — ver src/just4pdf/cli.py
+just4pdf-cli = "just4pdf.cli:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
