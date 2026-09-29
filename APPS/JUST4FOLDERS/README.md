@@ -91,6 +91,12 @@ swift run
   `PictQuickActions`, fichero nuevo junto al original): tanto el submenu como el tercer segmento
   del selector **solo aparecen cuando la seleccion incluye imagenes**. Propuesta completa en
   `PANEL_HUB.md` y evaluacion de la integracion de JUST4PDF en `JUST4PDF_INTEGRATION.md`.
+- **Integracion JUST4PDF (v2.3.5)**: clic derecho sobre PDFs → submenu **JUST4PDF ▸**:
+  «Unir PDFs en uno…» (≥2), «Comprimir ▸ Bajo/Medio/Alto», «Exportar paginas a imagenes…»,
+  «Crear PDF con estas imagenes…» (seleccion solo de imagenes) y «Abrir con JUST4PDF».
+  Usa el CLI real `just4pdf-cli` (PATH del usuario o venv del repo; fallback
+  `python -m just4pdf.cli`), en background, con nombres unicos junto al origen y **nunca
+  sobrescribe**; el submenu solo aparece si hay una accion usable.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

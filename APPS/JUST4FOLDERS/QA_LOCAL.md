@@ -73,6 +73,13 @@
   DESK» (2 segmentos); al seleccionar un PNG aparecen el 3er segmento y el submenu «JUST4PICT ▸»
   (capturas de ambos estados). Fix de coherencia: un «pict» persistido sin seleccion util se
   normaliza a «Vista previa» (antes: segmento decia Vista previa con el modulo PICT visible).
+- [x] Integracion JUST4PDF (v2.3.5): submenu «JUST4PDF ▸» visible con PDFs (capturas) y OCULTO
+  con una carpeta (ni JUST4PDF ni JUST4PICT); «Unir PDFs en uno…» habilitado con 2 PDFs y
+  «Crear PDF con estas imagenes…» deshabilitado (reglas); **merge E2E desde el menu** →
+  ~/unido.pdf con 4 paginas (fixtures 2+2) y aparece en el panel tras refrescar (fixtures
+  limpiados). CLI JUST4PDF: 7 tests + smoke manual (compress 1936→1326 B; pdf2img 4 PNG).
+  **Pendiente de clic manual**: Comprimir (3 niveles), Exportar paginas, Crear PDF con imagenes
+  y Abrir con JUST4PDF (misma plomeria del merge ya validado).
 - [x] `swift test`: 55 en `J4FOpsTests`, 0 fallos.
 
 ## Checklist manual — Panel Hub v2.3.x (para verificar con la app en mano)
@@ -98,6 +105,10 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   «Abrir en JUST4PICT» funciona si la apps esta instalada (bundle com.dmx83.just4pict).
 - [ ] **Clic derecho en una imagen → submenú «JUST4PICT»**: probar los 3 ítems (mismo motor
   sips que el módulo; deshabilitado si la selección no tiene imágenes).
+- [ ] **JUST4PDF**: clic derecho sobre PDFs → «Comprimir ▸» (probar Bajo/Medio/Alto), «Exportar
+  páginas a imágenes…» y «Abrir con JUST4PDF» (requiere la app JUST4PDF registrada); «Crear PDF
+  con estas imágenes…» seleccionando 2+ imágenes (sin PDFs). El submenú solo aparece con
+  selección usable.
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.
 - [ ] Decision de diseno: la vista previa perdio ~65pt de alto (fila del selector + franja de la
   toolbar); valorar selector compacto (iconos) o moverlo a la barra de herramientas.

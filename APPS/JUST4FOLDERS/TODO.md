@@ -55,9 +55,13 @@
   selector («Vista previa | DESK | PICT») aparecen únicamente cuando la selección del panel
   activo incluye imágenes; un módulo «pict» persistido sin selección útil se normaliza a «Vista
   previa» (fix de coherencia selector↔contenido). Validado en ambos estados con capturas.
-- [ ] **Integración JUST4PDF** (evaluación completa en `JUST4PDF_INTEGRATION.md`): F1 = CLI real
-  en JUST4PDF (los servicios merge/compress/pdf2img/img2pdf ya existen sin Qt), F2 = submenú
-  contextual «JUST4PDF ▸» en FOLDERS (unir/comprimir/pdf→imágenes/imágenes→pdf/abrir con).
+- [x] **Integración JUST4PDF F1+F2 (v2.3.5)**: CLI real `just4pdf-cli` en JUST4PDF (merge ·
+  compress · pdf2img · img2pdf, sobre sus servicios sin Qt; 7 tests) + submenú **«JUST4PDF ▸»**
+  en FOLDERS (reglas de visibilidad; runner en background con detección PATH → venv del repo;
+  nombres únicos). Merge validado e2e desde el menú; CLI validado (compress real 1936→1326 B).
+  Evaluación completa y pendientes en `JUST4PDF_INTEGRATION.md`.
+- [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
+  Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de
   PICT, unificar el diario de Deshacer para el drop (hoy mueve sin diario), selector compacto
   (la vista previa perdió ~65pt de alto).

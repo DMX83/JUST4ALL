@@ -82,10 +82,20 @@ Reimplementar merge/compresión/export en Swift con **PDFKit/CoreGraphics** dent
 
 | Fase | Qué | Dónde | Esfuerzo |
 |---|---|---|---|
-| **F1** | CLI real (`cli.py`, 4 subcomandos + tests) | JUST4PDF | Bajo (servicios ya hechos y testeados) |
-| **F2** | Submenú «JUST4PDF ▸» + runner + detección + validación e2e | FOLDERS | Bajo-medio (patrón PICT ya montado) |
+| **F1** | CLI real (`cli.py`, 4 subcomandos + tests) | JUST4PDF | ✅ **hecho (29-sep)**: commit `6b5cf14`; 7 tests en verde; compress real 1936→1326 B |
+| **F2** | Submenú «JUST4PDF ▸» + runner + detección + validación e2e | FOLDERS | ✅ **hecho (29-sep)**: submenú con reglas de visibilidad, merge validado e2e desde el menú (`~/unido.pdf`, 4 págs) |
 | **F3** | Progreso en cola de trabajos + Quick Actions Finder (v0.3) sobre el mismo CLI | Ambos | Medio |
 | **F4** | Módulo del Panel Hub (opcional): mini acciones PDF sobre la selección (como PICT) | FOLDERS | Bajo si F2 está hecho |
+
+### Estado de validación (29-sep)
+
+- CLI: `merge`/`compress`/`pdf2img`/`img2pdf` con tests + smoke manual; instalado como
+  `just4pdf-cli` en el venv del repo (y entry en pyproject para instalaciones de usuario).
+- FOLDERS: «JUST4PDF ▸» visible con PDFs y oculto con selecciones no usables; «Unir PDFs en
+  uno…» habilitado con ≥2 PDFs; «Crear PDF con estas imágenes…» deshabilitado con PDFs;
+  merge E2E desde el menú con refresco del panel al terminar.
+- **Pendiente de clic manual**: Comprimir (3 niveles), Exportar páginas, Crear PDF con
+  imágenes y Abrir con JUST4PDF (la plomería es la misma del merge ya validado).
 
 ## 5. Decisiones abiertas (propuestas por defecto)
 

@@ -3603,7 +3603,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         case openInTab = 1, openInOther, openWith, quickLook, showInFinder, openTerminal
         case newFolder, rename, duplicate, compress
         case cut, copy, paste, trash, deletePermanent
-        case copyPath, favorite, addLocation, info, tags, share, tools, workspaces, pict
+        case copyPath, favorite, addLocation, info, tags, share, tools, workspaces, pict, pdf
     }
     private var hoverMonitor: Any?
     /// Ola 3 — galería: modo de vista, colección y scroll propios.
@@ -4697,6 +4697,41 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
         pictItem.submenu = pictMenu
         menu.addItem(pictItem)
+        // v2.3.5 — JUST4PDF ▸ (CLI real; solo aparece si la selección lo permite).
+        let pdfItem = NSMenuItem(title: "JUST4PDF", action: nil, keyEquivalent: "")
+        pdfItem.tag = ContextTag.pdf.rawValue
+        let pdfMenu = NSMenu(title: "JUST4PDF")
+        let pdfMergeItem = NSMenuItem(title: "Unir PDFs en uno…", action: #selector(contextPdfQuickAction(_:)), keyEquivalent: "")
+        pdfMergeItem.tag = 0
+        pdfMergeItem.target = self
+        pdfMenu.addItem(pdfMergeItem)
+        let pdfCompressItem = NSMenuItem(title: "Comprimir", action: nil, keyEquivalent: "")
+        pdfCompressItem.tag = 9
+        let pdfCompressMenu = NSMenu(title: "Comprimir")
+        let pdfLevels: [(String, Int)] = [("Bajo", 10), ("Medio", 11), ("Alto", 12)]
+        for level in pdfLevels {
+            let item = NSMenuItem(title: level.0, action: #selector(contextPdfQuickAction(_:)), keyEquivalent: "")
+            item.tag = level.1
+            item.target = self
+            pdfCompressMenu.addItem(item)
+        }
+        pdfCompressItem.submenu = pdfCompressMenu
+        pdfMenu.addItem(pdfCompressItem)
+        let pdfExportItem = NSMenuItem(title: "Exportar páginas a imágenes…", action: #selector(contextPdfQuickAction(_:)), keyEquivalent: "")
+        pdfExportItem.tag = 1
+        pdfExportItem.target = self
+        pdfMenu.addItem(pdfExportItem)
+        let pdfImagesItem = NSMenuItem(title: "Crear PDF con estas imágenes…", action: #selector(contextPdfQuickAction(_:)), keyEquivalent: "")
+        pdfImagesItem.tag = 2
+        pdfImagesItem.target = self
+        pdfMenu.addItem(pdfImagesItem)
+        pdfMenu.addItem(.separator())
+        let pdfOpenItem = NSMenuItem(title: "Abrir con JUST4PDF", action: #selector(contextPdfQuickAction(_:)), keyEquivalent: "")
+        pdfOpenItem.tag = 3
+        pdfOpenItem.target = self
+        pdfMenu.addItem(pdfOpenItem)
+        pdfItem.submenu = pdfMenu
+        menu.addItem(pdfItem)
         menu.addItem(.separator())
         add("Cortar", #selector(contextCutSelectionAction), tag: .cut)
         add("Copiar", #selector(contextCopySelectionAction), tag: .copy)
@@ -4996,8 +5031,41 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 item.isHidden = !hasImages
                 item.isEnabled = hasImages
                 item.submenu?.items.forEach { $0.isEnabled = hasImages }
+            case .pdf:
+                // v2.3.5 — visibilidad y habilitados del submenú JUST4PDF.
+                configurePdfSubmenu(item, selection: selected)
             default:
                 item.isEnabled = true
+            }
+        }
+    }
+
+    /// v2.3.5 — reglas del submenú «JUST4PDF ▸»: solo aparece si hay una acción usable.
+    private func configurePdfSubmenu(_ item: NSMenuItem, selection: [URL]) {
+        let pdfs = selection.filter { $0.pathExtension.lowercased() == "pdf" }
+        let images = PictQuickActions.images(in: selection)
+        let onlyImages = !selection.isEmpty && pdfs.isEmpty && images.count == selection.count
+        let hasBridge = Just4PdfActions.isAvailable
+        let hasApp = Just4PdfActions.appURL() != nil
+
+        let mergeOK = hasBridge && pdfs.count >= 2
+        let compressOK = hasBridge && !pdfs.isEmpty
+        let exportOK = hasBridge && pdfs.count == 1
+        let imagesOK = hasBridge && onlyImages && images.count >= 2
+        let openOK = hasApp && !pdfs.isEmpty
+
+        item.isHidden = !(mergeOK || compressOK || exportOK || imagesOK || openOK)
+        guard let submenu = item.submenu else { return }
+        for entry in submenu.items {
+            switch entry.tag {
+            case 0: entry.isEnabled = mergeOK
+            case 9:
+                entry.isEnabled = compressOK
+                entry.submenu?.items.forEach { $0.isEnabled = compressOK }
+            case 1: entry.isEnabled = exportOK
+            case 2: entry.isEnabled = imagesOK
+            case 3: entry.isEnabled = openOK
+            default: break
             }
         }
     }
@@ -6599,6 +6667,49 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             onStatus?("PICT: \(result.created.count) \(verb); \(result.failures) fallo(s).")
         }
         refreshCurrentDirectory()
+    }
+
+    /// v2.3.5 — acciones del submenú JUST4PDF (CLI en background; nunca sobrescribe).
+    @objc private func contextPdfQuickAction(_ sender: NSMenuItem) {
+        let selection = selectedURLs()
+        let pdfs = selection.filter { $0.pathExtension.lowercased() == "pdf" }
+        let images = PictQuickActions.images(in: selection)
+
+        func finish(_ result: Just4PdfActions.OperationResult) {
+            onStatus?(result.message)
+            if result.success {
+                refreshCurrentDirectory()
+            } else {
+                NSSound.beep()
+            }
+        }
+
+        switch sender.tag {
+        case 0:
+            guard pdfs.count >= 2 else { NSSound.beep(); return }
+            onStatus?("JUST4PDF: uniendo \(pdfs.count) PDFs…")
+            Just4PdfActions.merge(pdfs, completion: finish)
+        case 10, 11, 12:
+            guard !pdfs.isEmpty else { NSSound.beep(); return }
+            let level = sender.tag == 10 ? "low" : (sender.tag == 11 ? "medium" : "high")
+            onStatus?("JUST4PDF: comprimiendo \(pdfs.count) PDF(s)…")
+            Just4PdfActions.compressAll(pdfs, level: level, completion: finish)
+        case 1:
+            guard pdfs.count == 1, let pdf = pdfs.first else { NSSound.beep(); return }
+            onStatus?("JUST4PDF: exportando páginas…")
+            Just4PdfActions.pdfToImages(pdf, completion: finish)
+        case 2:
+            guard pdfs.isEmpty, images.count >= 2, images.count == selection.count else { NSSound.beep(); return }
+            onStatus?("JUST4PDF: creando PDF…")
+            Just4PdfActions.imagesToPDF(images, completion: finish)
+        case 3:
+            guard !pdfs.isEmpty else { NSSound.beep(); return }
+            Just4PdfActions.openWith(pdfs) { [weak self] message in
+                self?.onStatus?(message)
+            }
+        default:
+            break
+        }
     }
 
     /// «Comprimir» — zip nativo (/usr/bin/zip) junto a los originales.

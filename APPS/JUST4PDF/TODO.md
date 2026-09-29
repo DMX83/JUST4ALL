@@ -69,6 +69,11 @@
 ## 7) Quick Actions / CLI (v0.3)
 
 - [x] Stub `just4pdf-cli` (wrapper `open -a JUST4PDF`)
+- [x] **CLI real `just4pdf-cli`** (29-sep): `merge` · `compress --level` · `pdf2img` · `img2pdf`
+  sobre los servicios existentes (sin Qt); salida = ruta del resultado en stdout; códigos 0/2/3;
+  `compress` seguro (si no reduce → «sin-ganancia» sin conservar salida). 5 tests
+  (`tests/test_cli.py`). Integrado en JUST4FOLDERS (submenú «JUST4PDF ▸» del clic derecho; diseño
+  y estado en `APPS/JUST4FOLDERS/JUST4PDF_INTEGRATION.md`).
 
 ---
 
