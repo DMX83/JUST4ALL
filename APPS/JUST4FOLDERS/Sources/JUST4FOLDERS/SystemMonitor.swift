@@ -1,10 +1,12 @@
 import AppKit
 import Darwin
+import IOKit
 import IOKit.ps
 
 /// v2.3.6 — monitoreo ligero del sistema para la barra de herramientas.
-/// Solo lectura y sin dependencias externas: ticks de CPU del kernel,
-/// `vm_statistics64` para la memoria e IOKit para la batería.
+/// Solo lectura y sin dependencias externas: ticks de CPU del kernel, `vm_statistics64`
+/// para la memoria, IOKit (contadores de E/S de los discos reales) para el disco y
+/// `IOKit.ps` para la batería.
 final class SystemMonitor {
     private var lastCPUTicks: (busy: UInt32, idle: UInt32)?
 
@@ -100,6 +102,99 @@ final class SystemMonitor {
         return (usedBytes, totalBytes, freeBytes)
     }
 
+    // MARK: - Actividad de disco (E/S)
+
+    private var lastDiskIO: (timestamp: TimeInterval, readBytes: Int64, writeBytes: Int64, operations: Int64)?
+
+    /// Rendimiento de E/S del intervalo (lectura/escritura en MB/s y operaciones/s),
+    /// sumando los controladores de almacenamiento reales (se excluyen los «Disk Image»,
+    /// cuya E/S ya contabiliza el disco físico que los respalda). La primera llamada solo
+    /// fija la base y devuelve `nil`.
+    ///
+    /// OJO: macOS **no** expone un % de ocupación de disco fiable. Los contadores «Total
+    /// Time (Read/Write)» del driver son tiempo acumulado POR OPERACIÓN sobre varias colas
+    /// NVMe y pueden superar el tiempo real (medido: >300 % mientras un `dd` escribía a
+    /// 425 MB/s), así que el indicador honesto es el caudal en MB/s.
+    func diskActivity() -> (readMBps: Double, writeMBps: Double, opsPerSecond: Double)? {
+        guard let totals = diskIOTotals() else {
+            lastDiskIO = nil
+            return nil
+        }
+        let now = Date().timeIntervalSince1970
+        defer {
+            lastDiskIO = (now, totals.readBytes, totals.writeBytes, totals.operations)
+        }
+        guard let previous = lastDiskIO else { return nil }
+        let interval = now - previous.timestamp
+        guard interval > 0.1 else { return nil }
+        let readDelta = max(0, totals.readBytes - previous.readBytes)
+        let writeDelta = max(0, totals.writeBytes - previous.writeBytes)
+        let opsDelta = max(0, totals.operations - previous.operations)
+        return (
+            Double(readDelta) / interval / 1_000_000,
+            Double(writeDelta) / interval / 1_000_000,
+            Double(opsDelta) / interval
+        )
+    }
+
+    /// Suma acumulada de bytes/operaciones de los discos reales (excluye «Disk Image»).
+    private func diskIOTotals() -> (readBytes: Int64, writeBytes: Int64, operations: Int64)? {
+        guard let matching = IOServiceMatching("IOBlockStorageDriver") else { return nil }
+        var iterator: io_iterator_t = 0
+        guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) == KERN_SUCCESS else {
+            return nil
+        }
+        defer { IOObjectRelease(iterator) }
+
+        var readBytes: Int64 = 0
+        var writeBytes: Int64 = 0
+        var operations: Int64 = 0
+        var found = false
+
+        var service = IOIteratorNext(iterator)
+        while service != 0 {
+            if !isDiskImage(service), let stats = statistics(for: service) {
+                readBytes += statValue(stats, "Bytes (Read)")
+                writeBytes += statValue(stats, "Bytes (Write)")
+                operations += statValue(stats, "Operations (Read)") + statValue(stats, "Operations (Write)")
+                found = true
+            }
+            IOObjectRelease(service)
+            service = IOIteratorNext(iterator)
+        }
+        return found ? (readBytes, writeBytes, operations) : nil
+    }
+
+    private func statistics(for service: io_registry_entry_t) -> [String: Any]? {
+        var properties: Unmanaged<CFMutableDictionary>?
+        guard IORegistryEntryCreateCFProperties(service, &properties, kCFAllocatorDefault, 0) == KERN_SUCCESS,
+              let dictionary = properties?.takeRetainedValue() as? [String: Any],
+              let stats = dictionary["Statistics"] as? [String: Any] else {
+            return nil
+        }
+        return stats
+    }
+
+    private func statValue(_ stats: [String: Any], _ key: String) -> Int64 {
+        (stats[key] as? NSNumber)?.int64Value ?? 0
+    }
+
+    /// «Disk Image» = DMG/imágenes montadas: no son discos físicos (su E/S ya la cuenta la SSD).
+    private func isDiskImage(_ service: io_registry_entry_t) -> Bool {
+        var parent: io_registry_entry_t = 0
+        guard IORegistryEntryGetParentEntry(service, kIOServicePlane, &parent) == KERN_SUCCESS, parent != 0 else {
+            return false
+        }
+        defer { IOObjectRelease(parent) }
+        guard let characteristics = IORegistryEntryCreateCFProperty(
+            parent, "Device Characteristics" as CFString, kCFAllocatorDefault, 0
+        )?.takeRetainedValue() as? [String: Any],
+              let product = characteristics["Product Name"] as? String else {
+            return false
+        }
+        return product.contains("Disk Image")
+    }
+
     // MARK: - Batería
 
     /// Batería interna (% y estado). Devuelve `nil` en equipos sin batería (Mac de escritorio).
@@ -127,15 +222,16 @@ final class SystemMonitor {
 }
 
 /// v2.3.6 — etiqueta compacta y clicable con el estado de la Mac («CPU 12% · RAM 63% ·
-/// Disco 47% · Batería 82%»), pensada para el final del toolbar. Clic: abre el Monitor de
-/// Actividad (el tooltip detalla GB de memoria/disco y el estado de la batería).
+/// Disco 47% · I/O 120 MB/s · Batería 82%»), pensada para el final del toolbar. Clic: abre
+/// el Monitor de Actividad (el tooltip detalla GB de memoria/disco, MB/s de E/S y el estado
+/// de la batería).
 /// Usa frame fijo (no Auto Layout) porque el toolbar solo mide la vista al insertarla;
 /// con Auto Layout, el ancho se fijaba con el texto todavía vacío y el resumen se recortaba.
 /// El timer solo vive mientras la vista está en una ventana (sin fugas al cerrarla).
 final class SystemMonitorView: NSView {
     /// Ancho reservado para el peor caso con 3 dígitos («CPU 100% · RAM 100% · Disco 100% ·
-    /// Batería 100% ⚡» ≈ 300 pt medidos con la fuente real).
-    static let preferredWidth: CGFloat = 306
+    /// I/O 999 MB/s · Batería 100%» ≈ 354 pt medidos con la fuente real).
+    static let preferredWidth: CGFloat = 356
 
     private let monitor = SystemMonitor()
     private let button = NSButton()
@@ -191,6 +287,7 @@ final class SystemMonitorView: NSView {
         let cpu = monitor.cpuUsagePercent()
         let memory = monitor.memoryUsage()
         let disk = monitor.diskUsage()
+        let io = monitor.diskActivity()
         let battery = monitor.batteryStatus()
 
         var parts: [String] = []
@@ -220,8 +317,18 @@ final class SystemMonitorView: NSView {
             let free = ByteCountFormatter.string(fromByteCount: Int64(disk.freeBytes), countStyle: .file)
             details.append("Disco: \(used) usados de \(total) · \(free) libres (\(percent)%)")
         }
+        if let io {
+            let read = Self.throughputText(io.readMBps)
+            let write = Self.throughputText(io.writeMBps)
+            parts.append("I/O \(Self.throughputText(io.readMBps + io.writeMBps))")
+            let ops = NumberFormatter.localizedString(
+                from: NSNumber(value: max(0, io.opsPerSecond.rounded())),
+                number: .decimal
+            )
+            details.append("Actividad de disco: \(write) de escritura · \(read) de lectura · \(ops) ops/s")
+        }
         if let battery {
-            parts.append(battery.isCharging ? "Batería \(battery.percent)% ⚡" : "Batería \(battery.percent)%")
+            parts.append("Batería \(battery.percent)%")
             let stateText = battery.isCharging ? " (cargando)" : (battery.onBattery ? " (en batería)" : "")
             details.append("Batería \(battery.percent)%\(stateText)")
         }
@@ -236,6 +343,14 @@ final class SystemMonitorView: NSView {
         )
         let detailText = details.isEmpty ? "Sin datos disponibles." : details.joined(separator: " · ")
         button.toolTip = "\(detailText) · clic para abrir Monitor de Actividad"
+    }
+
+    /// «0 MB/s» · «425 MB/s» · «2.5 GB/s» (umbral 1000 MB/s, decimal con punto).
+    private static func throughputText(_ mbPerSecond: Double) -> String {
+        if mbPerSecond >= 1000 {
+            return String(format: "%.1f GB/s", mbPerSecond / 1000)
+        }
+        return String(format: "%.0f MB/s", max(0, mbPerSecond))
     }
 
     @objc private func openActivityMonitor() {

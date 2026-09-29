@@ -102,9 +102,13 @@ swift run
   izquierda/derecha» (las acciones operan sobre la pestana pulsada, sin cambiar la activa).
   El toolbar deja el boton `Diagnostics` (pasa al menu Operaciones, a la paleta ⌘K y al editor
   de atajos), normaliza sus etiquetas al espanol y termina con indicadores de vida de
-  **CPU · RAM · Disco · Bateria** (refresco cada 2 s; el tooltip detalla GB de memoria y de
-  disco — usados/totales/libres — y el estado de la bateria; clic abre el Monitor de Actividad;
-  `SystemMonitor.swift`, solo lectura: Mach/IOKit, sin dependencias).
+  **CPU · RAM · Disco · I/O · Bateria** (refresco cada 2 s; el tooltip detalla GB de memoria y de
+  disco — usados/totales/libres —, MB/s de lectura/escritura con ops/s, y el estado de la
+  bateria; clic abre el Monitor de Actividad; `SystemMonitor.swift`, solo lectura: Mach/IOKit,
+  sin dependencias). El segmento **I/O** es el caudal real del disco (p. ej. «1.5 GB/s» durante
+  una copia grande): macOS no expone un % de ocupacion fiable —los tiempos por operacion del
+  driver se acumulan sobre varias colas NVMe y superan el 100 %—, asi que se muestra el
+  rendimiento, que es lo que delata al disco trabajando a tope.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

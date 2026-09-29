@@ -66,12 +66,16 @@
   validado e2e: clic derecho → «Cerrar pestaña» cerró la tab extra). «Exportar diagnóstico»
   sale del toolbar (herramienta de soporte) al menú Operaciones + paleta ⌘K + editor de atajos;
   etiquetas del toolbar normalizadas a español (Inicio/Copiar/Mover/Papelera/Nueva carpeta/…);
-  indicadores **CPU · RAM · Disco · Batería** al final del toolbar (`SystemMonitor.swift`: Mach
-  ticks CPU, `vm_statistics64`, capacidad del volumen de arranque, IOKit; refresco 2 s; clic →
-  Monitor de Actividad; el timer solo vive mientras la vista está en ventana). Capturas
-  verificadas: «CPU 18% · RAM 71% · Batería 82%» y, ya con disco, «CPU 19% · RAM 69% ·
-  Disco 89% · Batería 80%» (el 89% cuadra con `df`; el tooltip detalla GB usados/totales/libres
-  de memoria y disco).
+  indicadores **CPU · RAM · Disco · I/O · Batería** al final del toolbar (`SystemMonitor.swift`:
+  Mach ticks CPU, `vm_statistics64`, capacidad del volumen de arranque, contadores
+  `IOBlockStorageDriver` para la actividad (Bytes Read/Write, excluyendo «Disk Image»), IOKit;
+  refresco 2 s; clic → Monitor de Actividad; el timer solo vive mientras la vista está en
+  ventana). Nota: el % de disco es OCUPACIÓN; el segmento I/O es TRABAJO (caudal en MB/s —
+  macOS no da un % de ocupación fiable: los tiempos por operación suman >100 %). Capturas
+  verificadas: «CPU 18% · RAM 71% · Batería 82%»; «CPU 19% · RAM 69% · Disco 89% · Batería 80%»
+  (89% = `df`); y con actividad: «I/O 59 MB/s» en reposo-arranque (replay FSEvents) y «I/O
+  1.5 GB/s» durante un `dd` de 4 GB (también 661 MB/s). El tooltip detalla GB usados/totales/
+  libres de memoria y disco, y lectura/escritura/ops de la E/S.
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de

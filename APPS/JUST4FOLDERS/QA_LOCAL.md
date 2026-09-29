@@ -84,9 +84,10 @@
   con «Cerrar pestaña» · «Cerrar las demás» · «Duplicar pestaña» · «Renombrar pestaña…» ·
   «Mover a la izquierda» (deshabilitado, es la primera) · «Mover a la derecha» (captura);
   pulsar «Cerrar pestaña» cerró la tab extra y quedó «1: dmx83». Toolbar: ítem `Diagnostics`
-  ya no está; indicadores al final «CPU 18% · RAM 71% · Batería 82%» y, tras añadir disco,
-  «CPU 19% · RAM 69% · Disco 89% · Batería 80%» (capturas 1:1; el 89% de disco cuadra con
-  `df`: 860G usados de 995G = 89%); 55 tests.
+  ya no está; indicadores al final «CPU 18% · RAM 71% · Batería 82%», «CPU 19% · RAM 69% ·
+  Disco 89% · Batería 80%» y con actividad «I/O 59 MB/s» en reposo-arranque + «I/O 1.5 GB/s»
+  (y 661 MB/s) durante un `dd` de 4 GB (capturas 1:1; el 89% de disco cuadra con `df`:
+  860G usados de 995G = 89%); 55 tests.
 - [x] `swift test`: 55 en `J4FOpsTests`, 0 fallos.
 
 ## Checklist manual — Panel Hub v2.3.x (para verificar con la app en mano)
@@ -121,10 +122,13 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   activa (debe renombrarla SIN cambiarla de activa) y «Mover a la derecha» en la ultima
   (deshabilitado). Comprobar que el clic derecho NO cambia la pestana activa.
 - [ ] **Monitor (v2.3.6)**: los valores de CPU/RAM/Disco se mueven (abrir una operacion
-  pesada); el % de disco coincide con «Acerca de este Mac»/`df` y el tooltip trae GB
-  usados/totales/libres (memoria y disco); bateria con y sin cargador (⚡ al cargar); clic →
-  abre Monitor de Actividad; al cerrar la ventana el timer se detiene (sin lecturas en segundo
-  plano). En Mac sin bateria el bloque desaparece (solo CPU · RAM · Disco).
+  pesada); el % de disco (OCUPACION, cuadra con «Acerca de este Mac»/`df`) y el segmento
+  **I/O** (TRABAJO: caudal real; en reposo ~0-5 MB/s, en copias grandes escala a cientos de
+  MB/s o GB/s — asi se ve el disco «a full»); el tooltip trae GB usados/totales/libres
+  (memoria y disco) y desglose escritura/lectura/ops/s; bateria con y sin cargador (el estado
+  «cargando» aparece solo en el tooltip); clic → abre Monitor de Actividad; al cerrar la
+  ventana el timer se detiene (sin lecturas en segundo plano). En Mac sin bateria el bloque
+  desaparece (queda CPU · RAM · Disco · I/O).
 - [ ] **Exportar diagnostico (v2.3.6)**: menu `Operaciones ▸ Exportar diagnóstico…` y paleta
   (⌘K) generan el zip con `summary.json` etc.
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.

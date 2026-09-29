@@ -3364,7 +3364,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             // v2.3.6 — indicadores en vivo. El ítem es una vista; su ciclo de vida va
             // ligado a la ventana (arranca/para el timer en viewDidMoveToWindow).
             item.label = "Monitoreo"
-            item.toolTip = "CPU, memoria, disco y batería de esta Mac · clic para abrir Monitor de Actividad"
+            item.toolTip = "CPU, memoria, disco (uso y actividad) y batería de esta Mac · clic para abrir Monitor de Actividad"
             item.visibilityPriority = .high
             item.view = systemMonitorView
         case ToolbarID.search:
