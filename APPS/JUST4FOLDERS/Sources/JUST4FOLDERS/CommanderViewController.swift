@@ -2600,27 +2600,37 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
 
         if flags.isEmpty {
-            switch event.keyCode {
-            case 36, 76: // Return / Enter
+            // v2.3.15 — Mapa de teclas (ver `KeyNavigationKeys`, J4FUI): **Return/Enter = abrir**
+            // (entrar en la carpeta / abrir el fichero, igual que doble clic, F4 y ⌘↓) y
+            // **Retroceso ⌫ = volver a la ubicación anterior** (historial atrás; si no hay
+            // historial, subir un nivel). El usuario pidió «Return para volver» pero la tecla que
+            // usaba era Retroceso: en los teclados estilo Windows la tecla grande está rotulada
+            // «Enter» y muchos modelos la reportan a macOS como el Enter del teclado numérico (76).
+            if KeyNavigationKeys.opensSelection(event.keyCode) {
                 if openSelectedSidebarIfFocused() {
                     return true
                 }
-                // v2.3.12 — Return en el panel (lista O galería) siempre vuelve a la ubicación
-                // anterior (o sube si no hay historial): NUNCA abre el elemento. Abrir está en
-                // doble clic, F4 y ⌘↓. Al editar un campo el primer respondiente es el editor de
-                // texto (no la tabla), así que la barra de direcciones y el buscador no pasan por
-                // aquí y conservan su Return (navegar a la ruta / lanzar la búsqueda).
-                //
-                // v2.3.14 — Antes solo respondía si el foco estaba **exactamente** en la tabla o
-                // la galería; si el foco estaba en el hub/vista previa, en la barra de dirección,
-                // en un control del toolbar o en nada (recién abierta la app), Return se perdía y
-                // parecía «no hacer nada». Ahora hay respaldo: el panel bajo el puntero y, si el
-                // puntero no está sobre ningún panel, el panel activo.
+                // v2.3.14 — Si el foco no está en ninguna lista/galería (hub o vista previa, barra
+                // de dirección, toolbar, fondo de la ventana o la app recién abierta), hay
+                // respaldo: el panel bajo el puntero y, si no, el panel activo. Al editar un campo
+                // el primer respondiente es el editor de texto, así que la barra de direcciones y
+                // el buscador no pasan por aquí y conservan su Return propio.
+                if let panel = panelOwningTableFirstResponder() ?? panelForKeyboardNavigation() {
+                    panel.activatePanel()
+                    panel.openSelection()
+                    return true
+                }
+            }
+            if KeyNavigationKeys.goesBack(event.keyCode) {
+                // ⌫ (Retroceso) — volver. Si hay filtro rápido activo, la rama de filtro de más
+                // arriba ya se ha quedado con ⌫ para borrar el último carácter.
                 if let panel = panelOwningTableFirstResponder() ?? panelForKeyboardNavigation() {
                     panel.activatePanel()
                     panel.goBackOrUp()
                     return true
                 }
+            }
+            switch event.keyCode {
             case 49: // Espacio — QuickLook (Ola 1)
                 if toggleQuickLookPreview() {
                     return true
@@ -3931,9 +3941,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         loadDirectory(next, pushHistory: false)
     }
 
-    /// v2.3.12 — Return en la lista: vuelve a la ubicación **anterior** (historial atrás) y, si no
-    /// hay historial (primera carpeta visitada), **sube un nivel**. Se mantiene abrir en doble
-    /// clic, F4 y ⌘↓. Si no hay a dónde ir (raíz sin historial) avisa con un beep.
+    /// v2.3.15 — ⌫ (Retroceso) en el panel: vuelve a la ubicación **anterior** (historial atrás) y,
+    /// si no hay historial (primera carpeta visitada), **sube un nivel**. Si no hay a dónde ir
+    /// (raíz sin historial) avisa con un beep. Abrir la selección está en **Return/Enter**, doble
+    /// clic, F4 y ⌘↓ (`openSelection()`).
     func goBackOrUp() {
         if !historyBack.isEmpty {
             goBack()
@@ -4732,11 +4743,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
         tableView.focusDelegate = self
         tableView.onEnterPressed = { [weak self] in
-            // v2.3.12 — Return = volver a la ubicación ANTERIOR (pedido del usuario: «cuando
-            // navegas por un panel y presionas Return, quiero que vaya a la ubicación anterior»).
-            // Si no hay historial atrás (primera carpeta visitada) sube un nivel. Abrir el
-            // elemento sigue en doble clic, F4 y ⌘↓.
-            self?.goBackOrUp()
+            // v2.3.15 — Return/Enter **abre** la selección (entrar en la carpeta / abrir el
+            // fichero), igual que el doble clic. Volver a la ubicación anterior es **Retroceso ⌫**
+            // (lo gestiona el monitor de teclas del commander con `goBackOrUp()`).
+            self?.openSelection()
         }
         tableView.onBackgroundClicked = { [weak self] in
             self?.selectRootDirectory()

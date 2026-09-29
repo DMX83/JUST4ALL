@@ -173,32 +173,34 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   dispararse (tope de 3 cálculos a la vez).
   *Validado (29-sep): `Library` 135 GB ≈ `du` 128 GiB; dos capturas separadas 35 s idénticas
   (sin parpadeo); CPU 5,5 % en reposo.*
-- [ ] **Return = ubicación anterior (v2.3.12)**: entrar en una carpeta (doble clic) y pulsar
-  **Return** → debe volver a la carpeta anterior; pulsar Return otra vez va retrocediendo en el
-  historial y, cuando se agota, **sube un nivel** (en la raíz, beep y no pasa nada). Con un
-  **fichero seleccionado**, Return **no debe abrirlo** (abrir = doble clic / **F4** / **⌘↓**). Lo
-  mismo en **vista de galería** (⌥⌘G). Comprobar que el menú **Navegación** tiene Atrás ⌘[,
-  Adelante ⌘], Subir un nivel ⌘↑ y Abrir selección ⌘↓ (también en la paleta ⌘K) y que **⌘L →
-  teclear una ruta → Return** sigue navegando a esa ruta.
-  *Validado (29-sep): `dmx83` + Return → `/Users`; «Subir un nivel» de `~/` → `/Users` → `/`;
-  «Atrás» de `/` → `/Users`; Return con fichero seleccionado no abre; en galería, Return en `~/`
-  → `/Users`. Pendiente de comprobar a mano: `⌘L` + Return (los keystrokes sintéticos no entraron
-  en el campo de dirección).*
-- [ ] **Return siempre responde (v2.3.14)** — los tres casos que antes se quedaban en silencio:
-  1. **Recién abierta la app**, sin tocar nada, pulsar **Return** → el panel activo sube un nivel
-     (antes el foco estaba en la tabla «Ubicaciones autorizadas» del sidebar, sin selección, y no
-     pasaba nada). El foco debe estar en la lista del panel activo al arrancar.
-  2. **Con el sidebar enfocado y sin selección**, Return → vuelve el panel activo (no silencio).
-     Con una **fila del sidebar seleccionada**, Return debe **abrir esa ubicación** (sin cambios).
-  3. **Con el foco en el hub/vista previa, la barra de dirección o el toolbar**, Return → vuelve el
+- [ ] **Abrir y volver con el teclado (v2.3.15)**: con una carpeta seleccionada, **Return/Enter**
+  debe **entrar** en ella (con un fichero, abrirlo con su app). **Retroceso ⌫** debe **volver a la
+  ubicación anterior** (historial atrás; cuando se agota, sube un nivel; en la raíz, beep). Los dos
+  deben funcionar igual en **lista** y **galería** (⌥⌘G), con el **Enter del teclado numérico** y con
+  **Bloqueo de mayúsculas** activo. Con el **filtro rápido** activo (escribir sobre la lista), ⌫ borra
+  el último carácter del filtro en vez de navegar; **Esc** lo limpia. Comprobar que el menú
+  **Navegación** muestra «Atrás (Retroceso ⌫) ⌘[» y «Abrir selección (Return) ⌘↓» (también en la
+  paleta ⌘K) y que **⌘L → teclear una ruta → Return** sigue navegando a esa ruta.
+  *Validado (29-sep, capturas de cabecera): ↓ + Enter(num) `~/` → `1DMX83`; ⌫ → `~/`; Enter del
+  teclado numérico (76 + numericPad) → entra; ⌫ con filtro «1d» activo → no navega. Pendiente de
+  comprobar a mano: `⌘L` + Return (los keystrokes sintéticos no entran en el campo de dirección).*
+- [ ] **Ninguna tecla en silencio (v2.3.14)** — los tres casos que antes no hacían nada con el foco
+  fuera de la lista:
+  1. **Recién abierta la app**, sin tocar nada: el foco debe estar en la lista del panel activo y
+     **⌫** debe subir un nivel (antes el foco estaba en la tabla «Ubicaciones autorizadas» del
+     sidebar, sin selección, y la tecla se consumía sin efecto). Return con la carpeta vacía de
+     selección no debe hacer nada, y eso es correcto.
+  2. **Con el sidebar enfocado y sin selección**, **⌫** → vuelve el panel activo (no silencio).
+     Con una **fila del sidebar seleccionada**, Return debe **abrir esa ubicación**.
+  3. **Con el foco en el hub/vista previa, la barra de dirección o el toolbar**, **⌫** → vuelve el
      panel que esté bajo el puntero (o el activo).
-  Además, Return/Enter debe funcionar **con Bloqueo de mayúsculas activo** y con el **Enter del
-  teclado numérico** (importante en **teclados Windows**, cuya tecla grande «Enter» a veces se
+  Además, **⌫ y Return/Enter** deben funcionar **con Bloqueo de mayúsculas activo** y con el **Enter
+  del teclado numérico** (importante en **teclados Windows**, cuya tecla grande «Enter» a veces se
   reporta como Enter del teclado numérico). Aprovechar para comprobar que **F5–F8** funcionan
   pulsando la tecla F real (no el atajo multimedia).
-  *Validado (29-sep, con keystrokes sintéticos y capturas de cabecera): arranque + Return →
-  `~/` → `/Users`; keyCode 36 y 76 con `numericPad` → navegan; sidebar enfocado sin selección →
-  navega; foco de arranque = «Contenido del panel Izquierdo».*
+  *Validado (29-sep, con keystrokes sintéticos y capturas de cabecera): foco de arranque =
+  «Contenido del panel Izquierdo»; ⌫ con el sidebar enfocado y sin selección → navega; keyCode 36 y
+  76 con `numericPad` → responden.*
 - [ ] **Copia/duplicado rápido (v2.3.11)**: duplicar una carpeta grande **en el mismo disco** debe
   ser casi instantáneo y **no consumir espacio** (clon APFS): comprobar en Finder que el espacio
   libre no baja al duplicar 1-2 GB. Los **metadatos** se conservan (crear un fichero con una

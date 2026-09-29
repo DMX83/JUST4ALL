@@ -182,21 +182,26 @@ swift run
     el recorrido ya está en el óptimo del sistema; lo que ahorra recursos es **no repetirlo**.
   · Nota de arranque: el pico de CPU al abrir la app es el **índice SQLite** (verificado con
     `sample`), no el cálculo de tamaños.
-- **Navegación con teclado (v2.3.12)**: **Return** en el panel (lista **o galería**) vuelve
-  **siempre** a la **ubicación anterior** (historial atrás) y, si no hay historial (primera carpeta
-  visitada), **sube un nivel**; si no hay a dónde ir, avisa con un beep. Return **nunca abre** el
-  elemento: abrir está en **doble clic**, **F4** y **⌘↓**. El menú **Navegación** gana **Atrás ⌘[**,
-  **Adelante ⌘]**, **Subir un nivel ⌘↑** y **Abrir selección ⌘↓** (las mismas entradas con su atajo
-  en la paleta ⌘K): el historial deja de depender solo del ratón. La barra de direcciones y el
-  buscador conservan su Return propio (navegar a la ruta escrita / lanzar la búsqueda).
+- **Navegación con teclado (v2.3.12 → v2.3.15)**: mapa final, el clásico de los gestores de
+  ficheros: **Return / Enter = abrir** la selección (entrar en la carpeta o abrir el fichero,
+  igual que el doble clic) y **Retroceso ⌫ = volver a la ubicación anterior** (historial atrás y,
+  cuando se agota, subir un nivel; en la raíz avisa con un beep). *Corrección de rumbo:* en
+  v2.3.12 Return se puso a «volver» porque el usuario lo pidió así, pero la tecla que usaba de
+  verdad era **Retroceso** — y en un **teclado Windows** la tecla grande está rotulada «Enter» y
+  muchos modelos la reportan a macOS como el **Enter del teclado numérico**, así que la confusión
+  era fácil. Abrir está también en **F4** y **⌘↓**. El menú **Navegación** gana **Atrás (Retroceso
+  ⌫) ⌘[**, **Adelante ⌘]**, **Subir un nivel ⌘↑** y **Abrir selección (Return) ⌘↓** (las mismas
+  entradas con su atajo en la paleta ⌘K). Con el **filtro rápido** activo, ⌫ borra el último
+  carácter del filtro en vez de navegar; **Esc** lo limpia. La barra de direcciones y el buscador
+  conservan su Return propio (navegar a la ruta escrita / lanzar la búsqueda).
 - **Return fiable con cualquier foco y cualquier teclado (v2.3.14)**: la primera versión solo
   respondía si el foco estaba **exactamente** en la lista/ galería, y únicamente si los
   modificadores eran *vacíos*. Eso dejaba tres agujeros reales que se han corregido:
   · al arrancar, AppKit daba el foco a la tabla del sidebar («Ubicaciones autorizadas») **sin
-  selección**, y Return se **consumía en silencio**: ahora el sidebar solo se queda con Return si
-  de verdad abre una ubicación y, si no, Return hace lo suyo en el panel; además el commander
+  selección**, y la tecla se **consumía en silencio**: ahora el sidebar solo se queda con la tecla
+  si de verdad abre una ubicación y, si no, se deja pasar; además el commander
   arranca con el foco en la lista del panel activo;
-  · si el foco estaba en el hub/vista previa, la barra de dirección o el toolbar, Return se
+  · si el foco estaba en el hub/vista previa, la barra de dirección o el toolbar, la tecla se
   perdía: ahora hay respaldo (el panel bajo el puntero y, si no, el panel activo);
   · macOS añade modificadores «de ruido» que ya no invalidan el atajo: `.numericPad` (el Enter del
   teclado numérico, que es lo que manda la tecla grande «Enter» de muchos **teclados Windows**),

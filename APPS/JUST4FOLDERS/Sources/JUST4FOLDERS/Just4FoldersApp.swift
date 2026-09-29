@@ -87,7 +87,7 @@ struct Just4FoldersApp: App {
                 }
                 .keyboardShortcut("l", modifiers: .command)
                 Divider()
-                Button("Atrás") {
+                Button("Atrás (Retroceso ⌫)") {
                     NotificationCenter.default.post(name: .j4fGoBack, object: nil)
                 }
                 .keyboardShortcut("[", modifiers: .command)
@@ -99,7 +99,7 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fGoUp, object: nil)
                 }
                 .keyboardShortcut(.upArrow, modifiers: .command)
-                Button("Abrir selección") {
+                Button("Abrir selección (Return)") {
                     NotificationCenter.default.post(name: .j4fOpenSelection, object: nil)
                 }
                 .keyboardShortcut(.downArrow, modifiers: .command)
