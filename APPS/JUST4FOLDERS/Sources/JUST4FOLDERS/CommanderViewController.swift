@@ -2592,6 +2592,15 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
                 if openSelectedSidebarIfFocused() {
                     return true
                 }
+                // v2.3.12 — Return en el panel (lista O galería) siempre vuelve a la ubicación
+                // anterior (o sube si no hay historial): NUNCA abre el elemento. Abrir está en
+                // doble clic, F4 y ⌘↓. Al editar un campo el primer respondiente es el editor de
+                // texto (no la tabla), así que la barra de direcciones y el buscador no pasan por
+                // aquí y conservan su Return (navegar a la ruta / lanzar la búsqueda).
+                if let panel = panelOwningTableFirstResponder() {
+                    panel.goBackOrUp()
+                    return true
+                }
             case 49: // Espacio — QuickLook (Ola 1)
                 if toggleQuickLookPreview() {
                     return true
