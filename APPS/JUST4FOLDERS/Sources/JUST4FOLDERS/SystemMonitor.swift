@@ -224,7 +224,8 @@ final class SystemMonitor {
 /// v2.3.6 — etiqueta compacta y clicable con el estado de la Mac («CPU 12% · RAM 63% ·
 /// Disco 47% · I/O 120 MB/s · Batería 82%»), pensada para el final del toolbar. Clic: abre
 /// el Monitor de Actividad (el tooltip detalla GB de memoria/disco, MB/s de E/S y el estado
-/// de la batería).
+/// de la batería). Diseño: etiquetas en gris atenuado, separadores tenues, valores a color
+/// pleno y **avisos por umbral** — naranja (atención) y rojo (crítico/saturado) con más peso.
 /// Usa frame fijo (no Auto Layout) porque el toolbar solo mide la vista al insertarla;
 /// con Auto Layout, el ancho se fijaba con el texto todavía vacío y el resumen se recortaba.
 /// El timer solo vive mientras la vista está en una ventana (sin fugas al cerrarla).
@@ -283,6 +284,44 @@ final class SystemMonitorView: NSView {
         timer = nil
     }
 
+    // MARK: - Diseño de la etiqueta
+
+    /// Umbrales de aviso del monitor (naranja = atención; rojo = crítico/saturado).
+    private enum Thresholds {
+        static let cpuWarn = 80.0, cpuCritical = 95.0
+        static let ramWarn = 85.0, ramCritical = 95.0
+        static let diskWarn = 85.0, diskCritical = 93.0
+        static let ioWarnMBps = 500.0, ioCriticalMBps = 1500.0
+        static let batteryWarn = 25, batteryCritical = 15
+    }
+
+    /// Un segmento de la etiqueta: nombre en gris + valor que puede teñirse/engrosarse.
+    private struct Metric {
+        let label: String
+        let value: String
+        let color: NSColor
+        let font: NSFont
+    }
+
+    private static let baseFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+    private static let warnFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+    private static let criticalFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
+
+    /// Severidad: 0 normal · 1 aviso (naranja, seminegrita) · 2 crítico (rojo, negrita).
+    private static func severity(for value: Double, warn: Double, critical: Double) -> Int {
+        if value >= critical { return 2 }
+        if value >= warn { return 1 }
+        return 0
+    }
+
+    private static func style(for severity: Int) -> (color: NSColor, font: NSFont) {
+        switch severity {
+        case 2: return (.systemRed, criticalFont)
+        case 1: return (.systemOrange, warnFont)
+        default: return (.labelColor, baseFont)
+        }
+    }
+
     private func updateSnapshot() {
         let cpu = monitor.cpuUsagePercent()
         let memory = monitor.memoryUsage()
@@ -290,37 +329,44 @@ final class SystemMonitorView: NSView {
         let io = monitor.diskActivity()
         let battery = monitor.batteryStatus()
 
-        var parts: [String] = []
+        var metrics: [Metric] = []
         var details: [String] = []
 
         if let cpu {
             let percent = Int(cpu.rounded())
-            parts.append("CPU \(percent)%")
+            let style = Self.style(for: Self.severity(for: cpu, warn: Thresholds.cpuWarn, critical: Thresholds.cpuCritical))
+            metrics.append(Metric(label: "CPU", value: "\(percent)%", color: style.color, font: style.font))
             details.append("CPU \(percent)%")
         }
         if let memory {
-            let percent = memory.totalBytes > 0
-                ? Int((Double(memory.usedBytes) / Double(memory.totalBytes) * 100).rounded())
+            let ratio = memory.totalBytes > 0
+                ? Double(memory.usedBytes) / Double(memory.totalBytes) * 100
                 : 0
-            parts.append("RAM \(percent)%")
+            let percent = Int(ratio.rounded())
+            let style = Self.style(for: Self.severity(for: ratio, warn: Thresholds.ramWarn, critical: Thresholds.ramCritical))
+            metrics.append(Metric(label: "RAM", value: "\(percent)%", color: style.color, font: style.font))
             let used = ByteCountFormatter.string(fromByteCount: Int64(memory.usedBytes), countStyle: .memory)
             let total = ByteCountFormatter.string(fromByteCount: Int64(memory.totalBytes), countStyle: .memory)
             details.append("RAM \(used) de \(total) (\(percent)%)")
         }
         if let disk {
-            let percent = disk.totalBytes > 0
-                ? Int((Double(disk.usedBytes) / Double(disk.totalBytes) * 100).rounded())
+            let ratio = disk.totalBytes > 0
+                ? Double(disk.usedBytes) / Double(disk.totalBytes) * 100
                 : 0
-            parts.append("Disco \(percent)%")
+            let percent = Int(ratio.rounded())
+            let style = Self.style(for: Self.severity(for: ratio, warn: Thresholds.diskWarn, critical: Thresholds.diskCritical))
+            metrics.append(Metric(label: "Disco", value: "\(percent)%", color: style.color, font: style.font))
             let used = ByteCountFormatter.string(fromByteCount: Int64(disk.usedBytes), countStyle: .file)
             let total = ByteCountFormatter.string(fromByteCount: Int64(disk.totalBytes), countStyle: .file)
             let free = ByteCountFormatter.string(fromByteCount: Int64(disk.freeBytes), countStyle: .file)
             details.append("Disco: \(used) usados de \(total) · \(free) libres (\(percent)%)")
         }
         if let io {
+            let totalMBps = io.readMBps + io.writeMBps
+            let style = Self.style(for: Self.severity(for: totalMBps, warn: Thresholds.ioWarnMBps, critical: Thresholds.ioCriticalMBps))
+            metrics.append(Metric(label: "I/O", value: Self.throughputText(totalMBps), color: style.color, font: style.font))
             let read = Self.throughputText(io.readMBps)
             let write = Self.throughputText(io.writeMBps)
-            parts.append("I/O \(Self.throughputText(io.readMBps + io.writeMBps))")
             let ops = NumberFormatter.localizedString(
                 from: NSNumber(value: max(0, io.opsPerSecond.rounded())),
                 number: .decimal
@@ -328,21 +374,49 @@ final class SystemMonitorView: NSView {
             details.append("Actividad de disco: \(write) de escritura · \(read) de lectura · \(ops) ops/s")
         }
         if let battery {
-            parts.append("Batería \(battery.percent)%")
+            // Aviso solo cuando va con batería; cargando nunca es una alerta.
+            var severity = 0
+            if battery.onBattery && !battery.isCharging {
+                if battery.percent <= Thresholds.batteryCritical { severity = 2 }
+                else if battery.percent <= Thresholds.batteryWarn { severity = 1 }
+            }
+            let style = Self.style(for: severity)
+            metrics.append(Metric(label: "Batería", value: "\(battery.percent)%", color: style.color, font: style.font))
             let stateText = battery.isCharging ? " (cargando)" : (battery.onBattery ? " (en batería)" : "")
             details.append("Batería \(battery.percent)%\(stateText)")
         }
 
-        let title = parts.isEmpty ? "—" : parts.joined(separator: " · ")
-        button.attributedTitle = NSAttributedString(
-            string: title,
-            attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
-                .foregroundColor: NSColor.secondaryLabelColor
-            ]
-        )
+        button.attributedTitle = Self.attributedSummary(metrics)
+        let plain = metrics.map { "\($0.label) \($0.value)" }.joined(separator: " · ")
+        button.setAccessibilityValue(plain.isEmpty ? "sin datos" : plain)
         let detailText = details.isEmpty ? "Sin datos disponibles." : details.joined(separator: " · ")
         button.toolTip = "\(detailText) · clic para abrir Monitor de Actividad"
+    }
+
+    /// Compone el resumen con jerarquía visual: etiquetas en gris atenuado, separadores
+    /// tenues y valores a color pleno (o de aviso: naranja/rojo + peso mayor) según umbrales.
+    private static func attributedSummary(_ metrics: [Metric]) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let separator = NSAttributedString(
+            string: " · ",
+            attributes: [.font: baseFont, .foregroundColor: NSColor.tertiaryLabelColor]
+        )
+        let labelAttributes: [NSAttributedString.Key: Any] = [
+            .font: baseFont,
+            .foregroundColor: NSColor.secondaryLabelColor
+        ]
+        for (index, metric) in metrics.enumerated() {
+            if index > 0 { result.append(separator) }
+            result.append(NSAttributedString(string: "\(metric.label) ", attributes: labelAttributes))
+            result.append(NSAttributedString(string: metric.value, attributes: [
+                .font: metric.font,
+                .foregroundColor: metric.color
+            ]))
+        }
+        if metrics.isEmpty {
+            result.append(NSAttributedString(string: "—", attributes: labelAttributes))
+        }
+        return result
     }
 
     /// «0 MB/s» · «425 MB/s» · «2.5 GB/s» (umbral 1000 MB/s, decimal con punto).

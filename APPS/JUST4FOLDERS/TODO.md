@@ -75,7 +75,11 @@
   verificadas: «CPU 18% · RAM 71% · Batería 82%»; «CPU 19% · RAM 69% · Disco 89% · Batería 80%»
   (89% = `df`); y con actividad: «I/O 59 MB/s» en reposo-arranque (replay FSEvents) y «I/O
   1.5 GB/s» durante un `dd` de 4 GB (también 661 MB/s). El tooltip detalla GB usados/totales/
-  libres de memoria y disco, y lectura/escritura/ops de la E/S.
+  libres de memoria y disco, y lectura/escritura/ops de la E/S. **Diseño (avisos por color)**:
+  jerarquía etiquetas atenuadas / valores plenos y umbrales naranja-rojo con más peso
+  tipográfico (I/O 500 MB/s→1.5 GB/s; CPU 80→95 %; RAM 85→95 %; disco 85→93 %; batería 25→15 %
+  sin cargador). Capturas: «Disco 89%» naranja (atención), «I/O 1.2 GB/s» naranja y «I/O
+  1.6 GB/s» rojo + seminegrita/negrita.
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de

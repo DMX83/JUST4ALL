@@ -108,7 +108,11 @@ swift run
   sin dependencias). El segmento **I/O** es el caudal real del disco (p. ej. «1.5 GB/s» durante
   una copia grande): macOS no expone un % de ocupacion fiable —los tiempos por operacion del
   driver se acumulan sobre varias colas NVMe y superan el 100 %—, asi que se muestra el
-  rendimiento, que es lo que delata al disco trabajando a tope.
+  rendimiento, que es lo que delata al disco trabajando a tope. Diseno con jerarquia
+  (etiquetas atenuadas, separadores tenues, valores a color pleno) y **avisos por color**:
+  naranja = atencion (I/O >=500 MB/s; CPU >=80 %; RAM >=85 %; disco >=85 % ocupado; bateria
+  <=25 % sin cargador) y rojo = critico/saturado (I/O >=1.5 GB/s; CPU/RAM >=95 %; disco
+  >=93 %; bateria <=15 %), con mas peso tipografico al subir de nivel.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del
