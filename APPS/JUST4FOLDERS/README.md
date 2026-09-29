@@ -189,6 +189,19 @@ swift run
   **Adelante ⌘]**, **Subir un nivel ⌘↑** y **Abrir selección ⌘↓** (las mismas entradas con su atajo
   en la paleta ⌘K): el historial deja de depender solo del ratón. La barra de direcciones y el
   buscador conservan su Return propio (navegar a la ruta escrita / lanzar la búsqueda).
+- **Return fiable con cualquier foco y cualquier teclado (v2.3.14)**: la primera versión solo
+  respondía si el foco estaba **exactamente** en la lista/ galería, y únicamente si los
+  modificadores eran *vacíos*. Eso dejaba tres agujeros reales que se han corregido:
+  · al arrancar, AppKit daba el foco a la tabla del sidebar («Ubicaciones autorizadas») **sin
+  selección**, y Return se **consumía en silencio**: ahora el sidebar solo se queda con Return si
+  de verdad abre una ubicación y, si no, Return hace lo suyo en el panel; además el commander
+  arranca con el foco en la lista del panel activo;
+  · si el foco estaba en el hub/vista previa, la barra de dirección o el toolbar, Return se
+  perdía: ahora hay respaldo (el panel bajo el puntero y, si no, el panel activo);
+  · macOS añade modificadores «de ruido» que ya no invalidan el atajo: `.numericPad` (el Enter del
+  teclado numérico, que es lo que manda la tecla grande «Enter» de muchos **teclados Windows**),
+  `.function` (F1–F12 y flechas) y `.capsLock` (Bloqueo de mayúsculas). Eso también devuelve la
+  vida a **F5–F8** en teclados reales, que antes no respondían.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

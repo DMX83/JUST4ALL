@@ -184,6 +184,21 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   «Atrás» de `/` → `/Users`; Return con fichero seleccionado no abre; en galería, Return en `~/`
   → `/Users`. Pendiente de comprobar a mano: `⌘L` + Return (los keystrokes sintéticos no entraron
   en el campo de dirección).*
+- [ ] **Return siempre responde (v2.3.14)** — los tres casos que antes se quedaban en silencio:
+  1. **Recién abierta la app**, sin tocar nada, pulsar **Return** → el panel activo sube un nivel
+     (antes el foco estaba en la tabla «Ubicaciones autorizadas» del sidebar, sin selección, y no
+     pasaba nada). El foco debe estar en la lista del panel activo al arrancar.
+  2. **Con el sidebar enfocado y sin selección**, Return → vuelve el panel activo (no silencio).
+     Con una **fila del sidebar seleccionada**, Return debe **abrir esa ubicación** (sin cambios).
+  3. **Con el foco en el hub/vista previa, la barra de dirección o el toolbar**, Return → vuelve el
+     panel que esté bajo el puntero (o el activo).
+  Además, Return/Enter debe funcionar **con Bloqueo de mayúsculas activo** y con el **Enter del
+  teclado numérico** (importante en **teclados Windows**, cuya tecla grande «Enter» a veces se
+  reporta como Enter del teclado numérico). Aprovechar para comprobar que **F5–F8** funcionan
+  pulsando la tecla F real (no el atajo multimedia).
+  *Validado (29-sep, con keystrokes sintéticos y capturas de cabecera): arranque + Return →
+  `~/` → `/Users`; keyCode 36 y 76 con `numericPad` → navegan; sidebar enfocado sin selección →
+  navega; foco de arranque = «Contenido del panel Izquierdo».*
 - [ ] **Copia/duplicado rápido (v2.3.11)**: duplicar una carpeta grande **en el mismo disco** debe
   ser casi instantáneo y **no consumir espacio** (clon APFS): comprobar en Finder que el espacio
   libre no baja al duplicar 1-2 GB. Los **metadatos** se conservan (crear un fichero con una

@@ -422,6 +422,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let backHistoryMenu = NSMenu()
     private let forwardHistoryMenu = NSMenu()
 
+    /// v2.3.14 — true cuando ya se le dio el foco inicial a la lista del panel activo (para no
+    /// repetirlo en cada `viewDidAppear`, que puede llamarse más de una vez).
+    private var didSetInitialKeyboardFocus = false
+
     private var activeSide: PanelSide = .left {
         didSet {
             updateActiveIndicator()
@@ -881,6 +885,13 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         configureToolbarIfNeeded()
         installKeyMonitorIfNeeded()
         healSplitLayoutIfNeeded()
+        // v2.3.14 — Al arrancar, AppKit daba el foco de teclado a la primera vista aceptable del
+        // sidebar (la tabla «Ubicaciones autorizadas»), así que las flechas y Return actuaban en el
+        // sidebar y no en el panel. El commander arranca con el foco en la lista del panel activo.
+        if !didSetInitialKeyboardFocus {
+            didSetInitialKeyboardFocus = true
+            activePanel.focusTable()
+        }
         // v2.1.1 — la restauración de frames del split ocurre después del primer layout;
         // un segundo intento diferido evita que el preview quede gigante al arrancar.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
@@ -1881,9 +1892,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         statusLabel.stringValue = "Recientes limpiados."
     }
 
-    @objc private func openSelectedSidebarLocation(_ sender: NSTableView) {
+    @discardableResult
+    @objc private func openSelectedSidebarLocation(_ sender: NSTableView) -> Bool {
         let row = sender.clickedRow >= 0 ? sender.clickedRow : sender.selectedRow
-        guard row >= 0 else { return }
+        guard row >= 0 else { return false }
 
         let url: URL?
         if sender == authorizedTable {
@@ -1900,9 +1912,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             url = recentLocations[safe: row]
         }
 
-        guard let target = url else { return }
+        guard let target = url else { return false }
         _ = beginSecurityScope(for: target)
         activePanel.openURL(target)
+        return true
     }
 
     private func loadSidebarLocations() {
@@ -2576,7 +2589,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             }
         }
 
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let flags = navigationFlags(event)
 
         // v2.0 — atajos configurables (shortcuts.json): se resuelven antes de los por defecto.
         if let command = ShortcutStore.shared.command(
@@ -2586,7 +2599,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             return true
         }
 
-        if flags == [] {
+        if flags.isEmpty {
             switch event.keyCode {
             case 36, 76: // Return / Enter
                 if openSelectedSidebarIfFocused() {
@@ -2597,7 +2610,14 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
                 // doble clic, F4 y ⌘↓. Al editar un campo el primer respondiente es el editor de
                 // texto (no la tabla), así que la barra de direcciones y el buscador no pasan por
                 // aquí y conservan su Return (navegar a la ruta / lanzar la búsqueda).
-                if let panel = panelOwningTableFirstResponder() {
+                //
+                // v2.3.14 — Antes solo respondía si el foco estaba **exactamente** en la tabla o
+                // la galería; si el foco estaba en el hub/vista previa, en la barra de dirección,
+                // en un control del toolbar o en nada (recién abierta la app), Return se perdía y
+                // parecía «no hacer nada». Ahora hay respaldo: el panel bajo el puntero y, si el
+                // puntero no está sobre ningún panel, el panel activo.
+                if let panel = panelOwningTableFirstResponder() ?? panelForKeyboardNavigation() {
+                    panel.activatePanel()
                     panel.goBackOrUp()
                     return true
                 }
@@ -2687,6 +2707,22 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         if leftPanel.isTableFirstResponder() { return leftPanel }
         if rightPanel.isTableFirstResponder() { return rightPanel }
         return nil
+    }
+
+    /// v2.3.14 — Panel que debe responder a la navegación por teclado cuando el foco no está en
+    /// ninguna lista/galería (hub o vista previa, barra de dirección, toolbar, fondo de la
+    /// ventana o la app recién abierta): se usa el panel bajo el puntero y, si el puntero no está
+    /// sobre ninguno (o el panel está oculto por el modo de un solo panel), el panel activo.
+    private func panelForKeyboardNavigation() -> FilePanelViewController? {
+        guard let window = view.window else { return nil }
+        let point = window.mouseLocationOutsideOfEventStream
+        for panel in [leftPanel, rightPanel] where !panel.view.isHidden {
+            let local = panel.view.convert(point, from: nil)
+            if panel.view.bounds.contains(local) {
+                return panel
+            }
+        }
+        return activePanel
     }
 
     // MARK: - QuickLook (Ola 1)
@@ -3172,10 +3208,18 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
     }
 
+    /// v2.3.14 — Modificadores significativos del evento. Ver `KeyNavigationFlags` (J4FUI): un
+    /// teclado estilo Windows puede mandar la tecla «Enter» como Enter del teclado numérico
+    /// (keyCode 76 + `.numericPad`), y macOS marca `.function` en F1–F12/flechas y `.capsLock`
+    /// con el Bloqueo de mayúsculas: todo eso hacía que `flags == []` fuese falso y que Return,
+    /// Espacio, Tab, F5–F8 y el filtro rápido no respondieran.
+    private func navigationFlags(_ event: NSEvent) -> NSEvent.ModifierFlags {
+        KeyNavigationFlags.significant(event.modifierFlags)
+    }
+
     /// ¿Los modificadores del evento están exactamente en alguno de los conjuntos dados?
     private func flagsEither(_ sets: [NSEvent.ModifierFlags], _ event: NSEvent) -> Bool {
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        return sets.contains(flags)
+        return sets.contains(navigationFlags(event))
     }
 
     private func pasteItemsFromClipboardToActivePanel() {
@@ -3295,22 +3339,39 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
     }
 
+    /// v2.3.14 — Return con el sidebar enfocado.
+    ///
+    /// Incidencia real: al arrancar, el foco de teclado lo tiene la tabla «Ubicaciones
+    /// autorizadas» **sin ninguna fila seleccionada**; Return entraba aquí, no encontraba fila y
+    /// se **consumía en silencio** («presiono Return y no hace nada»). Ahora este camino solo se
+    /// queda con Return cuando de verdad abre algo; si no, se deja pasar para que Return haga lo
+    /// de siempre en el panel (volver a la ubicación anterior).
     private func openSelectedSidebarIfFocused() -> Bool {
         if firstResponderBelongs(to: authorizedTable) {
-            openSelectedSidebarLocation(authorizedTable)
-            return true
+            return openSelectedSidebarLocation(authorizedTable)
         }
         if firstResponderBelongs(to: favoritesTable) {
-            openSelectedSidebarLocation(favoritesTable)
-            return true
+            return openSelectedSidebarLocation(favoritesTable)
         }
         if firstResponderBelongs(to: recentsTable) {
-            openSelectedSidebarLocation(recentsTable)
-            return true
+            return openSelectedSidebarLocation(recentsTable)
         }
         if firstResponderBelongs(to: reauthTable) {
-            openSelectedSidebarLocation(reauthTable)
-            return true
+            return openSelectedSidebarLocation(reauthTable)
+        }
+        // ÁRBOL: al seleccionar un nodo ya se navega (outlineViewSelectionDidChange), así que
+        // Return solo «abre» si el nodo seleccionado apunta a otra carpeta; si ya es la carpeta
+        // mostrada, se deja pasar (volver atrás) en vez de quedarse en silencio.
+        if firstResponderBelongs(to: directoryTree) {
+            let row = directoryTree.selectedRow
+            if row >= 0,
+               let node = directoryTree.item(atRow: row) as? DirectoryTreeNode,
+               node.url.standardizedFileURL.path
+                   != activePanel.currentDirectoryURL.standardizedFileURL.path {
+                activePanel.openURL(node.url)
+                return true
+            }
+            return false
         }
         return false
     }
@@ -3928,9 +3989,16 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     var hasQuickFilter: Bool { !quickFilter.isEmpty }
 
-    /// ¿La tabla de este panel tiene el foco del teclado?
+    /// ¿La tabla (o la galería) de este panel tiene el foco del teclado?
+    /// v2.3.14 — Antes exigía que el primer respondiente fuese **exactamente** la tabla o la
+    /// colección; si AppKit dejaba el foco en una vista interna (celda, ítem de galería, scroll),
+    /// el panel no se reconocía y Return parecía no hacer nada. Ahora vale cualquier vista que
+    /// esté dentro de la tabla/colección.
     func isTableFirstResponder() -> Bool {
-        view.window?.firstResponder === tableView || view.window?.firstResponder === collectionView
+        guard let firstResponder = view.window?.firstResponder else { return false }
+        if firstResponder === tableView || firstResponder === collectionView { return true }
+        guard let firstView = firstResponder as? NSView else { return false }
+        return firstView.isDescendant(of: tableView) || firstView.isDescendant(of: collectionView)
     }
 
     func appendQuickFilter(_ text: String) {

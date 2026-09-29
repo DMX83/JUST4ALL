@@ -49,6 +49,8 @@ let package = Package(
             name: "J4FOpsTests",
             dependencies: [
                 "J4FOps",
+                // v2.3.14 — tests de la normalización de modificadores (KeyNavigationFlags).
+                "J4FUI",
                 .product(name: "J4FFileSystem", package: "J4SHARED")
             ]
         )
