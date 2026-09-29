@@ -1,0 +1,39 @@
+#!/bin/sh
+# just4pict-cli — envoltorio del CLI de JUST4PICT.
+#
+# El CLI vive dentro del binario de la app (mismo pipeline local, sin UI). Este script
+# localiza el binario más fresco disponible y le pasa los argumentos.
+#
+# Uso:
+#   scripts/just4pict-cli enhance foto.jpg -p documento -o ~/salida
+#   scripts/just4pict-cli help
+#
+# IMPORTANTE: antes de usar un binario se comprueba que SOPORTE el CLI (marca «just4pict-cli»
+# incrustada en el propio binario). Si no la tiene, es un build antiguo anterior al CLI: arrancaría
+# la app con UI y el comando se quedaría colgado (nos pasó con .build/release y con el .app viejo).
+# Orden de preferencia: .build/release → .build/debug → bundle de Release.
+#
+# Códigos de salida: los del CLI (0 ok · 2 uso inválido · 3 fallo total · 4 parcial),
+# más el 3 de "binario no encontrado".
+set -e
+
+DIR=$(cd "$(dirname "$0")/.." && pwd)
+
+supports_cli() {
+    [ -x "$1" ] || return 1
+    grep -q -a "just4pict-cli" "$1" 2>/dev/null
+}
+
+for candidate in \
+    "$DIR/.build/release/JUST4PICT" \
+    "$DIR/.build/debug/JUST4PICT" \
+    "$DIR/build/Build/Products/Release/JUST4PICT.app/Contents/MacOS/JUST4PICT"; do
+    if supports_cli "$candidate"; then
+        exec "$candidate" "$@"
+    fi
+done
+
+echo "just4pict-cli: no se encontró ningún binario de JUST4PICT con soporte de CLI." >&2
+echo "Compila primero:  cd APPS/JUST4PICT && swift build   (o ./scripts/build_dmg.sh)" >&2
+echo "OJO: un build anterior al CLI arrancaría la app; por eso se verifica el binario." >&2
+exit 3

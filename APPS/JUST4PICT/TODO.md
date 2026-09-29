@@ -31,7 +31,10 @@ El backlog historico del MVP queda en `ROADMAP_V1.md` y `JUST4PICT_POSTMVP_CHECK
 ## Prioridad baja
 
 - [ ] Revisar texto/copy de estado IA para hacerlo mas corto y consistente en UI.
-- [ ] Agregar comando CLI minimo para ejecucion de lote local sin UI (`just4pict-cli`).
+- [x] Agregar comando CLI minimo para ejecucion de lote local sin UI (`just4pict-cli`).
+      **Hecho (29-sep)**: `Just4PictCLI` dentro del binario (sin args = app normal), comandos
+      `enhance` / `presets` / `version` / `help`, wrapper `scripts/just4pict-cli` que valida
+      que el binario tenga CLI (los builds viejos abrían la GUI), +10 tests (suite 102).
 - [ ] Evaluar opcion de preset de export rapido para web/marketplaces con defaults cerrados.
 
 ## Sugerencias nuevas

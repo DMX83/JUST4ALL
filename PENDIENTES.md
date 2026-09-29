@@ -43,8 +43,9 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 
 ## 2) JUST4PICT
 
-- [ ] 🟠 **CLI mínimo `just4pict-cli`** (lote sin UI) — desbloquea además «Editar con J4P» en el clic
-      derecho de FOLDERS (hoy no acepta ficheros).
+- [x] 🟠 **CLI mínimo `just4pict-cli`** (lote sin UI) — HECHO (29-sep): ver `APPS/JUST4PICT/README.md`.
+      Queda la integración en FOLDERS: añadir «Editar con J4P» / «Mejorar con J4P» al submenú
+      JUST4PICT del clic derecho usando este CLI (el wrapper valida soporte del binario).
 - [ ] 🔵 Validación visual final de retrato (ojos/cejas en muestras reales adicionales).
 - [ ] 🟠 Telemetría local por build (JSON por corrida: preset, tiempo, memoria, fallos) para comparar regresiones.
 - [ ] 🟠 Snapshot de receta efectiva por ítem (incluido fallback IA) para reproducibilidad exacta.

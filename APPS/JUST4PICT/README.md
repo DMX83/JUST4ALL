@@ -26,6 +26,34 @@ App nativa macOS en SwiftUI para mejora automatica de imagenes por lotes.
 swift run
 ```
 
+## CLI de lote (`just4pict-cli`)
+
+El mismo binario funciona como CLI **sin UI**, usando el pipeline local (PRO) de la app:
+si el primer argumento es un comando conocido, se ejecuta el lote y se sale; sin argumentos,
+arranca la interfaz normal.
+
+```bash
+# Ayuda / presets / versión
+scripts/just4pict-cli help
+scripts/just4pict-cli presets
+scripts/just4pict-cli version
+
+# Procesar imágenes (ficheros NUEVOS con sufijo, nunca sobrescribe)
+scripts/just4pict-cli enhance ~/fotos/*.jpg -p documento -f png -o ~/salida
+scripts/just4pict-cli enhance foto.jpg -p auto --profile web --json
+```
+
+Opciones de `enhance`: `-p/--preset` (auto·retrato·paisaje·documento·ecommerce),
+`-f/--format` (png·jpg·heic·webp·tiff), `-q/--quality` (0.1–1.0), `-o/--output`,
+`--profile` (original·social·web·weblite·ecommerce), `--scene` (forzar escena) y `--json`.
+
+Convenciones: **stdout** = una ruta por fichero creado (JSON con `--json`), **stderr** =
+progreso/errores; códigos `0` ok · `2` uso inválido · `3` fallo total · `4` parcial.
+
+El wrapper `scripts/just4pict-cli` **verifica que el binario soporte el CLI** antes de usarlo
+(marca incrustada): un build anterior al CLI arrancaría la app con UI y dejaría el comando
+colgado; por eso, si falla, compila primero (`swift build`) y vuelve a probar.
+
 ## Build DMG
 
 ```bash
