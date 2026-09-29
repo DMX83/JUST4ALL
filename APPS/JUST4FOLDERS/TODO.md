@@ -87,11 +87,19 @@
   **fix**: Atrás/Adelante del toolbar ahora abren su menú de historial de verdad
   (`J4FMenuButton`: popup manual + rightMouseUp consumido; el `menu` nativo de NSButton no
   hacía popup aquí — detectado con clic sintético: el botón solo se resaltaba).
+- [x] **«Mejorar con JUST4PICT ▸» por CLI (v2.3.7)**: el submenú JUST4PICT del clic derecho gana
+  5 presets (**Automático · Retrato · Paisaje · Documento · Ecommerce**) que ejecutan el **CLI
+  real** `just4pict-cli` sobre la selección (`Just4PictActions.swift`; en background, fichero
+  nuevo junto al original, nunca sobrescribe). El binario se resuelve en cascada (PATH → repo →
+  `.build` → app instalada) y se **valida que soporte el CLI** con una marca embebida: los builds
+  antiguos de JUST4PICT abrían la GUI y colgaban el comando (lección). Ítem oculto sin CLI;
+  presets deshabilitados sin imágenes. Validado e2e (29-sep): menú → Paisaje → PNG nuevo de 3 MB
+  desde un JPEG de 267 KB, misma salida que el CLI a mano. Queda el **módulo del Panel Hub**.
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
-- [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de
-  PICT, unificar el diario de Deshacer para el drop (hoy mueve sin diario), selector compacto
-  (la vista previa perdió ~65pt de alto).
+- [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, unificar el diario de
+  Deshacer para el drop (hoy mueve sin diario), selector compacto (la vista previa perdió ~65pt
+  de alto).
 - [ ] Menor conocido: la última columna («Tipo») puede recortar un carácter si el ancho queda
   justo; arrastrar el divisor lo resuelve. Reproducir con AppKit puro antes de tocarlo.
 

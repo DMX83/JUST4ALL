@@ -16,21 +16,30 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 - [ ] ⚪️ Si aparece el MCP `tradingview-local` (de Claude Desktop) en la lista de herramientas: desactivarlo.
 - [ ] ⚪️ Opcional: `nextEditSuggestions` (consume cupo de Copilot, no de DeepSeek).
 
-## 1) JUST4FOLDERS (v2.3.6 — lo último de hoy)
+## 1) JUST4FOLDERS (v2.3.7 — «Mejorar con JUST4PICT ▸»)
+
+**Hecho hoy (29-sep)**
+- [x] 🟠 **Integración JUST4PICT por CLI**: submenú **JUST4PICT ▸ → «Mejorar con JUST4PICT ▸»** con 5
+      presets (Automático · Retrato · Paisaje · Documento · Ecommerce) sobre `just4pict-cli`, en background
+      y sin sobrescribir (`Just4PictActions.swift`). Validado e2e: menú → Paisaje → PNG de 3 MB desde un
+      JPEG de 267 KB; IDÉNTICO al CLI a mano.
 
 **Código**
 - [ ] 🟠 Integración JUST4PDF **F3** (opcional): progreso en la cola de trabajos, Quick Actions del Finder
       (v0.3 de JUST4PDF) y módulo del Panel Hub (F4). Ref: `APPS/JUST4FOLDERS/JUST4PDF_INTEGRATION.md`.
-- [ ] 🟠 Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de PICT,
-      unificar el diario de Deshacer para el drop del módulo DESK (hoy mueve sin diario), selector compacto
-      (la vista previa perdió ~65 pt de alto).
+- [ ] 🟠 Panel Hub — pendientes menores: reglas favoritas por extensión, unificar el diario de Deshacer para
+      el drop del módulo DESK (hoy mueve sin diario), selector compacto (la vista previa perdió ~65 pt de
+      alto). El módulo del Panel Hub con el pipeline de PICT sigue pendiente.
 - [ ] 🟠 Nit conocido: la última columna («Tipo») puede recortar 1 carácter si el ancho queda justo.
+- [ ] 🟠 Nit de estado: el aviso «Actualizado (N cambio(s) en disco)» del watcher pisa el mensaje de resultado
+      de la operación recién terminada (p. ej. «JUST4PICT: 1 imagen(es) mejoradas…») — dar prioridad temporal
+      a los mensajes de operación.
 - [ ] ⚪️ Drag & drop interno de ficheros entre paneles (histórico) — comprobar y decidir.
 
 **Validación manual** (`QA_LOCAL.md` § «Checklist manual — Panel Hub v2.3.x»)
 - [ ] 🔵 Panel Hub completo: selector persistente, buscador DESK, bandeja, POR REVISAR, ACTIVIDAD, drop→propuesta.
-- [ ] 🔵 Submenús contextuales: JUST4PICT (3 ítems) y JUST4PDF ▸ (Comprimir 3 niveles, Exportar páginas,
-      Crear PDF desde imágenes, Abrir con).
+- [ ] 🔵 Submenús contextuales: JUST4PICT (3 ítems `sips` + **Mejorar con JUST4PICT ▸** con 5 presets) y
+      JUST4PDF ▸ (Comprimir 3 niveles, Exportar páginas, Crear PDF desde imágenes, Abrir con).
 - [ ] 🔵 Pestañas: botón derecho en cada estado; «Renombrar» sobre tab no activa sin activarla.
 - [ ] 🔵 Monitor: menú del clic derecho (Reiniciar máximos / Abrir Monitor) sin dispararse al soltar;
       batería en verde con cargador; I/O % en reposo y bajo carga.
@@ -44,8 +53,9 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 ## 2) JUST4PICT
 
 - [x] 🟠 **CLI mínimo `just4pict-cli`** (lote sin UI) — HECHO (29-sep): ver `APPS/JUST4PICT/README.md`.
-      Queda la integración en FOLDERS: añadir «Editar con J4P» / «Mejorar con J4P» al submenú
-      JUST4PICT del clic derecho usando este CLI (el wrapper valida soporte del binario).
+- [x] 🟠 **Integración del CLI en FOLDERS** — HECHO (29-sep): «Mejorar con JUST4PICT ▸» (5 presets) en el
+      clic derecho de JUST4FOLDERS; validado e2e. Queda como opcional un «Editar con JUST4PICT» (abrir la app
+      con la imagen) cuando la app declare tipos de documento.
 - [ ] 🔵 Validación visual final de retrato (ojos/cejas en muestras reales adicionales).
 - [ ] 🟠 Telemetría local por build (JSON por corrida: preset, tiempo, memoria, fallos) para comparar regresiones.
 - [ ] 🟠 Snapshot de receta efectiva por ítem (incluido fallback IA) para reproducibilidad exacta.

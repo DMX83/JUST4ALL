@@ -119,6 +119,18 @@ swift run
   prometian «clic derecho: historial» pero su menu nunca se abria (el `menu` nativo de
   `NSButton` no hace popup en este contexto); ahora usan `J4FMenuButton` (popup manual) y el
   historial SI se despliega con clic derecho.
+- **Integracion JUST4PICT por CLI (v2.3.7)**: clic derecho sobre imagenes → submenu
+  **JUST4PICT ▸** que añade, tras los 3 items `sips` y un separador, **«Mejorar con JUST4PICT ▸»**
+  con 5 presets (**Automático · Retrato · Paisaje · Documento · Ecommerce**). No reimplementa
+  nada: invoca el **CLI real** `just4pict-cli` de JUST4PICT con el mismo pipeline PRO
+  (`enhance -p <preset> --json <rutas>`), en background y **creando fichero nuevo junto al
+  original** (nunca sobrescribe). El binario se resuelve en cascada (PATH → `scripts/` del repo
+  → `.build/{release,debug}` → app instalada) y **solo se acepta si soporta el CLI** (marca
+  `just4pict-cli` embebida: los builds antiguos abrian la GUI y colgaban el comando). El item se
+  **oculta** si el CLI no esta disponible y los presets se **deshabilitan** sin imagenes
+  (`Just4PictActions.swift`, espejo de `Just4PdfActions`). Validado e2e (29-sep): menu →
+  Paisaje → `a-foto-test.jpeg` (267 KB) ⇒ `a-foto-test-enhanced-local.png` (3 MB), original
+  intacto; la CLI directa con el mismo preset da exactamente lo mismo.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

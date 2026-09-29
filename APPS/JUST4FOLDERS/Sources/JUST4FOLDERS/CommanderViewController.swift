@@ -4882,7 +4882,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         add("Duplicar", #selector(contextDuplicateSelection), tag: .duplicate)
         add("Comprimir", #selector(contextCompressSelection), tag: .compress)
         // v2.3.3 — acciones rapidas de imagen (sips; fichero NUEVO) desde el clic derecho.
-        // «Editar/Mejorar con JUST4PICT» se sumara cuando la app acepte ficheros (documentos o CLI).
+        // v2.3.7 — «Mejorar con JUST4PICT ▸» usa el CLI real (pipeline PRO sin UI).
         let pictItem = NSMenuItem(title: "JUST4PICT", action: nil, keyEquivalent: "")
         pictItem.tag = ContextTag.pict.rawValue
         let pictMenu = NSMenu(title: "JUST4PICT")
@@ -4897,6 +4897,18 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             item.tag = entry.1
             pictMenu.addItem(item)
         }
+        pictMenu.addItem(.separator())
+        let improveItem = NSMenuItem(title: "Mejorar con JUST4PICT", action: nil, keyEquivalent: "")
+        improveItem.tag = Self.pictImproveParentTag
+        let improveMenu = NSMenu(title: "Mejorar con JUST4PICT")
+        for (index, preset) in Just4PictActions.presets.enumerated() {
+            let item = NSMenuItem(title: preset.name, action: #selector(contextPictQuickAction(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = Self.pictImprovePresetTagBase + index
+            improveMenu.addItem(item)
+        }
+        improveItem.submenu = improveMenu
+        pictMenu.addItem(improveItem)
         pictItem.submenu = pictMenu
         menu.addItem(pictItem)
         // v2.3.5 — JUST4PDF ▸ (CLI real; solo aparece si la selección lo permite).
@@ -5202,6 +5214,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     /// v2.1.1 — habilitados y títulos dinámicos del menú contextual.
+    /// v2.3.7 — tags del submenú JUST4PICT: «Mejorar con JUST4PICT» (padre) y sus presets.
+    private static let pictImproveParentTag = 9
+    private static let pictImprovePresetTagBase = 10
+
     private func updateContextMenuState(_ menu: NSMenu) {
         let selected = selectedURLs()
         let singleDir = singleSelectedDirectory()
@@ -5229,10 +5245,20 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 item.isEnabled = !selected.isEmpty
             case .pict:
                 // v2.3.4 — el submenú solo APARECE cuando la selección trae imágenes.
+                // v2.3.7 — «Mejorar con JUST4PICT» solo si el CLI está disponible (binario con CLI).
                 let hasImages = !PictQuickActions.images(in: selected).isEmpty
                 item.isHidden = !hasImages
                 item.isEnabled = hasImages
-                item.submenu?.items.forEach { $0.isEnabled = hasImages }
+                let canImprove = hasImages && Just4PictActions.isAvailable
+                for subitem in item.submenu?.items ?? [] {
+                    if subitem.tag == Self.pictImproveParentTag {
+                        subitem.isHidden = !Just4PictActions.isAvailable
+                        subitem.isEnabled = canImprove
+                        subitem.submenu?.items.forEach { $0.isEnabled = canImprove }
+                    } else {
+                        subitem.isEnabled = hasImages
+                    }
+                }
             case .pdf:
                 // v2.3.5 — visibilidad y habilitados del submenú JUST4PDF.
                 configurePdfSubmenu(item, selection: selected)
@@ -6844,12 +6870,30 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     /// v2.3.3 — acciones rápidas del submenú JUST4PICT (fichero nuevo; nunca sobrescribe).
+    /// v2.3.7 — «Mejorar con JUST4PICT» llama al CLI real (background; ficheros nuevos).
     @objc private func contextPictQuickAction(_ sender: NSMenuItem) {
         let urls = PictQuickActions.images(in: selectedURLs())
         guard !urls.isEmpty else {
             NSSound.beep()
             return
         }
+
+        let presetBase = Self.pictImprovePresetTagBase
+        if (presetBase..<(presetBase + Just4PictActions.presets.count)).contains(sender.tag) {
+            let preset = Just4PictActions.presets[sender.tag - presetBase]
+            onStatus?("JUST4PICT: mejorando \(urls.count) imagen(es) (preset \(preset.name))…")
+            Just4PictActions.enhance(urls, preset: preset.id) { [weak self] result in
+                guard let self else { return }
+                self.onStatus?(result.message)
+                if result.success {
+                    self.refreshCurrentDirectory()
+                } else {
+                    NSSound.beep()
+                }
+            }
+            return
+        }
+
         let result: PictQuickActions.Result
         let verb: String
         switch sender.tag {

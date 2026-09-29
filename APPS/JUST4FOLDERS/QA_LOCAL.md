@@ -143,6 +143,14 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   izquierdo sigue navegando atrás/adelante normal.
 - [ ] **Exportar diagnostico (v2.3.6)**: menu `Operaciones ▸ Exportar diagnóstico…` y paleta
   (⌘K) generan el zip con `summary.json` etc.
+- [ ] **«Mejorar con JUST4PICT ▸» (v2.3.7)**: con una imagen seleccionada, clic derecho →
+  `JUST4PICT ▸` → `Mejorar con JUST4PICT ▸` (5 presets: Automático · Retrato · Paisaje ·
+  Documento · Ecommerce). Debe salir el aviso «JUST4PICT: mejorando N imagen(es) (preset X)…» y,
+  al terminar, un **fichero NUEVO junto al original** (sufijo `-enhanced…`, nunca sobrescribe) y
+  la lista refrescada. Con selección sin imágenes el submenú no aparece; si el CLI
+  `just4pict-cli` no está disponible, el ítem se **oculta** (el resto del submenú `sips` sigue).
+  *Validado por CLI sintético (29-sep): Paisaje sobre un JPEG de 267 KB → PNG de 3,0 MB;
+  salida idéntica ejecutando el CLI a mano.*
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.
 - [ ] Decision de diseno: la vista previa perdio ~65pt de alto (fila del selector + franja de la
   toolbar); valorar selector compacto (iconos) o moverlo a la barra de herramientas.
