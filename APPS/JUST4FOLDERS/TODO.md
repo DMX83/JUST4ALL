@@ -47,6 +47,13 @@
   **drop de documentos sobre el módulo DESK** con propuesta de categoría + confirmación +
   movimiento por la cola (validado e2e: factura → 01_Fiscal/Facturas) + **destino recordado por
   carpeta** (`j4f.folderDestinations`, precargado en «Ordenar»).
+- [x] **Submenú JUST4PICT en el clic derecho (v2.3.3)**: sobre imágenes → «Convertir a PNG»,
+  «Convertir a JPEG» y «Redimensionar 50 %» (sips; fichero nuevo), reutilizando
+  `PictQuickActions` (mismo motor que el módulo PICT). «Editar/Mejorar con J4P» llegará cuando
+  la app acepte ficheros (su app compilada aún no declara tipos de documento).
+- [ ] **Integración JUST4PDF** (evaluación completa en `JUST4PDF_INTEGRATION.md`): F1 = CLI real
+  en JUST4PDF (los servicios merge/compress/pdf2img/img2pdf ya existen sin Qt), F2 = submenú
+  contextual «JUST4PDF ▸» en FOLDERS (unir/comprimir/pdf→imágenes/imágenes→pdf/abrir con).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de
   PICT, unificar el diario de Deshacer para el drop (hoy mueve sin diario), selector compacto
   (la vista previa perdió ~65pt de alto).

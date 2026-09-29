@@ -24,10 +24,6 @@ final class PictMiniPanelView: NSView {
 
     private var selection: [URL] = []
 
-    private static let imageExtensions: Set<String> = [
-        "jpg", "jpeg", "png", "heic", "tiff", "tif", "webp", "gif", "bmp"
-    ]
-
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         translatesAutoresizingMaskIntoConstraints = false
@@ -112,7 +108,7 @@ final class PictMiniPanelView: NSView {
 
     /// Actualiza la selección del panel activo (solo imágenes soportadas).
     func updateSelection(_ urls: [URL]) {
-        selection = urls.filter { Self.imageExtensions.contains($0.pathExtension.lowercased()) }
+        selection = PictQuickActions.images(in: urls)
         let enabled = !selection.isEmpty
         pngButton.isEnabled = enabled
         jpegButton.isEnabled = enabled
@@ -136,37 +132,23 @@ final class PictMiniPanelView: NSView {
     // MARK: - Acciones
 
     @objc private func onPNGClicked() {
-        convertAll(to: "png", suffix: "-png")
+        apply(PictQuickActions.convert(selection, to: "png"), verb: "convertidas a PNG")
     }
 
     @objc private func onJPEGClicked() {
-        convertAll(to: "jpeg", suffix: "-jpg", extraArgs: ["-s", "formatOptions", "85"])
+        apply(
+            PictQuickActions.convert(selection, to: "jpeg", extraArgs: ["-s", "formatOptions", "85"]),
+            verb: "convertidas a JPEG"
+        )
     }
 
     @objc private func onHalfClicked() {
-        guard !selection.isEmpty else { return }
-        var created: [URL] = []
-        var failures = 0
-        for source in selection {
-            guard let size = Self.pixelSize(of: source), size.width > 1, size.height > 1 else {
-                failures += 1
-                continue
-            }
-            let maxSide = max(size.width, size.height)
-            let target = uniqueURL(for: source, suffix: "-50%", extension: nil)
-            let result = Self.run("/usr/bin/sips", ["-Z", String(Int(maxSide / 2.0)), source.path, "--out", target.path])
-            if result.code == 0 {
-                created.append(target)
-            } else {
-                failures += 1
-            }
-        }
-        finish(created: created, failures: failures, action: "redimensionadas al 50 %")
+        apply(PictQuickActions.resizeHalf(selection), verb: "redimensionadas al 50 %")
     }
 
     @objc private func onOpenPICTClicked() {
         guard !selection.isEmpty else { return }
-        guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.dmx83.just4pict") else {
+        guard let appURL = PictQuickActions.just4PictAppURL else {
             onStatus?("JUST4PICT no está instalada (no se encontró com.dmx83.just4pict).")
             NSSound.beep()
             return
@@ -181,88 +163,15 @@ final class PictMiniPanelView: NSView {
         }
     }
 
-    private func convertAll(to format: String, suffix: String, extraArgs: [String] = []) {
-        guard !selection.isEmpty else { return }
-        var created: [URL] = []
-        var failures = 0
-        for source in selection {
-            let target = uniqueURL(for: source, suffix: suffix, extension: format == "jpeg" ? "jpg" : format)
-            var args = ["-s", "format", format]
-            args.append(contentsOf: extraArgs)
-            args.append(contentsOf: [source.path, "--out", target.path])
-            let result = Self.run("/usr/bin/sips", args)
-            if result.code == 0 {
-                created.append(target)
-            } else {
-                failures += 1
-            }
-        }
-        finish(created: created, failures: failures, action: "convertidas a \(format.uppercased())")
-    }
-
-    private func finish(created: [URL], failures: Int, action: String) {
-        if !created.isEmpty {
+    private func apply(_ result: PictQuickActions.Result, verb: String) {
+        if !result.created.isEmpty {
             onCreatedFiles?()
         }
-        if failures == 0 {
-            onStatus?("PICT: \(created.count) imagen(es) \(action). Se creó un fichero nuevo junto al original.")
+        if result.failures == 0 {
+            onStatus?("PICT: \(result.created.count) imagen(es) \(verb). Se creó un fichero nuevo junto al original.")
         } else {
-            onStatus?("PICT: \(created.count) \(action); \(failures) fallo(s).")
+            onStatus?("PICT: \(result.created.count) \(verb); \(result.failures) fallo(s).")
         }
-        updateSelection(selection) // refresca subtítulo
-    }
-
-    // MARK: - Utilidades
-
-    private static func pixelSize(of url: URL) -> (width: CGFloat, height: CGFloat)? {
-        let result = run("/usr/bin/sips", ["-g", "pixelWidth", "-g", "pixelHeight", url.path])
-        guard result.code == 0 else { return nil }
-        var width: CGFloat?
-        var height: CGFloat?
-        for line in result.output.split(separator: "\n") {
-            let parts = line.split(separator: ":")
-            guard parts.count == 2 else { continue }
-            let key = parts[0].trimmingCharacters(in: .whitespaces)
-            let value = parts[1].trimmingCharacters(in: .whitespaces)
-            if key == "pixelWidth" { width = CGFloat(Double(value) ?? 0) }
-            if key == "pixelHeight" { height = CGFloat(Double(value) ?? 0) }
-        }
-        guard let w = width, let h = height else { return nil }
-        return (w, h)
-    }
-
-    private func uniqueURL(for source: URL, suffix: String, extension ext: String?) -> URL {
-        let directory = source.deletingLastPathComponent()
-        let base = source.deletingPathExtension().lastPathComponent
-        let resolvedExtension = ext ?? source.pathExtension.lowercased()
-        func candidate(_ name: String) -> URL {
-            resolvedExtension.isEmpty
-                ? directory.appendingPathComponent(name)
-                : directory.appendingPathComponent("\(name).\(resolvedExtension)")
-        }
-        var url = candidate("\(base)\(suffix)")
-        var counter = 2
-        while FileManager.default.fileExists(atPath: url.path) {
-            url = candidate("\(base)\(suffix) \(counter)")
-            counter += 1
-        }
-        return url
-    }
-
-    private static func run(_ launchPath: String, _ arguments: [String]) -> (code: Int32, output: String) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: launchPath)
-        process.arguments = arguments
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        do {
-            try process.run()
-        } catch {
-            return (-1, error.localizedDescription)
-        }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return (process.terminationStatus, String(data: data, encoding: .utf8) ?? "")
+        updateSelection(selection)
     }
 }

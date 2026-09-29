@@ -3565,7 +3565,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         case openInTab = 1, openInOther, openWith, quickLook, showInFinder, openTerminal
         case newFolder, rename, duplicate, compress
         case cut, copy, paste, trash, deletePermanent
-        case copyPath, favorite, addLocation, info, tags, share, tools, workspaces
+        case copyPath, favorite, addLocation, info, tags, share, tools, workspaces, pict
     }
     private var hoverMonitor: Any?
     /// Ola 3 — galería: modo de vista, colección y scroll propios.
@@ -4641,6 +4641,24 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         add("Renombrar", #selector(contextRename), tag: .rename)
         add("Duplicar", #selector(contextDuplicateSelection), tag: .duplicate)
         add("Comprimir", #selector(contextCompressSelection), tag: .compress)
+        // v2.3.3 — acciones rapidas de imagen (sips; fichero NUEVO) desde el clic derecho.
+        // «Editar/Mejorar con JUST4PICT» se sumara cuando la app acepte ficheros (documentos o CLI).
+        let pictItem = NSMenuItem(title: "JUST4PICT", action: nil, keyEquivalent: "")
+        pictItem.tag = ContextTag.pict.rawValue
+        let pictMenu = NSMenu(title: "JUST4PICT")
+        let pictEntries: [(String, Int)] = [
+            ("Convertir a PNG", 0),
+            ("Convertir a JPEG", 1),
+            ("Redimensionar 50 %", 2)
+        ]
+        for entry in pictEntries {
+            let item = NSMenuItem(title: entry.0, action: #selector(contextPictQuickAction(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = entry.1
+            pictMenu.addItem(item)
+        }
+        pictItem.submenu = pictMenu
+        menu.addItem(pictItem)
         menu.addItem(.separator())
         add("Cortar", #selector(contextCutSelectionAction), tag: .cut)
         add("Copiar", #selector(contextCopySelectionAction), tag: .copy)
@@ -4934,6 +4952,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 item.isEnabled = true
             case .tags:
                 item.isEnabled = !selected.isEmpty
+            case .pict:
+                let hasImages = !PictQuickActions.images(in: selected).isEmpty
+                item.isEnabled = hasImages
+                item.submenu?.items.forEach { $0.isEnabled = hasImages }
             default:
                 item.isEnabled = true
             }
@@ -6509,6 +6531,34 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             loadDirectory(currentURL, pushHistory: false)
             onStatus?("Duplicado(s): \(created)")
         }
+    }
+
+    /// v2.3.3 — acciones rápidas del submenú JUST4PICT (fichero nuevo; nunca sobrescribe).
+    @objc private func contextPictQuickAction(_ sender: NSMenuItem) {
+        let urls = PictQuickActions.images(in: selectedURLs())
+        guard !urls.isEmpty else {
+            NSSound.beep()
+            return
+        }
+        let result: PictQuickActions.Result
+        let verb: String
+        switch sender.tag {
+        case 0:
+            result = PictQuickActions.convert(urls, to: "png")
+            verb = "convertidas a PNG"
+        case 1:
+            result = PictQuickActions.convert(urls, to: "jpeg", extraArgs: ["-s", "formatOptions", "85"])
+            verb = "convertidas a JPEG"
+        default:
+            result = PictQuickActions.resizeHalf(urls)
+            verb = "redimensionadas al 50 %"
+        }
+        if result.failures == 0 {
+            onStatus?("PICT: \(result.created.count) imagen(es) \(verb). Fichero nuevo junto al original.")
+        } else {
+            onStatus?("PICT: \(result.created.count) \(verb); \(result.failures) fallo(s).")
+        }
+        refreshCurrentDirectory()
     }
 
     /// «Comprimir» — zip nativo (/usr/bin/zip) junto a los originales.

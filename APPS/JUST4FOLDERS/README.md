@@ -86,8 +86,10 @@ swift run
   destino, «Ver en panel») + **ACTIVIDAD** (trabajo en curso) y **soltar documentos sobre el
   modulo** para proponerles categoria (confirmacion + movimiento por la cola); y **PICT mini** —
   acciones rapidas sobre la seleccion (convertir a PNG/JPEG, redimensionar 50 % con `sips`,
-  creando ficheros nuevos; «Abrir en JUST4PICT» si esta instalada). Propuesta completa en
-  `PANEL_HUB.md`.
+  creando ficheros nuevos; «Abrir en JUST4PICT» si esta instalada). Ademas, **clic derecho sobre
+  imagenes → submenu JUST4PICT** (Convertir a PNG/JPEG, Redimensionar 50 %; mismo motor
+  `PictQuickActions`, fichero nuevo junto al original). Propuesta completa en `PANEL_HUB.md` y
+  evaluacion de la integracion de JUST4PDF en `JUST4PDF_INTEGRATION.md`.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

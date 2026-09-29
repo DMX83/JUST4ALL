@@ -68,6 +68,11 @@
   desaparecio del origen (fixture limpiado despues). Modulo PICT: seleccion sincronizada
   («a-foto-test.png»), «Redimensionar 50 %» creo 120x80 (original 240x160) SIN sobrescribir;
   fixture limpiado. 55 tests verdes.
+- [x] Submenu JUST4PICT en el clic derecho (v2.3.3): visible y habilitado con una imagen
+  seleccionada (captura del menu contextual); las acciones comparten `PictQuickActions` con el
+  modulo PICT (validado e2e por esa via). **Pendiente de clic manual**: desplegar el submenu y
+  probar cada item (la validacion se interrumpio al pasar WinBox a primer plano con un clic
+  sintetico — NO seguir clicando con otra app en uso).
 - [x] `swift test`: 55 en `J4FOpsTests`, 0 fallos.
 
 ## Checklist manual — Panel Hub v2.3.x (para verificar con la app en mano)
@@ -91,6 +96,8 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
 - [ ] PICT: seleccionar una imagen activa los botones; «Convertir a PNG/JPEG» y «Redimensionar
   50 %» crean un fichero nuevo junto al original (nunca sobrescribe; sufijos -png/-jpg/-50%);
   «Abrir en JUST4PICT» funciona si la apps esta instalada (bundle com.dmx83.just4pict).
+- [ ] **Clic derecho en una imagen → submenú «JUST4PICT»**: probar los 3 ítems (mismo motor
+  sips que el módulo; deshabilitado si la selección no tiene imágenes).
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.
 - [ ] Decision de diseno: la vista previa perdio ~65pt de alto (fila del selector + franja de la
   toolbar); valorar selector compacto (iconos) o moverlo a la barra de herramientas.
