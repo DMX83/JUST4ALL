@@ -151,6 +151,19 @@ swift run
   cuando el usuario pide ordenar por Tamaño (las filas visibles se siguen calculando solas).
   Además, los avisos del watcher («Actualizado (N cambio(s) en disco)») ya no pisan los mensajes
   de operación: el estado tiene prioridad temporal.
+- **Tamaños correctos y estables (v2.3.10)**: la columna Tamaño sumaba el tamaño **lógico**, así que
+  un fichero **disperso** la inflaba hasta lo imposible — caso real:
+  `~/Library/Containers/com.docker.docker/…/Docker.raw` (995 GB lógicos / 71 GB reales) hacía que
+  `~/Library` mostrara **1,06 TB** en un Mac con disco de 995 GB, cuando `du` dice **128 GiB**. Ahora
+  se suma el **tamaño asignado en disco** (`totalFileAllocatedSize`, con fallbacks a
+  `fileAllocatedSize`/`fileSize`), que es lo que reportan `du` y «Acerca de este Mac». Además:
+  (a) el watcher ya **no borra** el tamaño calculado al detectar cambios —antes cualquier escritura
+  *dentro* de una carpeta (`~/Library` está en constante actividad) lo ponía a nil y lo recalculaba
+  en bucle: el valor aparecía y desaparecía—; ahora se **refresca en segundo plano** agrupado (4 s)
+  y con un mínimo de 10 s por carpeta, sin perder nunca el valor visible; (b) los cálculos usan
+  `.userInitiated` y un **tope de 3 simultáneos** (antes ~40 escaneos a la vez: CPU al 80 % y
+  `Library` tardaba minutos por el estrangulamiento de I/O a batería); (c) la columna Tamaño es más
+  ancha (base 84 pt, suelo 68) para que quepan los valores de 3 dígitos.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

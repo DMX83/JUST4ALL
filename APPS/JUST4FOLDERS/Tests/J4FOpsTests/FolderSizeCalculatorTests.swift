@@ -18,41 +18,70 @@ final class FolderSizeCalculatorTests: XCTestCase {
         try Data(repeating: 0x41, count: bytes).write(to: url)
     }
 
+    /// v2.3.10 — el calculo suma el tamano ASIGNADO en disco (bloques), no el logico.
+    private func allocatedSize(of url: URL) -> Int64 {
+        let keys: Set<URLResourceKey> = [.totalFileAllocatedSizeKey, .fileAllocatedSizeKey, .fileSizeKey]
+        guard let values = try? url.resourceValues(forKeys: keys) else { return 0 }
+        return Int64(values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? values.fileSize ?? 0)
+    }
+
     func testComputeSumsSubtreeAndSkipsHiddenWhenAsked() throws {
         let inner = tempDir.appendingPathComponent("sub", isDirectory: true)
         try FileManager.default.createDirectory(at: inner, withIntermediateDirectories: true)
-        try write(1000, to: tempDir.appendingPathComponent("a.bin"))
-        try write(2000, to: inner.appendingPathComponent("b.bin"))
-        try write(500, to: inner.appendingPathComponent(".oculto.bin"))
+        let a = tempDir.appendingPathComponent("a.bin")
+        let b = inner.appendingPathComponent("b.bin")
+        let oculto = inner.appendingPathComponent(".oculto.bin")
+        try write(1000, to: a)
+        try write(2000, to: b)
+        try write(500, to: oculto)
 
         XCTAssertEqual(
             FolderSizeCalculator.compute(path: tempDir.path, includeHidden: false),
-            3000,
-            "sin ocultos: 1000 + 2000"
+            allocatedSize(of: a) + allocatedSize(of: b),
+            "sin ocultos: a + b (tamano asignado en disco)"
         )
         XCTAssertEqual(
             FolderSizeCalculator.compute(path: tempDir.path, includeHidden: true),
-            3500,
-            "con ocultos: + 500"
+            allocatedSize(of: a) + allocatedSize(of: b) + allocatedSize(of: oculto),
+            "con ocultos: + .oculto.bin"
         )
     }
 
+    /// v2.3.10 — regresion del fallo de ~/Library: un fichero DISPERSO (Docker.raw: 995 GB
+    /// logicos / 71 GB reales) hacia que una carpeta mostrara mas tamano del que existe en disco.
+    func testSparseFileCountsAllocatedNotLogical() throws {
+        let sparse = tempDir.appendingPathComponent("sparse.bin")
+        try write(4096, to: sparse)
+        let handle = try FileHandle(forWritingTo: sparse)
+        try handle.truncate(atOffset: 5 * 1024 * 1024 * 1024)
+        try handle.close()
+
+        let logical = try XCTUnwrap(try sparse.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+        XCTAssertEqual(logical, 5 * 1024 * 1024 * 1024, "el fichero es disperso: 5 GB logicos")
+        let computed = FolderSizeCalculator.compute(path: tempDir.path, includeHidden: true)
+        XCTAssertLessThan(computed, 100_000_000, "cuenta lo asignado (unos KB), no los 5 GB logicos")
+        XCTAssertEqual(computed, allocatedSize(of: sparse))
+    }
+
     func testActorCachesAndInvalidates() async throws {
-        try write(1234, to: tempDir.appendingPathComponent("c.bin"))
+        let c = tempDir.appendingPathComponent("c.bin")
+        try write(1234, to: c)
         let calculator = FolderSizeCalculator()
+        let expected = allocatedSize(of: c)
 
         let first = await calculator.size(of: tempDir, includeHidden: true)
-        XCTAssertEqual(first, 1234)
+        XCTAssertEqual(first, expected)
         let cached = await calculator.cachedSize(of: tempDir.standardizedFileURL.path)
-        XCTAssertEqual(cached, 1234, "queda en caché tras calcular")
+        XCTAssertEqual(cached, expected, "queda en caché tras calcular")
 
         // Un cambio dentro invalida la carpeta y sus ancestros cacheados.
-        try write(100, to: tempDir.appendingPathComponent("d.bin"))
-        await calculator.invalidate(path: tempDir.appendingPathComponent("d.bin").path)
+        let d = tempDir.appendingPathComponent("d.bin")
+        try write(100, to: d)
+        await calculator.invalidate(path: d.path)
         let afterInvalidate = await calculator.cachedSize(of: tempDir.standardizedFileURL.path)
         XCTAssertNil(afterInvalidate, "el ancestro cacheado se invalida")
 
         let recomputed = await calculator.size(of: tempDir, includeHidden: true)
-        XCTAssertEqual(recomputed, 1334, "recalcula con el fichero nuevo")
+        XCTAssertEqual(recomputed, expected + allocatedSize(of: d), "recalcula con el fichero nuevo")
     }
 }

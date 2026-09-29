@@ -3689,6 +3689,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     /// v2.3.9 — lote de tamaños en curso al ordenar por Tamaño (se reordena al terminar).
     private var folderSizeBatchPending = 0
     private var folderSizeBatchActive = false
+    /// v2.3.11 — cola de refrescos de tamaño tras cambios en disco (agrupada + límite por ruta).
+    private var pendingSizeRefreshPaths: Set<String> = []
+    private var sizeRefreshWorkItem: DispatchWorkItem?
+    private var lastSizeRefreshAt: [String: Date] = [:]
     /// v2.3.9 — solo se calculan TODOS los tamaños si el usuario pidió ordenar por Tamaño
     /// (pulsando la cabecera): un orden por tamaño persistido no debe escanear subárboles al
     /// arrancar. Las filas visibles siguen calculándose solas (comportamiento v1.2).
@@ -4159,6 +4163,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             rowMap[row.url.standardizedFileURL.path] = row
         }
 
+        var sizeRefreshCandidates: Set<String> = []
         for childPath in childPaths {
             let childURL = URL(fileURLWithPath: childPath)
             if !FileManager.default.fileExists(atPath: childPath) {
@@ -4170,18 +4175,22 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 continue
             }
             if let updated = buildRow(for: childURL) {
-                rowMap[childPath] = updated
-            }
-            // v1.2 — un cambio dentro invalida el total cacheado de las carpetas afectadas.
-            Task { await FolderSizeCalculator.shared.invalidate(path: childPath) }
-            if var row = rowMap[childPath], row.isDirectory {
-                row.folderSizeBytes = nil
+                var row = updated
+                // v2.3.11 — NO se borra el tamaño ya calculado. El watcher usa eventos recursivos
+                // (`kFSEventStreamCreateFlagFileEvents`), así que cualquier escritura DENTRO de una
+                // carpeta (p. ej. `~/Library`, en constante actividad) llegaba aquí: antes se ponía
+                // a nil y se recalculaba en bucle → «se muestra el valor y se vuelve a quitar».
+                row.folderSizeBytes = rowMap[childPath]?.folderSizeBytes
                 rowMap[childPath] = row
+            }
+            if rowMap[childPath]?.isDirectory == true {
+                sizeRefreshCandidates.insert(childPath)
             }
         }
 
         allRows = Array(rowMap.values)
         applySortAndReload()
+        scheduleSizeRefresh(for: Array(sizeRefreshCandidates))
         onStatus?("Actualizado (\(childPaths.count) cambio(s) en disco).")
     }
 
@@ -5142,7 +5151,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     }
 
     /// v2.1 — anchos base de las columnas (proporción canónica para el reparto).
-    static let baseColumnWidths: [String: CGFloat] = ["name": 180, "size": 66, "modified": 118, "type": 74]
+    /// v2.3.10 — `size` sube de 66 a 84 y su suelo a 68: con el tamaño ya correcto (asignado en
+    /// disco) aparecen valores de 3 dígitos («263,94 GB») que antes se recortaban («26…GB»).
+    static let baseColumnWidths: [String: CGFloat] = ["name": 180, "size": 84, "modified": 118, "type": 74]
 
     /// v2.1.1 — reparto proporcional de columnas contra el viewport real.
     /// Sin anchos manuales reparte desde las proporciones base; con anchos del usuario comprime
@@ -5164,7 +5175,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         var widths: [(NSTableColumn, CGFloat)] = []
         var assigned: CGFloat = 0
         for (index, column) in visible.enumerated() {
-            let floor: CGFloat = column.identifier.rawValue == "name" ? 110 : 52
+            let id = column.identifier.rawValue
+            // v2.3.10 — el tamaño necesita algo más de suelo: valores tipo «263,94 GB».
+            let floor: CGFloat = id == "name" ? 110 : (id == "size" ? 68 : 52)
             let width = max(floor, weights[index] * available / baseTotal)
             widths.append((column, width))
             assigned += width
@@ -5956,6 +5969,37 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private func updateFolderSize(in array: inout [FileRow], path: String, size: Int64) {
         if let idx = array.firstIndex(where: { $0.url.standardizedFileURL.path == path }) {
             array[idx].folderSizeBytes = size
+        }
+    }
+
+    // MARK: - Refresco de tamaños tras cambios en disco (v2.3.11)
+
+    /// Encola el refresco del tamaño de las carpetas afectadas por eventos del watcher.
+    /// Agrupado (4 s) y con un intervalo mínimo de 10 s por carpeta: una carpeta en constante
+    /// escritura no provoca recálculos en bucle (antes el valor parpadeaba).
+    private func scheduleSizeRefresh(for paths: [String]) {
+        guard !paths.isEmpty else { return }
+        pendingSizeRefreshPaths.formUnion(paths)
+        sizeRefreshWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.flushSizeRefresh() }
+        sizeRefreshWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: work)
+    }
+
+    private func flushSizeRefresh() {
+        let paths = pendingSizeRefreshPaths
+        pendingSizeRefreshPaths.removeAll()
+        let now = Date()
+        for path in paths {
+            if let last = lastSizeRefreshAt[path], now.timeIntervalSince(last) < 10 { continue }
+            lastSizeRefreshAt[path] = now
+            Task { [weak self] in
+                let value = await FolderSizeCalculator.shared.refreshSize(
+                    of: URL(fileURLWithPath: path),
+                    includeHidden: false
+                )
+                await MainActor.run { self?.applyFolderSize(value, forPath: path) }
+            }
         }
     }
 

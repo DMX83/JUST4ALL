@@ -110,6 +110,14 @@
   al arrancar. Los avisos del watcher ya no pisan los mensajes de operación. Validado en vivo:
   home ordenado 0 KB → 6 → 7 → 8 → 35 KB → 213 KB → 945 KB → 6,7 MB → … → 263 GB (Library sin
   calcular al final); 55 tests verdes.
+- [x] **Tamaños correctos y estables (v2.3.10)**: se sumaba el tamaño **lógico**, y un fichero
+  disperso (`Docker.raw`: 995 GB lógicos / 71 GB reales) hacía que `~/Library` mostrara **1,06 TB**
+  (`du`: 128 GiB). Ahora se suma el **asignado en disco** (`totalFileAllocatedSize` +
+  fallbacks) → `Library` = 135 GB, cuadra con `du`. Además el watcher **ya no borra** el tamaño
+  calculado en cada cambio (parpadeo: aparecía y desaparecía) sino que lo refresca agrupado
+  (4 s) y como mínimo cada 10 s por carpeta; los cálculos van a `.userInitiated` con **tope de 3
+  simultáneos** (antes ~40 escaneos: CPU 80 % y `Library` tardaba minutos); columna Tamaño más
+  ancha (base 84, suelo 68). Tests: 56 verdes (nuevo caso de fichero disperso).
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, unificar el diario de

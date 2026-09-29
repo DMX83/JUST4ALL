@@ -32,6 +32,10 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       tamaños al pulsar la cabecera y reordena una sola vez al terminar (las desconocidas, al final).
 - [x] 🟠 Nit de estado: el aviso «Actualizado (N cambio(s) en disco)» del watcher ya no pisa los mensajes
       de operación (prioridad temporal en el estado del commander).
+- [x] 🟠 **Tamaños de carpeta correctos y estables (v2.3.10)**: se sumaba el tamaño lógico (un fichero
+      disperso hacía que `~/Library` mostrara 1,06 TB en un disco de 995 GB); ahora se suma el asignado en
+      disco (`Library` = 135 GB ≈ `du`), el watcher ya no borra el valor (adiós al parpadeo) y los cálculos
+      van a `.userInitiated` con tope de 3 a la vez.
 
 **Código**
 - [ ] 🟠 Integración JUST4PDF **F3** (opcional): progreso en la cola de trabajos, Quick Actions del Finder

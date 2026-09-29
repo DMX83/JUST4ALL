@@ -165,6 +165,14 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   ascendente/descendente; ordenar por Nombre/Modificado/Tipo debe ser estable (mismo orden al
   recargar). *Validado (29-sep): home con 28 carpetas ordenado 0 KB → 6 KB → … → 263 GB, Library
   sin calcular al final.*
+- [ ] **Tamaños de carpeta (v2.3.10)**: el valor debe corresponder al **espacio en disco**
+  (comparable con `du -sh` / «Acerca de este Mac»), no al tamaño lógico: caso de regresión
+  `~/Library` (un `Docker.raw` disperso inflaba el total a 1,06 TB) → debe dar ~135 GB. El valor
+  NO debe parpadear cuando hay actividad dentro de la carpeta (p. ej. `~/Library`, en constante
+  escritura): se mantiene visible y se refresca solo. Al ordenar por Tamaño, la CPU no debe
+  dispararse (tope de 3 cálculos a la vez).
+  *Validado (29-sep): `Library` 135 GB ≈ `du` 128 GiB; dos capturas separadas 35 s idénticas
+  (sin parpadeo); CPU 5,5 % en reposo.*
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.
 - [ ] Decision de diseno: la vista previa perdio ~65pt de alto (fila del selector + franja de la
   toolbar); valorar selector compacto (iconos) o moverlo a la barra de herramientas.
