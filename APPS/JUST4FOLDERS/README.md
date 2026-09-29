@@ -102,7 +102,8 @@ swift run
   izquierda/derecha» (las acciones operan sobre la pestana pulsada, sin cambiar la activa).
   El toolbar deja el boton `Diagnostics` (pasa al menu Operaciones, a la paleta ⌘K y al editor
   de atajos), normaliza sus etiquetas al espanol y termina con indicadores de vida de
-  **CPU · RAM · Bateria** (refresco cada 2 s; clic abre el Monitor de Actividad;
+  **CPU · RAM · Disco · Bateria** (refresco cada 2 s; el tooltip detalla GB de memoria y de
+  disco — usados/totales/libres — y el estado de la bateria; clic abre el Monitor de Actividad;
   `SystemMonitor.swift`, solo lectura: Mach/IOKit, sin dependencias).
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior

@@ -71,6 +71,35 @@ final class SystemMonitor {
         return (min(used, total), total)
     }
 
+    // MARK: - Disco
+
+    /// Uso del volumen de arranque («/»): usado, total y libre en bytes.
+    /// Libre = capacidad estándar (la que muestran Finder/`df`); si no está, se usa la de
+    /// «uso importante» (incluye espacio purgable que macOS liberaría si hiciera falta).
+    func diskUsage() -> (usedBytes: UInt64, totalBytes: UInt64, freeBytes: UInt64)? {
+        let keys: Set<URLResourceKey> = [
+            .volumeTotalCapacityKey,
+            .volumeAvailableCapacityForImportantUsageKey,
+            .volumeAvailableCapacityKey
+        ]
+        guard let values = try? URL(fileURLWithPath: "/").resourceValues(forKeys: keys),
+              let total = values.volumeTotalCapacity, total > 0 else {
+            return nil
+        }
+        let free: Int64
+        if let regular = values.volumeAvailableCapacity {
+            free = Int64(regular)
+        } else if let important = values.volumeAvailableCapacityForImportantUsage {
+            free = important
+        } else {
+            return nil
+        }
+        let totalBytes = UInt64(total)
+        let freeBytes = UInt64(max(0, free))
+        let usedBytes = totalBytes > freeBytes ? totalBytes - freeBytes : 0
+        return (usedBytes, totalBytes, freeBytes)
+    }
+
     // MARK: - Batería
 
     /// Batería interna (% y estado). Devuelve `nil` en equipos sin batería (Mac de escritorio).
@@ -98,13 +127,15 @@ final class SystemMonitor {
 }
 
 /// v2.3.6 — etiqueta compacta y clicable con el estado de la Mac («CPU 12% · RAM 63% ·
-/// Batería 82%»), pensada para el final del toolbar. Clic: abre el Monitor de Actividad.
+/// Disco 47% · Batería 82%»), pensada para el final del toolbar. Clic: abre el Monitor de
+/// Actividad (el tooltip detalla GB de memoria/disco y el estado de la batería).
 /// Usa frame fijo (no Auto Layout) porque el toolbar solo mide la vista al insertarla;
 /// con Auto Layout, el ancho se fijaba con el texto todavía vacío y el resumen se recortaba.
 /// El timer solo vive mientras la vista está en una ventana (sin fugas al cerrarla).
 final class SystemMonitorView: NSView {
-    /// Ancho reservado para valores de 3 dígitos («CPU 100% · RAM 100% · Batería 100% ⚡»).
-    static let preferredWidth: CGFloat = 238
+    /// Ancho reservado para el peor caso con 3 dígitos («CPU 100% · RAM 100% · Disco 100% ·
+    /// Batería 100% ⚡» ≈ 300 pt medidos con la fuente real).
+    static let preferredWidth: CGFloat = 306
 
     private let monitor = SystemMonitor()
     private let button = NSButton()
@@ -159,6 +190,7 @@ final class SystemMonitorView: NSView {
     private func updateSnapshot() {
         let cpu = monitor.cpuUsagePercent()
         let memory = monitor.memoryUsage()
+        let disk = monitor.diskUsage()
         let battery = monitor.batteryStatus()
 
         var parts: [String] = []
@@ -177,6 +209,16 @@ final class SystemMonitorView: NSView {
             let used = ByteCountFormatter.string(fromByteCount: Int64(memory.usedBytes), countStyle: .memory)
             let total = ByteCountFormatter.string(fromByteCount: Int64(memory.totalBytes), countStyle: .memory)
             details.append("RAM \(used) de \(total) (\(percent)%)")
+        }
+        if let disk {
+            let percent = disk.totalBytes > 0
+                ? Int((Double(disk.usedBytes) / Double(disk.totalBytes) * 100).rounded())
+                : 0
+            parts.append("Disco \(percent)%")
+            let used = ByteCountFormatter.string(fromByteCount: Int64(disk.usedBytes), countStyle: .file)
+            let total = ByteCountFormatter.string(fromByteCount: Int64(disk.totalBytes), countStyle: .file)
+            let free = ByteCountFormatter.string(fromByteCount: Int64(disk.freeBytes), countStyle: .file)
+            details.append("Disco: \(used) usados de \(total) · \(free) libres (\(percent)%)")
         }
         if let battery {
             parts.append(battery.isCharging ? "Batería \(battery.percent)% ⚡" : "Batería \(battery.percent)%")
