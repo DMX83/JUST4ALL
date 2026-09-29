@@ -68,11 +68,11 @@
   desaparecio del origen (fixture limpiado despues). Modulo PICT: seleccion sincronizada
   («a-foto-test.png»), «Redimensionar 50 %» creo 120x80 (original 240x160) SIN sobrescribir;
   fixture limpiado. 55 tests verdes.
-- [x] Submenu JUST4PICT en el clic derecho (v2.3.3): visible y habilitado con una imagen
-  seleccionada (captura del menu contextual); las acciones comparten `PictQuickActions` con el
-  modulo PICT (validado e2e por esa via). **Pendiente de clic manual**: desplegar el submenu y
-  probar cada item (la validacion se interrumpio al pasar WinBox a primer plano con un clic
-  sintetico — NO seguir clicando con otra app en uso).
+- [x] Submenu JUST4PICT en el clic derecho (v2.3.4): SIN imagenes seleccionadas el menu
+  contextual no incluye JUST4PICT y el selector del Panel Hub muestra solo «Vista previa |
+  DESK» (2 segmentos); al seleccionar un PNG aparecen el 3er segmento y el submenu «JUST4PICT ▸»
+  (capturas de ambos estados). Fix de coherencia: un «pict» persistido sin seleccion util se
+  normaliza a «Vista previa» (antes: segmento decia Vista previa con el modulo PICT visible).
 - [x] `swift test`: 55 en `J4FOpsTests`, 0 fallos.
 
 ## Checklist manual — Panel Hub v2.3.x (para verificar con la app en mano)

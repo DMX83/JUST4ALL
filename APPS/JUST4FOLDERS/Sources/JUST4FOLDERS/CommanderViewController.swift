@@ -2792,9 +2792,14 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
     /// Aplica el módulo guardado y sincroniza selector/contenido.
     private func applyPreviewModule() {
+        // v2.3.4 — normaliza: PICT no puede estar activo sin imágenes en la selección
+        // (si quedó persistido «pict» sin selección usable, se vuelve a «Vista previa»).
+        if previewModule == "pict", PictQuickActions.images(in: activePanel.selectedURLs()).isEmpty {
+            previewModule = "preview"
+        }
         let desk = previewModule == "desk"
         let pict = previewModule == "pict"
-        previewModuleSelector.selectedSegment = desk ? 1 : (pict ? 2 : 0)
+        updateModuleSelectorSegments()
         previewContentHost.isHidden = desk || pict
         deskMiniPanel.isHidden = !desk
         pictMiniPanel.isHidden = !pict
@@ -2814,6 +2819,38 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     /// v2.3.2 (F3) — sincroniza la selección del panel activo con el módulo PICT.
     private func refreshPictSelection() {
         pictMiniPanel.updateSelection(activePanel.selectedURLs())
+    }
+
+    /// v2.3.4 — el módulo PICT solo existe cuando la selección del panel activo tiene imágenes:
+    /// si estaba activo y la selección deja de ser usable, se vuelve a «Vista previa».
+    private func refreshPictAvailability() {
+        let hasImages = !PictQuickActions.images(in: activePanel.selectedURLs()).isEmpty
+        if !hasImages, previewModule == "pict" {
+            previewModule = "preview"
+            statusLabel.stringValue = "PICT se oculta sin imágenes en la selección; vuelto a Vista previa."
+            applyPreviewModule()
+        } else {
+            updateModuleSelectorSegments()
+        }
+    }
+
+    /// Sincroniza los segmentos del selector con la disponibilidad actual del módulo PICT.
+    private func updateModuleSelectorSegments() {
+        let hasImages = !PictQuickActions.images(in: activePanel.selectedURLs()).isEmpty
+        let targetCount = hasImages ? 3 : 2
+        if previewModuleSelector.segmentCount != targetCount {
+            previewModuleSelector.segmentCount = targetCount
+            previewModuleSelector.setLabel("Vista previa", forSegment: 0)
+            previewModuleSelector.setLabel("DESK", forSegment: 1)
+            if hasImages {
+                previewModuleSelector.setLabel("PICT", forSegment: 2)
+            }
+        }
+        switch previewModule {
+        case "desk": previewModuleSelector.selectedSegment = 1
+        case "pict": previewModuleSelector.selectedSegment = hasImages ? 2 : 0
+        default: previewModuleSelector.selectedSegment = 0
+        }
     }
 
     /// Búsqueda global del índice para el módulo DESK (mismo servicio que ⌘F).
@@ -2942,6 +2979,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         if previewModule == "pict" {
             refreshPictSelection()
         }
+        refreshPictAvailability()
         guard previewPaneVisible, let ql = previewView else { return }
         let selected = activePanel.selectedURLs()
         let url = selected.count == 1 ? selected.first : nil
@@ -4953,7 +4991,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
             case .tags:
                 item.isEnabled = !selected.isEmpty
             case .pict:
+                // v2.3.4 — el submenú solo APARECE cuando la selección trae imágenes.
                 let hasImages = !PictQuickActions.images(in: selected).isEmpty
+                item.isHidden = !hasImages
                 item.isEnabled = hasImages
                 item.submenu?.items.forEach { $0.isEnabled = hasImages }
             default:

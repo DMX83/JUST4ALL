@@ -51,6 +51,10 @@
   «Convertir a JPEG» y «Redimensionar 50 %» (sips; fichero nuevo), reutilizando
   `PictQuickActions` (mismo motor que el módulo PICT). «Editar/Mejorar con J4P» llegará cuando
   la app acepte ficheros (su app compilada aún no declara tipos de documento).
+- [x] **PICT solo con imágenes (v2.3.4)**: el submenú contextual y el tercer segmento del
+  selector («Vista previa | DESK | PICT») aparecen únicamente cuando la selección del panel
+  activo incluye imágenes; un módulo «pict» persistido sin selección útil se normaliza a «Vista
+  previa» (fix de coherencia selector↔contenido). Validado en ambos estados con capturas.
 - [ ] **Integración JUST4PDF** (evaluación completa en `JUST4PDF_INTEGRATION.md`): F1 = CLI real
   en JUST4PDF (los servicios merge/compress/pdf2img/img2pdf ya existen sin Qt), F2 = submenú
   contextual «JUST4PDF ▸» en FOLDERS (unir/comprimir/pdf→imágenes/imágenes→pdf/abrir con).
