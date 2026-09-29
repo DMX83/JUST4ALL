@@ -182,6 +182,12 @@ swift run
     el recorrido ya está en el óptimo del sistema; lo que ahorra recursos es **no repetirlo**.
   · Nota de arranque: el pico de CPU al abrir la app es el **índice SQLite** (verificado con
     `sample`), no el cálculo de tamaños.
+- **Navegación con teclado (v2.3.12)**: **Return** en la lista vuelve a la **ubicación anterior**
+  (historial atrás) y, si no hay historial (primera carpeta visitada), **sube un nivel**; si no hay
+  a dónde ir, avisa con un beep. Abrir el elemento sigue disponible en **doble clic**, **F4** y
+  **⌘↓**. El menú **Navegación** gana **Atrás ⌘[**, **Adelante ⌘]**, **Subir un nivel ⌘↑** y
+  **Abrir selección ⌘↓** (las mismas entradas con su atajo en la paleta ⌘K): el historial deja de
+  depender solo del ratón.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

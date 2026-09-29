@@ -43,6 +43,9 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       sistema: 18,9 s vs 14,4 s de `du`).
 - [ ] 🔵 Validar en hardware real la copia a volumen externo (sin clones APFS) y la conservación de
       metadatos en el Finder (checklist de `QA_LOCAL.md`).
+- [x] 🟠 **Navegación con Return (v2.3.12)**: Return en la lista vuelve a la ubicación anterior y, sin
+      historial, sube un nivel; atajos nuevos ⌘[ / ⌘] / ⌘↑ / ⌘↓ en el menú Navegación (antes el historial
+      solo tenía botón y paleta). Validado en vivo.
 - [ ] 🟠 Pico de CPU al arrancar: perfilar el warm-up del **índice SQLite** (`sample` mostró sqlite3VdbeExec
       como dominante; los tamaños ya no son el cuello) y decidir si conviene diferirlo.
 

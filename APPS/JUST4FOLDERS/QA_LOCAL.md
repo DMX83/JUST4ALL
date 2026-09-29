@@ -173,6 +173,13 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   dispararse (tope de 3 cálculos a la vez).
   *Validado (29-sep): `Library` 135 GB ≈ `du` 128 GiB; dos capturas separadas 35 s idénticas
   (sin parpadeo); CPU 5,5 % en reposo.*
+- [ ] **Return = ubicación anterior (v2.3.12)**: entrar en una carpeta (doble clic) y pulsar
+  **Return** → debe volver a la carpeta anterior; pulsar Return otra vez va retrocediendo en el
+  historial y, cuando se agota, **sube un nivel** (en la raíz, beep y no pasa nada). Comprobar
+  que **Abrir** sigue en doble clic / **F4** / **⌘↓**, y que el menú **Navegación** tiene Atrás ⌘[,
+  Adelante ⌘], Subir un nivel ⌘↑ y Abrir selección ⌘↓ (también en la paleta ⌘K).
+  *Validado (29-sep): `dmx83` + Return → `/Users`; «Subir un nivel» de `~/` → `/Users` → `/`;
+  «Atrás» de `/` → `/Users`.*
 - [ ] **Copia/duplicado rápido (v2.3.11)**: duplicar una carpeta grande **en el mismo disco** debe
   ser casi instantáneo y **no consumir espacio** (clon APFS): comprobar en Finder que el espacio
   libre no baja al duplicar 1-2 GB. Los **metadatos** se conservan (crear un fichero con una

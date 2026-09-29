@@ -86,6 +86,24 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fFocusPathBar, object: nil)
                 }
                 .keyboardShortcut("l", modifiers: .command)
+                Divider()
+                Button("Atrás") {
+                    NotificationCenter.default.post(name: .j4fGoBack, object: nil)
+                }
+                .keyboardShortcut("[", modifiers: .command)
+                Button("Adelante") {
+                    NotificationCenter.default.post(name: .j4fGoForward, object: nil)
+                }
+                .keyboardShortcut("]", modifiers: .command)
+                Button("Subir un nivel") {
+                    NotificationCenter.default.post(name: .j4fGoUp, object: nil)
+                }
+                .keyboardShortcut(.upArrow, modifiers: .command)
+                Button("Abrir selección") {
+                    NotificationCenter.default.post(name: .j4fOpenSelection, object: nil)
+                }
+                .keyboardShortcut(.downArrow, modifiers: .command)
+                Divider()
                 Button("Vista aplanada (panel activo)") {
                     NotificationCenter.default.post(name: .j4fToggleFlatView, object: nil)
                 }

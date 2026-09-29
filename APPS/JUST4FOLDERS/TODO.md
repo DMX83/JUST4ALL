@@ -125,6 +125,11 @@
   gastados; mecanismo 400×8 KB 0,054 s vs 0,684 s (12,6x); motor completo 2,602 s → 0,114 s;
   `~/Library` (419k ficheros) 18,9 s de recorrido vs 14,4 s de `du` ⇒ caché en disco para no
   repetirlo (TTL 6 h). 61 tests verdes (4 nuevos).
+- [x] **Navegación con teclado: Return = ubicación anterior (v2.3.12)**: Return en la lista vuelve a
+  la ubicación anterior (historial atrás) y, si no hay historial, sube un nivel (beep si no hay a
+  dónde ir); abrir sigue en doble clic/F4/⌘↓. Menú Navegación: Atrás ⌘[, Adelante ⌘], Subir un
+  nivel ⌘↑, Abrir selección ⌘↓ (+ paleta). Validado en vivo: entrar en `dmx83` y Return → vuelve a
+  `/Users`; «Subir un nivel» desde `~/` → `/Users` → `/`; «Atrás» desde `/` → `/Users`.
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, unificar el diario de

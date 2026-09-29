@@ -11,6 +11,11 @@ import os
 
 extension Notification.Name {
     static let j4fFocusPathBar = Notification.Name("j4f.focusPathBar")
+    /// v2.3.12 — navegación con teclado (menú Navegación y paleta): ⌘[ ⌘] ⌘↑ ⌘↓.
+    static let j4fGoBack = Notification.Name("j4f.goBack")
+    static let j4fGoForward = Notification.Name("j4f.goForward")
+    static let j4fGoUp = Notification.Name("j4f.goUp")
+    static let j4fOpenSelection = Notification.Name("j4f.openSelection")
 }
 
 private enum PanelSide: String {
@@ -499,6 +504,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         syncDirectoryTreeToActivePanel()
         scheduleCooperativeIndexing()
         NotificationCenter.default.addObserver(self, selector: #selector(focusPathBar), name: .j4fFocusPathBar, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(goBack), name: .j4fGoBack, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(goForward), name: .j4fGoForward, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(goUpActivePanel), name: .j4fGoUp, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(openSelectionActivePanel), name: .j4fOpenSelection, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onPreferencesChanged), name: .j4fPreferencesChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onToggleFlatViewRequested), name: .j4fToggleFlatView, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onBatchRenameRequested), name: .j4fBatchRename, object: nil)
@@ -588,8 +597,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             .init(title: "Ir al Home", hint: "") { [weak self] in self?.goHome() },
             .init(title: "Buscar en todo el índice", hint: "⌘F") { [weak self] in self?.setGlobalSearchScope(true, announce: true) },
             .init(title: "Buscar solo en esta carpeta", hint: "") { [weak self] in self?.setGlobalSearchScope(false, announce: true) },
-            .init(title: "Atrás", hint: "") { [weak self] in self?.goBack() },
-            .init(title: "Adelante", hint: "") { [weak self] in self?.goForward() },
+            .init(title: "Atrás", hint: "⌘[") { [weak self] in self?.goBack() },
+            .init(title: "Adelante", hint: "⌘]") { [weak self] in self?.goForward() },
+            .init(title: "Subir un nivel", hint: "⌘↑") { [weak self] in self?.goUpActivePanel() },
+            .init(title: "Abrir selección", hint: "⌘↓ · F4 · doble clic") { [weak self] in self?.openSelectionActivePanel() },
             .init(title: "Copiar al otro panel", hint: "F5") { [weak self] in self?.copySelection() },
             .init(title: "Mover al otro panel", hint: "F6") { [weak self] in self?.moveSelection() },
             .init(title: "Renombrar elemento", hint: "F2") { [weak self] in self?.renameSelection() },
@@ -1488,6 +1499,15 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
 
     @objc private func goBack() {
         activePanel.goBack()
+    }
+
+    /// v2.3.12 — navegación con teclado: subir un nivel y abrir la selección (⌘↑ / ⌘↓ · F4).
+    @objc private func goUpActivePanel() {
+        activePanel.goUp()
+    }
+
+    @objc private func openSelectionActivePanel() {
+        activePanel.openSelection()
     }
 
     // MARK: - Historial con menú (Ola 2)
@@ -3841,6 +3861,30 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         loadDirectory(next, pushHistory: false)
     }
 
+    /// v2.3.12 — Return en la lista: vuelve a la ubicación **anterior** (historial atrás) y, si no
+    /// hay historial (primera carpeta visitada), **sube un nivel**. Se mantiene abrir en doble
+    /// clic, F4 y ⌘↓. Si no hay a dónde ir (raíz sin historial) avisa con un beep.
+    func goBackOrUp() {
+        if !historyBack.isEmpty {
+            goBack()
+            return
+        }
+        if !goUp() {
+            NSSound.beep()
+        }
+    }
+
+    /// v2.3.12 — sube a la carpeta padre (con historial, para poder volver con ⌘[ o Return).
+    @discardableResult
+    func goUp() -> Bool {
+        let current = currentURL.standardizedFileURL
+        let parent = current.deletingLastPathComponent().standardizedFileURL
+        guard parent.path != current.path else { return false }
+        guard isDirectory(parent) else { return false }
+        openURL(parent)
+        return true
+    }
+
     func setSearchQuery(_ query: String) {
         searchQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         quickFilter = ""
@@ -4611,7 +4655,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
         tableView.focusDelegate = self
         tableView.onEnterPressed = { [weak self] in
-            self?.openSelected()
+            // v2.3.12 — Return = volver a la ubicación ANTERIOR (pedido del usuario: «cuando
+            // navegas por un panel y presionas Return, quiero que vaya a la ubicación anterior»).
+            // Si no hay historial atrás (primera carpeta visitada) sube un nivel. Abrir el
+            // elemento sigue en doble clic, F4 y ⌘↓.
+            self?.goBackOrUp()
         }
         tableView.onBackgroundClicked = { [weak self] in
             self?.selectRootDirectory()
