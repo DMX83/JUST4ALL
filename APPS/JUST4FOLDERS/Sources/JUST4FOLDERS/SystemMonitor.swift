@@ -111,10 +111,12 @@ final class SystemMonitor {
     /// cuya E/S ya contabiliza el disco físico que los respalda). La primera llamada solo
     /// fija la base y devuelve `nil`.
     ///
-    /// OJO: macOS **no** expone un % de ocupación de disco fiable. Los contadores «Total
-    /// Time (Read/Write)» del driver son tiempo acumulado POR OPERACIÓN sobre varias colas
-    /// NVMe y pueden superar el tiempo real (medido: >300 % mientras un `dd` escribía a
-    /// 425 MB/s), así que el indicador honesto es el caudal en MB/s.
+    /// El «% de trabajo» que muestra la barra se calcula en la vista: dirección más cargada
+    /// (lectura o escritura, nunca sumadas — la suma puede superar el máximo real de una
+    /// sola dirección) frente al máximo registrado por dirección. Ojo: el «% de ocupación»
+    /// oficial de macOS **no existe** de forma fiable — los contadores «Total Time
+    /// (Read/Write)» del driver acumulan tiempo POR OPERACIÓN sobre varias colas NVMe y
+    /// superan el tiempo real (medido: >300 % mientras un `dd` escribía a 425 MB/s).
     func diskActivity() -> (readMBps: Double, writeMBps: Double, opsPerSecond: Double)? {
         guard let totals = diskIOTotals() else {
             lastDiskIO = nil
@@ -222,21 +224,32 @@ final class SystemMonitor {
 }
 
 /// v2.3.6 — etiqueta compacta y clicable con el estado de la Mac («CPU 12% · RAM 63% ·
-/// Disco 47% · I/O 120 MB/s · Batería 82%»), pensada para el final del toolbar. Clic: abre
-/// el Monitor de Actividad (el tooltip detalla GB de memoria/disco, MB/s de E/S y el estado
-/// de la batería). Diseño: etiquetas en gris atenuado, separadores tenues, valores a color
-/// pleno y **avisos por umbral** — naranja (atención) y rojo (crítico/saturado) con más peso.
+/// Disco 47% · I/O 34% · Batería 82%»), pensada para el final del toolbar. El segmento I/O
+/// es el **% de trabajo**: la dirección más cargada (lectura o escritura, nunca sumadas)
+/// frente al máximo registrado en este Mac (picos por dirección aprendidos y persistidos;
+/// 100 % = su tope conocido). Clic: abre el Monitor de Actividad (el tooltip detalla GB de
+/// memoria/disco, MB/s de lectura/escritura con ops/s, los máximos vistos y el estado de la
+/// batería). Diseño: etiquetas en gris atenuado, separadores tenues, valores a color pleno y
+/// **avisos por umbral** — naranja (atención) y rojo (crítico/saturado) con más peso.
 /// Usa frame fijo (no Auto Layout) porque el toolbar solo mide la vista al insertarla;
 /// con Auto Layout, el ancho se fijaba con el texto todavía vacío y el resumen se recortaba.
 /// El timer solo vive mientras la vista está en una ventana (sin fugas al cerrarla).
 final class SystemMonitorView: NSView {
-    /// Ancho reservado para el peor caso con 3 dígitos («CPU 100% · RAM 100% · Disco 100% ·
-    /// I/O 999 MB/s · Batería 100%» ≈ 354 pt medidos con la fuente real).
-    static let preferredWidth: CGFloat = 356
+    /// Ancho reservado para el peor caso («CPU 100% · RAM 100% · Disco 100% · I/O 100% ·
+    /// Batería 100%» ≈ 339 pt medidos con la fuente real).
+    static let preferredWidth: CGFloat = 344
 
     private let monitor = SystemMonitor()
     private let button = NSButton()
     private var timer: Timer?
+    /// Picos de E/S por dirección (MB/s) vistos en este Mac: persisten entre sesiones y son
+    /// la referencia del «% de trabajo» del segmento I/O.
+    private var peakReadMBps = UserDefaults.standard.double(forKey: SystemMonitorView.peakReadKey)
+    private var peakWriteMBps = UserDefaults.standard.double(forKey: SystemMonitorView.peakWriteKey)
+    private static let peakReadKey = "j4f.monitor.diskPeakReadMBps"
+    private static let peakWriteKey = "j4f.monitor.diskPeakWriteMBps"
+    /// Referencia mínima (MB/s) antes de haber aprendido picos reales.
+    private static let referenceFloorMBps: Double = 1000
 
     override init(frame frameRect: NSRect) {
         super.init(frame: NSRect(x: 0, y: 0, width: Self.preferredWidth, height: 24))
@@ -287,11 +300,12 @@ final class SystemMonitorView: NSView {
     // MARK: - Diseño de la etiqueta
 
     /// Umbrales de aviso del monitor (naranja = atención; rojo = crítico/saturado).
+    /// En I/O aplican a la dirección más cargada (lectura o escritura).
     private enum Thresholds {
         static let cpuWarn = 80.0, cpuCritical = 95.0
         static let ramWarn = 85.0, ramCritical = 95.0
         static let diskWarn = 85.0, diskCritical = 93.0
-        static let ioWarnMBps = 500.0, ioCriticalMBps = 1500.0
+        static let ioWarnPercent = 60.0, ioCriticalPercent = 85.0
         static let batteryWarn = 25, batteryCritical = 15
     }
 
@@ -362,16 +376,36 @@ final class SystemMonitorView: NSView {
             details.append("Disco: \(used) usados de \(total) · \(free) libres (\(percent)%)")
         }
         if let io {
-            let totalMBps = io.readMBps + io.writeMBps
-            let style = Self.style(for: Self.severity(for: totalMBps, warn: Thresholds.ioWarnMBps, critical: Thresholds.ioCriticalMBps))
-            metrics.append(Metric(label: "I/O", value: Self.throughputText(totalMBps), color: style.color, font: style.font))
-            let read = Self.throughputText(io.readMBps)
-            let write = Self.throughputText(io.writeMBps)
+            // El «% de trabajo» se calcula contra el máximo registrado en este Mac por
+            // dirección (se aprende y persiste el pico; nunca se suman L+E). Así 100 % es
+            // «su velocidad tope conocida», sin inventar constantes de fábrica.
+            if io.readMBps > peakReadMBps {
+                peakReadMBps = io.readMBps
+                UserDefaults.standard.set(peakReadMBps, forKey: Self.peakReadKey)
+            }
+            if io.writeMBps > peakWriteMBps {
+                peakWriteMBps = io.writeMBps
+                UserDefaults.standard.set(peakWriteMBps, forKey: Self.peakWriteKey)
+            }
+            let readReference = max(peakReadMBps, Self.referenceFloorMBps)
+            let writeReference = max(peakWriteMBps, Self.referenceFloorMBps)
+            let readPercent = io.readMBps / readReference * 100
+            let writePercent = io.writeMBps / writeReference * 100
+            let percent = Int(min(100, max(readPercent, writePercent)).rounded())
+            let style = Self.style(for: Self.severity(
+                for: Double(percent),
+                warn: Thresholds.ioWarnPercent,
+                critical: Thresholds.ioCriticalPercent
+            ))
+            metrics.append(Metric(label: "I/O", value: "\(percent)%", color: style.color, font: style.font))
             let ops = NumberFormatter.localizedString(
                 from: NSNumber(value: max(0, io.opsPerSecond.rounded())),
                 number: .decimal
             )
-            details.append("Actividad de disco: \(write) de escritura · \(read) de lectura · \(ops) ops/s")
+            details.append(
+                "Actividad de disco: \(percent)% (lectura \(Self.throughputText(io.readMBps)) · escritura \(Self.throughputText(io.writeMBps)) · \(ops) ops/s)"
+                    + " · máximos vistos: L \(Self.throughputText(peakReadMBps)) / E \(Self.throughputText(peakWriteMBps))"
+            )
         }
         if let battery {
             // Aviso solo cuando va con batería; cargando nunca es una alerta.

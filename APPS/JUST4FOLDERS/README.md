@@ -103,15 +103,16 @@ swift run
   El toolbar deja el boton `Diagnostics` (pasa al menu Operaciones, a la paleta ⌘K y al editor
   de atajos), normaliza sus etiquetas al espanol y termina con indicadores de vida de
   **CPU · RAM · Disco · I/O · Bateria** (refresco cada 2 s; el tooltip detalla GB de memoria y de
-  disco — usados/totales/libres —, MB/s de lectura/escritura con ops/s, y el estado de la
-  bateria; clic abre el Monitor de Actividad; `SystemMonitor.swift`, solo lectura: Mach/IOKit,
-  sin dependencias). El segmento **I/O** es el caudal real del disco (p. ej. «1.5 GB/s» durante
-  una copia grande): macOS no expone un % de ocupacion fiable —los tiempos por operacion del
-  driver se acumulan sobre varias colas NVMe y superan el 100 %—, asi que se muestra el
-  rendimiento, que es lo que delata al disco trabajando a tope. Diseno con jerarquia
+  disco — usados/totales/libres —, MB/s de lectura/escritura con ops/s, los «máximos vistos»
+  de E/S y el estado de la bateria; clic abre el Monitor de Actividad; `SystemMonitor.swift`,
+  solo lectura: Mach/IOKit, sin dependencias). El segmento **I/O** es el **% de trabajo**: la
+  direccion mas cargada (lectura o escritura, **nunca sumadas** — la suma L+E puede superar el
+  maximo real de una sola direccion) frente al **maximo registrado en este Mac** (picos por
+  direccion aprendidos y persistidos; 100 % = su tope conocido; macOS no expone un % de
+  ocupacion oficial fiable). Diseno con jerarquia
   (etiquetas atenuadas, separadores tenues, valores a color pleno) y **avisos por color**:
-  naranja = atencion (I/O >=500 MB/s; CPU >=80 %; RAM >=85 %; disco >=85 % ocupado; bateria
-  <=25 % sin cargador) y rojo = critico/saturado (I/O >=1.5 GB/s; CPU/RAM >=95 %; disco
+  naranja = atencion (I/O >=60 %; CPU >=80 %; RAM >=85 %; disco >=85 % ocupado; bateria
+  <=25 % sin cargador) y rojo = critico/saturado (I/O >=85 %; CPU/RAM >=95 %; disco
   >=93 %; bateria <=15 %), con mas peso tipografico al subir de nivel.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior

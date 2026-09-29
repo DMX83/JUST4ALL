@@ -85,11 +85,12 @@
   «Mover a la izquierda» (deshabilitado, es la primera) · «Mover a la derecha» (captura);
   pulsar «Cerrar pestaña» cerró la tab extra y quedó «1: dmx83». Toolbar: ítem `Diagnostics`
   ya no está; indicadores al final «CPU 18% · RAM 71% · Batería 82%», «CPU 19% · RAM 69% ·
-  Disco 89% · Batería 80%» y con actividad «I/O 59 MB/s» en reposo-arranque + «I/O 1.5 GB/s»
-  (y 661 MB/s) durante un `dd` de 4 GB (capturas 1:1; el 89% de disco cuadra con `df`:
-  860G usados de 995G = 89%). Diseño con avisos por color validado en capturas: «Disco 89%»
-  NARANJA (casi lleno), «I/O 1.2 GB/s» NARANJA (carga) y «I/O 1.6 GB/s» ROJO + negrita
-  (saturado); etiquetas atenuadas y valores a color pleno; 55 tests.
+  Disco 89% · Batería 80%» y con actividad (formatos previos en MB/s): «I/O 59 MB/s» en
+  reposo-arranque + «I/O 1.5 GB/s» (y 661 MB/s) durante un `dd` de 4 GB (capturas 1:1; el
+  89% de disco cuadra con `df`: 860G usados de 995G = 89%). Diseño con avisos por color
+  validado en capturas: «Disco 89%» NARANJA (casi lleno), «I/O 65%» NARANJA (carga, formato
+  final %) y «I/O 3%» tras parar; antes (formato MB/s): «I/O 1.2 GB/s» naranja y «I/O
+  1.6 GB/s» ROJO + negrita; etiquetas atenuadas y valores a color pleno; 55 tests.
 - [x] `swift test`: 55 en `J4FOpsTests`, 0 fallos.
 
 ## Checklist manual — Panel Hub v2.3.x (para verificar con la app en mano)
@@ -125,14 +126,16 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   (deshabilitado). Comprobar que el clic derecho NO cambia la pestana activa.
 - [ ] **Monitor (v2.3.6)**: los valores de CPU/RAM/Disco se mueven (abrir una operacion
   pesada); el % de disco (OCUPACION, cuadra con «Acerca de este Mac»/`df`) y el segmento
-  **I/O** (TRABAJO: caudal real; en reposo ~0-5 MB/s, en copias grandes escala a cientos de
-  MB/s o GB/s — asi se ve el disco «a full»); avisos por color: valores en NARANJA al cruzar
-  el umbral de atencion y ROJO (mas peso) al de saturacion — con este disco: Disco >=85% ya
-  sale naranja, e I/O >=500 MB/s naranja / >=1.5 GB/s rojo; el tooltip trae GB usados/
-  totales/libres (memoria y disco) y desglose escritura/lectura/ops/s; bateria con y sin
-  cargador (el estado «cargando» aparece solo en el tooltip y nunca alerta); clic → abre
-  Monitor de Actividad; al cerrar la ventana el timer se detiene (sin lecturas en segundo
-  plano). En Mac sin bateria el bloque desaparece (queda CPU · RAM · Disco · I/O).
+  **I/O** es el % de TRABAJO: dirección más cargada (lectura/escritura, nunca sumadas)
+  frente al **máximo registrado** — en reposo 0-5 %, una copia grande sube a naranja/rojo y
+  puede llegar a 100 % cuando iguala el máximo visto; el pico se aprende y persiste (haz una
+  copia grande para calibrar la referencia; el tooltip muestra «máximos vistos: L/E»); avisos
+  por color: NARANJA al cruzar el umbral de atencion y ROJO (mas peso) al de saturacion —
+  Disco >=85 %, I/O >=60 %→85 %; el tooltip trae GB usados/totales/libres (memoria y disco)
+  y desglose escritura/lectura/ops/s; bateria con y sin cargador (el estado «cargando»
+  aparece solo en el tooltip y nunca alerta); clic → abre Monitor de Actividad; al cerrar la
+  ventana el timer se detiene (sin lecturas en segundo plano). En Mac sin bateria el bloque
+  desaparece (queda CPU · RAM · Disco · I/O).
 - [ ] **Exportar diagnostico (v2.3.6)**: menu `Operaciones ▸ Exportar diagnóstico…` y paleta
   (⌘K) generan el zip con `summary.json` etc.
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.

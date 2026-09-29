@@ -70,16 +70,18 @@
   Mach ticks CPU, `vm_statistics64`, capacidad del volumen de arranque, contadores
   `IOBlockStorageDriver` para la actividad (Bytes Read/Write, excluyendo «Disk Image»), IOKit;
   refresco 2 s; clic → Monitor de Actividad; el timer solo vive mientras la vista está en
-  ventana). Nota: el % de disco es OCUPACIÓN; el segmento I/O es TRABAJO (caudal en MB/s —
-  macOS no da un % de ocupación fiable: los tiempos por operación suman >100 %). Capturas
-  verificadas: «CPU 18% · RAM 71% · Batería 82%»; «CPU 19% · RAM 69% · Disco 89% · Batería 80%»
-  (89% = `df`); y con actividad: «I/O 59 MB/s» en reposo-arranque (replay FSEvents) y «I/O
-  1.5 GB/s» durante un `dd` de 4 GB (también 661 MB/s). El tooltip detalla GB usados/totales/
-  libres de memoria y disco, y lectura/escritura/ops de la E/S. **Diseño (avisos por color)**:
-  jerarquía etiquetas atenuadas / valores plenos y umbrales naranja-rojo con más peso
-  tipográfico (I/O 500 MB/s→1.5 GB/s; CPU 80→95 %; RAM 85→95 %; disco 85→93 %; batería 25→15 %
-  sin cargador). Capturas: «Disco 89%» naranja (atención), «I/O 1.2 GB/s» naranja y «I/O
-  1.6 GB/s» rojo + seminegrita/negrita.
+  ventana). Nota: el % de disco es OCUPACIÓN; el segmento **I/O es el % de TRABAJO** —
+  dirección más cargada (lectura o escritura, **nunca sumadas**: la suma L+E puede superar el
+  máximo real de una sola) frente al **máximo registrado por dirección** (picos aprendidos del
+  delta y persistidos en `j4f.monitor.diskPeakReadMBps`/`diskPeakWriteMBps`; suelo inicial
+  1000 MB/s; 100 % = su tope conocido). Evolución pedida por el usuario: suma MB/s → par L/E
+  («¿estás sumando?») → **%** («mejóralo en %»). Capturas: «I/O 65%» naranja durante `dd` de
+  4,8 GB y «I/O 3%» tras parar; antes: «I/O 1.6 GB/s» rojo. Tooltip: GB usados/totales/libres
+  (memoria y disco), lectura/escritura con ops/s y «máximos vistos: L/E».
+  **Diseño (avisos por color)**: jerarquía etiquetas atenuadas / valores plenos y umbrales
+  naranja-rojo con más peso tipográfico (I/O 60→85 %; CPU 80→95 %; RAM 85→95 %; disco
+  85→93 %; batería 25→15 % sin cargador). Capturas: «Disco 89%» naranja (atención), «I/O 65%»
+  naranja (carga) y «I/O 1.6 GB/s» rojo (saturado, formato anterior).
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de
