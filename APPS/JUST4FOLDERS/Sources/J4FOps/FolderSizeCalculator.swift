@@ -11,6 +11,8 @@ public actor FolderSizeCalculator {
     private var order: [String] = []
     private var inFlight: [String: Task<Int64, Never>] = [:]
     private let capacity = 4096
+    /// v2.3.11 — caché en disco (entre arranques). Ver `FolderSizeCacheStore`.
+    private let cacheStore: FolderSizeCacheStore?
 
     /// v2.3.10 — tope de cálculos simultáneos. Sin él, un panel en `~` lanza una decena de
     /// escaneos profundos a la vez (incluidos `Library`/`Movies`…): la CPU se dispara y una
@@ -25,7 +27,9 @@ public actor FolderSizeCalculator {
     private var slotWaiters: [CheckedContinuation<Void, Never>] = []
     private let maxConcurrentComputations = 3
 
-    public init() {}
+    public init(cacheStore: FolderSizeCacheStore? = FolderSizeCacheStore.shared) {
+        self.cacheStore = cacheStore
+    }
 
     /// Tamaño ya calculado (nil si no está en caché).
     public func cachedSize(of path: String) -> Int64? {
@@ -37,6 +41,13 @@ public actor FolderSizeCalculator {
         let path = url.standardizedFileURL.path
         if let hit = cache[path] { return hit }
         if let task = inFlight[path] { return await task.value }
+        // v2.3.11 — caché en disco: evita repetir un recorrido caro entre arranques (medido:
+        // `~/Library` = 419k ficheros ⇒ 19 s de recorrido; `du` tarda 14,4 s, o sea que el walk
+        // ya está en el óptimo del sistema y lo único que ahorra recursos es NO repetirlo).
+        if let cached = cacheStore?.value(for: path) {
+            store(cached, for: path)
+            return cached
+        }
         let task = Task.detached(priority: .userInitiated) { [weak self] in
             await self?.waitForSlot()
             let value = Self.compute(path: path, includeHidden: includeHidden)
@@ -47,6 +58,7 @@ public actor FolderSizeCalculator {
         let value = await task.value
         inFlight[path] = nil
         store(value, for: path)
+        cacheStore?.store(value, for: path)
         return value
     }
 
@@ -79,6 +91,7 @@ public actor FolderSizeCalculator {
         let removed = Set(keys)
         for key in removed {
             cache.removeValue(forKey: key)
+            cacheStore?.remove(key)
         }
         order.removeAll { removed.contains($0) }
     }

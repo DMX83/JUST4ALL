@@ -11,6 +11,9 @@ public final class JobQueueService {
     private var jobs: [UUID: ManagedJob] = [:]
     private let eventEmitter = EventStreamEmitter()
     private let snapshotStore = JobSnapshotStore()
+    /// v2.3.11 — marcas para agrupar el progreso (ver `emit`).
+    private var lastProgressPersistAt = Date.distantPast
+    private var lastProgressNotifyAt = Date.distantPast
 
     public init(maxConcurrent: Int = max(1, Int(Double(ProcessInfo.processInfo.activeProcessorCount) * 0.8))) {
         queue.name = "j4f.job.queue"
@@ -159,6 +162,10 @@ private final class ManagedJob {
     private var finishedAt: Date?
     private var lastError: String?
     private var currentItemPath: String?
+    /// v2.3.11 — marcas para agrupar el progreso (ver `emit`): el JSON de trabajos se reescribía
+    /// por CADA item y saltaba al hilo principal por CADA item.
+    private var lastProgressPersistAt = Date.distantPast
+    private var lastProgressNotifyAt = Date.distantPast
 
     init(
         id: UUID,
@@ -622,7 +629,25 @@ private final class ManagedJob {
             )
         }
 
-        snapshotStore.save(snap)
+        // v2.3.11 — Rendimiento: `.progress` se emite por CADA item (y por cada bloque copiado), y
+        // antes cada emisión llamaba a `snapshotStore.save`, que RELEE y REESCRIBE el JSON completo
+        // de trabajos, y además saltaba al hilo principal. Con muchos ficheros pequeños eso dominaba
+        // el tiempo total (medido: 400 ficheros de 8 KB = 2,6 s, con la copia en sí como parte
+        // mínima). Ahora el progreso se agrupa (2 s el JSON, 0,1 s la UI) y los cambios de estado y
+        // el resto de eventos (inicio, retry, fin) pasan siempre: no se pierde nada.
+        let isProgress = eventKind == .progress
+        let isStateChange = stateOverride != nil
+        let now = Date()
+        stateLock.lock()
+        let persistNow = !isProgress || isStateChange || now.timeIntervalSince(lastProgressPersistAt) >= 2.0
+        if persistNow { lastProgressPersistAt = now }
+        let notifyNow = !isProgress || isStateChange || now.timeIntervalSince(lastProgressNotifyAt) >= 0.1
+        if notifyNow { lastProgressNotifyAt = now }
+        stateLock.unlock()
+
+        if persistNow {
+            snapshotStore.save(snap)
+        }
 
         // v1.1 — el trabajo terminó (bien o cancelado): el diario de items ya no hace falta.
         if snap.state == .done || snap.state == .cancelled {
@@ -640,7 +665,7 @@ private final class ManagedJob {
             )
         }
 
-        guard let onUpdate else { return }
+        guard let onUpdate, notifyNow else { return }
         Task { @MainActor in
             onUpdate(snap)
         }
@@ -719,14 +744,26 @@ private final class ManagedJob {
         }
 
         let sourceSize = fileSizeIfRegularFile(source)
-        if sourceSize <= ExecutionPlanner.smallThresholdBytes {
-            try copySmallFile(
-                source: source,
-                destination: target,
-                onBytesCopied: onBytesCopied,
-                cooperativeCheck: cooperativeCheck,
-                onRetry: onRetry
-            )
+
+        // v2.3.11 — COPIAS RÁPIDAS. Medido antes de tocar nada: recorrer `~/Library` (419k
+        // ficheros) cuesta 19 s y `du` tarda 14 s ⇒ el RECORRIDO no tiene margen, pero la COPIA sí:
+        //   1) `clonefile(3)`: clon APFS en el mismo volumen → instantáneo y sin gastar espacio
+        //      (antes, copiar un fichero implicaba leerlo entero a memoria y escribir un temporal).
+        //   2) `copyfile(3)`: copia EN EL KERNEL con metadatos completos (xattrs, ACLs, forks);
+        //      antes se perdían porque el camino «pequeño» hacía `Data(contentsOf:)` + escritura
+        //      atómica (temporal + rename).
+        //   3) Streaming con buffers y progreso, solo para grandes entre volúmenes.
+        // El destino se limpia antes: `clonefile` exige que no exista.
+        try cooperativeCheck()
+        if fm.fileExists(atPath: target.path) {
+            try? fm.removeItem(at: target)
+        }
+        if cloneItem(source: source, destination: target) {
+            onBytesCopied(sourceSize)
+            return
+        }
+        if sourceSize <= Self.kernelCopyThresholdBytes, kernelCopyItem(source: source, destination: target) {
+            onBytesCopied(sourceSize)
             return
         }
 
@@ -744,6 +781,31 @@ private final class ManagedJob {
             cooperativeCheck: cooperativeCheck,
             onRetry: onRetry
         )
+    }
+
+    /// v2.3.11 — por encima de este tamaño entre volúmenes se usa streaming (da progreso).
+    static let kernelCopyThresholdBytes: Int64 = 64 * 1024 * 1024
+
+    /// Clon APFS (`clonefile`). `false` si el sistema no puede clonar (otro volumen, red, FS sin
+    /// clones…); nunca deja el destino a medias.
+    private static func cloneItem(source: URL, destination: URL) -> Bool {
+        let result = source.path.withCString { sourcePath in
+            destination.path.withCString { destinationPath in
+                clonefile(sourcePath, destinationPath, 0)
+            }
+        }
+        return result == 0
+    }
+
+    /// Copia en el kernel (`copyfile` con clonado oportunista y todos los metadatos).
+    private static func kernelCopyItem(source: URL, destination: URL) -> Bool {
+        let flags = copyfile_flags_t(COPYFILE_ALL | COPYFILE_CLONE)
+        let result = source.path.withCString { sourcePath in
+            destination.path.withCString { destinationPath in
+                copyfile(sourcePath, destinationPath, nil, flags)
+            }
+        }
+        return result == 0
     }
 
     private static func moveToTarget(
@@ -769,61 +831,19 @@ private final class ManagedJob {
                 try fm.copyItem(at: source, to: target)
                 onBytesCopied(fileSizeIfRegularFile(source))
             } else {
-                let sourceSize = fileSizeIfRegularFile(source)
-                if sourceSize <= ExecutionPlanner.smallThresholdBytes {
-                    try copySmallFile(
-                        source: source,
-                        destination: target,
-                        onBytesCopied: onBytesCopied,
-                        cooperativeCheck: cooperativeCheck,
-                        onRetry: onRetry
-                    )
-                } else {
-                    let profile = VolumeScheduler.shared.profile(forPath: parent.path)
-                    let adaptiveChunk = lane == .small ? BufferSizer.shared.recommendedChunkSize(for: .small) : BufferSizer.shared.recommendedChunkSize(for: .big)
-                    let chunk = min(adaptiveChunk, max(64 * 1024, profile.chunkSizeBytes * 8))
-                    try copyBigFileWithRetry(
-                        source: source,
-                        destination: target,
-                        sourceSize: sourceSize,
-                        chunkSize: chunk,
-                        lane: lane,
-                        options: options,
-                        onBytesCopied: onBytesCopied,
-                        cooperativeCheck: cooperativeCheck,
-                        onRetry: onRetry
-                    )
-                }
+                // v2.3.11 — mismo camino que la copia (clon APFS / copyfile / streaming).
+                try copyToTarget(
+                    source: source,
+                    target: target,
+                    lane: lane,
+                    options: options,
+                    onBytesCopied: onBytesCopied,
+                    cooperativeCheck: cooperativeCheck,
+                    onRetry: onRetry
+                )
             }
             try cooperativeCheck()
             try fm.removeItem(at: source)
-        }
-    }
-
-    private static func copySmallFile(
-        source: URL,
-        destination: URL,
-        onBytesCopied: @escaping (Int64) -> Void,
-        cooperativeCheck: @escaping () throws -> Void,
-        onRetry: @escaping (Int, Error) -> Void
-    ) throws {
-        let fm = FileManager.default
-        try withRetry(maxAttempts: 3, onRetry: onRetry) {
-            try cooperativeCheck()
-            if fm.fileExists(atPath: destination.path) {
-                try? fm.removeItem(at: destination)
-            }
-            do {
-                let bytes = try Data(contentsOf: source, options: [.mappedIfSafe])
-                try cooperativeCheck()
-                try bytes.write(to: destination, options: .atomic)
-                onBytesCopied(Int64(bytes.count))
-            } catch {
-                if fm.fileExists(atPath: destination.path) {
-                    try? fm.removeItem(at: destination)
-                }
-                throw error
-            }
         }
     }
 

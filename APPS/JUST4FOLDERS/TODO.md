@@ -118,6 +118,13 @@
   (4 s) y como mínimo cada 10 s por carpeta; los cálculos van a `.userInitiated` con **tope de 3
   simultáneos** (antes ~40 escaneos: CPU 80 % y `Library` tardaba minutos); columna Tamaño más
   ancha (base 84, suelo 68). Tests: 56 verdes (nuevo caso de fichero disperso).
+- [x] **Motor de copia rápido + caché de tamaños (v2.3.11)**: `clonefile` (clon APFS) primero,
+  `copyfile` después y streaming solo para grandes entre volúmenes; el camino anterior de ficheros
+  pequeños (`Data(contentsOf:)` + `.atomic`) se elimina. Además `emit` ya no reescribe el JSON de
+  trabajos por ítem (agrupado: 2 s JSON / 0,1 s UI). MEDIDO: clon de 96 MB en 0,009 s con 0 MB
+  gastados; mecanismo 400×8 KB 0,054 s vs 0,684 s (12,6x); motor completo 2,602 s → 0,114 s;
+  `~/Library` (419k ficheros) 18,9 s de recorrido vs 14,4 s de `du` ⇒ caché en disco para no
+  repetirlo (TTL 6 h). 61 tests verdes (4 nuevos).
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, unificar el diario de

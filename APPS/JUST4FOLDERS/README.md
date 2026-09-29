@@ -164,6 +164,24 @@ swift run
   `.userInitiated` y un **tope de 3 simultáneos** (antes ~40 escaneos a la vez: CPU al 80 % y
   `Library` tardaba minutos por el estrangulamiento de I/O a batería); (c) la columna Tamaño es más
   ancha (base 84 pt, suelo 68) para que quepan los valores de 3 dígitos.
+- **Motor de copia rápido + caché de tamaños (v2.3.11)**, con medidas antes/después:
+  · **Clon APFS (`clonefile`)**: en el mismo volumen la copia es un clon COW → instantánea y sin
+    gastar espacio. Medido: fichero de 96 MB copiado en **0,009-0,017 s** consumiendo **0 MB**
+    (antes: leer a memoria + escribir un temporal y renombrar).
+  · **`copyfile(3)`** para el resto de ficheros medianos (en el kernel, y ahora **conserva xattrs,
+    ACLs y forks**, que el camino anterior perdía). Más allá de 64 MB entre volúmenes se mantiene
+    el streaming con buffers y progreso.
+  · **Mecanismo aislado** (400 ficheros de 8 KB): clon **0,054 s** vs camino anterior **0,684 s**
+    → **12,6x**.
+  · **Motor completo** (planificador + eventos + snapshots, 400 ficheros): **2,602 s → 0,114 s**.
+    El verdadero cuello no era la copia: `emit` persistía `job-snapshots.json` (leer + decodificar
+    + mezclar + reescribir) y saltaba al hilo principal **por cada ítem**. Ahora el progreso se
+    agrupa (2 s el JSON, 0,1 s la UI) y los cambios de estado siempre pasan.
+  · **Caché en disco de tamaños** (`folder-sizes.json`, TTL 6 h): recorrer un árbol cuesta lo mismo
+    que `du` (medido: `~/Library` = 419.476 ficheros → **18,9 s** vs **14,4 s** de `du`), o sea que
+    el recorrido ya está en el óptimo del sistema; lo que ahorra recursos es **no repetirlo**.
+  · Nota de arranque: el pico de CPU al abrir la app es el **índice SQLite** (verificado con
+    `sample`), no el cálculo de tamaños.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

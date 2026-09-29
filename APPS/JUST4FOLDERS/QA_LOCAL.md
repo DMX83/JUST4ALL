@@ -173,6 +173,14 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   dispararse (tope de 3 cálculos a la vez).
   *Validado (29-sep): `Library` 135 GB ≈ `du` 128 GiB; dos capturas separadas 35 s idénticas
   (sin parpadeo); CPU 5,5 % en reposo.*
+- [ ] **Copia/duplicado rápido (v2.3.11)**: duplicar una carpeta grande **en el mismo disco** debe
+  ser casi instantáneo y **no consumir espacio** (clon APFS): comprobar en Finder que el espacio
+  libre no baja al duplicar 1-2 GB. Los **metadatos** se conservan (crear un fichero con una
+  etiqueta/atributo extendido, copiarlo y ver que sigue ahí). Copiar a un **volumen externo**
+  (sin clones) debe funcionar igual y mostrar progreso en la barra para ficheros grandes.
+- [ ] **Tamaños: caché entre arranques (v2.3.11)**: abrir la app, esperar a que salgan los tamaños,
+  cerrarla y volver a abrirla → los tamaños ya conocidos aparecen **sin** volver a provocar pico de
+  disco/CPU en esa carpeta (se guardan en `folder-sizes.json`, TTL 6 h).
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.
 - [ ] Decision de diseno: la vista previa perdio ~65pt de alto (fila del selector + franja de la
   toolbar); valorar selector compacto (iconos) o moverlo a la barra de herramientas.

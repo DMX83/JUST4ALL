@@ -63,6 +63,46 @@ final class FolderSizeCalculatorTests: XCTestCase {
         XCTAssertEqual(computed, allocatedSize(of: sparse))
     }
 
+    func testDiskCacheAvoidsRepeatedWalk() async throws {
+        let storeURL = tempDir.appendingPathComponent("sizes.json")
+        let store = FolderSizeCacheStore(ttl: 3600, capacity: 64, fileURL: storeURL)
+        let dir = tempDir.appendingPathComponent("cacheable", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let file = dir.appendingPathComponent("x.bin")
+        try write(4096, to: file)
+
+        let calculator = FolderSizeCalculator(cacheStore: store)
+        let first = await calculator.size(of: dir, includeHidden: true)
+        XCTAssertEqual(first, allocatedSize(of: file))
+
+        // v2.3.11 — vaciamos la carpeta: un recorrido daría 0. Si sigue devolviendo el valor, viene
+        // de la caché en disco (objetivo: no repetir los ~19 s de recorrido de `~/Library`).
+        try FileManager.default.removeItem(at: file)
+        let fresh = FolderSizeCalculator(cacheStore: store)
+        let second = await fresh.size(of: dir, includeHidden: true)
+        XCTAssertEqual(second, first, "segundo arranque: se reutiliza la caché, sin recorrer")
+
+        // Tras invalidar (lo que hace el watcher al detectar cambios), sí se recalcula.
+        _ = await fresh.refreshSize(of: dir, includeHidden: true)
+        let third = await fresh.size(of: dir, includeHidden: true)
+        XCTAssertEqual(third, 0, "tras invalidar se recalcula de verdad (carpeta vacía)")
+    }
+
+    func testDiskCacheExpiresWithTTL() throws {
+        let storeURL = tempDir.appendingPathComponent("sizes-ttl.json")
+        let old = Date().timeIntervalSince1970 - 7200
+        let json = "{\"/tmp/algo\": {\"bytes\": 123, \"timestamp\": \(old)}}"
+        try Data(json.utf8).write(to: storeURL)
+
+        let store = FolderSizeCacheStore(ttl: 3600, capacity: 64, fileURL: storeURL)
+        XCTAssertNil(store.value(for: "/tmp/algo"), "caducado: hay que volver a recorrer")
+
+        store.store(456, for: "/tmp/algo")
+        store.flush()
+        let reopened = FolderSizeCacheStore(ttl: 3600, capacity: 64, fileURL: storeURL)
+        XCTAssertEqual(reopened.value(for: "/tmp/algo"), 456, "persiste entre instancias")
+    }
+
     func testActorCachesAndInvalidates() async throws {
         let c = tempDir.appendingPathComponent("c.bin")
         try write(1234, to: c)

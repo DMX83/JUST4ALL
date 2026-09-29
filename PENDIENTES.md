@@ -36,6 +36,15 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       disperso hacía que `~/Library` mostrara 1,06 TB en un disco de 995 GB); ahora se suma el asignado en
       disco (`Library` = 135 GB ≈ `du`), el watcher ya no borra el valor (adiós al parpadeo) y los cálculos
       van a `.userInitiated` con tope de 3 a la vez.
+- [x] 🟠 **Motor de copia rápido + caché de tamaños (v2.3.11)**: clon APFS (`clonefile`) y `copyfile` en
+      lugar de leer a memoria + escritura atómica; el progreso ya no reescribe el JSON de trabajos por
+      ítem. Medido: 96 MB clonados en 0,009 s / 0 MB; mecanismo 400×8 KB 12,6x más rápido; motor completo
+      2,602 s → 0,114 s; caché en disco de tamaños (el recorrido de un árbol ya está en el óptimo del
+      sistema: 18,9 s vs 14,4 s de `du`).
+- [ ] 🔵 Validar en hardware real la copia a volumen externo (sin clones APFS) y la conservación de
+      metadatos en el Finder (checklist de `QA_LOCAL.md`).
+- [ ] 🟠 Pico de CPU al arrancar: perfilar el warm-up del **índice SQLite** (`sample` mostró sqlite3VdbeExec
+      como dominante; los tamaños ya no son el cuello) y decidir si conviene diferirlo.
 
 **Código**
 - [ ] 🟠 Integración JUST4PDF **F3** (opcional): progreso en la cola de trabajos, Quick Actions del Finder
