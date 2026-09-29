@@ -132,10 +132,15 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   copia grande para calibrar la referencia; el tooltip muestra «máximos vistos: L/E»); avisos
   por color: NARANJA al cruzar el umbral de atencion y ROJO (mas peso) al de saturacion —
   Disco >=85 %, I/O >=60 %→85 %; el tooltip trae GB usados/totales/libres (memoria y disco)
-  y desglose escritura/lectura/ops/s; bateria con y sin cargador (el estado «cargando»
-  aparece solo en el tooltip y nunca alerta); clic → abre Monitor de Actividad; al cerrar la
-  ventana el timer se detiene (sin lecturas en segundo plano). En Mac sin bateria el bloque
+  y desglose escritura/lectura/ops/s; **clic derecho → menú** (Reiniciar máximos
+  registrados / Abrir Monitor de Actividad — comprobar que un clic derecho simple NO
+  dispara los ítems al soltar); **batería en verde con el cargador puesto** (el estado
+  «cargando» aparece también en el tooltip); clic → abre Monitor de Actividad; al cerrar la
+  ventana el timer se detiene (sin lecturas en segundo plano). En Mac sin batería el bloque
   desaparece (queda CPU · RAM · Disco · I/O).
+- [ ] **Atrás/Adelante del toolbar con clic derecho (v2.3.6)**: el menú de historial se
+  despliega de verdad (antes no lo hacía) y elegir una entrada salta a esa carpeta; el clic
+  izquierdo sigue navegando atrás/adelante normal.
 - [ ] **Exportar diagnostico (v2.3.6)**: menu `Operaciones ▸ Exportar diagnóstico…` y paleta
   (⌘K) generan el zip con `summary.json` etc.
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.

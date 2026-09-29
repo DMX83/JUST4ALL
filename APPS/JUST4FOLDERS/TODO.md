@@ -81,7 +81,12 @@
   **Diseño (avisos por color)**: jerarquía etiquetas atenuadas / valores plenos y umbrales
   naranja-rojo con más peso tipográfico (I/O 60→85 %; CPU 80→95 %; RAM 85→95 %; disco
   85→93 %; batería 25→15 % sin cargador). Capturas: «Disco 89%» naranja (atención), «I/O 65%»
-  naranja (carga) y «I/O 1.6 GB/s» rojo (saturado, formato anterior).
+  naranja (carga) y «I/O 1.6 GB/s» rojo (saturado, formato anterior). **Ajustes finales
+  (v2.3.6)**: clic derecho en el monitor → menú «Reiniciar máximos registrados» / «Abrir
+  Monitor de Actividad»; batería cargando = valor VERDE; tooltip con «referencias» L/E del %;
+  **fix**: Atrás/Adelante del toolbar ahora abren su menú de historial de verdad
+  (`J4FMenuButton`: popup manual + rightMouseUp consumido; el `menu` nativo de NSButton no
+  hacía popup aquí — detectado con clic sintético: el botón solo se resaltaba).
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de

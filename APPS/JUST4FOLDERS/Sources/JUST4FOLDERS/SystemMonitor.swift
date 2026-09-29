@@ -228,9 +228,11 @@ final class SystemMonitor {
 /// es el **% de trabajo**: la dirección más cargada (lectura o escritura, nunca sumadas)
 /// frente al máximo registrado en este Mac (picos por dirección aprendidos y persistidos;
 /// 100 % = su tope conocido). Clic: abre el Monitor de Actividad (el tooltip detalla GB de
-/// memoria/disco, MB/s de lectura/escritura con ops/s, los máximos vistos y el estado de la
-/// batería). Diseño: etiquetas en gris atenuado, separadores tenues, valores a color pleno y
-/// **avisos por umbral** — naranja (atención) y rojo (crítico/saturado) con más peso.
+/// memoria/disco, MB/s de lectura/escritura con ops/s, las referencias del % y el estado de
+/// la batería); clic derecho: menú con «Reiniciar máximos registrados» y «Abrir Monitor de
+/// Actividad». Diseño: etiquetas en gris atenuado, separadores tenues, valores a color pleno
+/// y **avisos por umbral** — naranja (atención) y rojo (crítico/saturado) con más peso;
+/// batería cargando = valor en verde.
 /// Usa frame fijo (no Auto Layout) porque el toolbar solo mide la vista al insertarla;
 /// con Auto Layout, el ancho se fijaba con el texto todavía vacío y el resumen se recortaba.
 /// El timer solo vive mientras la vista está en una ventana (sin fugas al cerrarla).
@@ -240,7 +242,7 @@ final class SystemMonitorView: NSView {
     static let preferredWidth: CGFloat = 344
 
     private let monitor = SystemMonitor()
-    private let button = NSButton()
+    private let button = J4FMenuButton()
     private var timer: Timer?
     /// Picos de E/S por dirección (MB/s) vistos en este Mac: persisten entre sesiones y son
     /// la referencia del «% de trabajo» del segmento I/O.
@@ -260,13 +262,45 @@ final class SystemMonitorView: NSView {
         button.alignment = .center
         button.target = self
         button.action = #selector(openActivityMonitor)
+        button.menu = contextMenu
         button.setAccessibilityLabel("Monitoreo del sistema")
-        button.toolTip = "Estado de la Mac · clic para abrir Monitor de Actividad"
+        button.toolTip = "Estado de la Mac · clic para abrir Monitor de Actividad · clic derecho: opciones"
         addSubview(button)
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) no está soportado")
+    }
+
+    /// Clic derecho: menú del monitor (reiniciar los máximos aprendidos, abrir el Monitor).
+    private lazy var contextMenu: NSMenu = {
+        let menu = NSMenu()
+        let reset = NSMenuItem(
+            title: "Reiniciar máximos registrados",
+            action: #selector(resetRecordedPeaks),
+            keyEquivalent: ""
+        )
+        reset.target = self
+        menu.addItem(reset)
+        menu.addItem(.separator())
+        let activity = NSMenuItem(
+            title: "Abrir Monitor de Actividad",
+            action: #selector(openActivityMonitor),
+            keyEquivalent: ""
+        )
+        activity.target = self
+        menu.addItem(activity)
+        return menu
+    }()
+
+    /// Devuelve la referencia del «% de trabajo» al suelo inicial (1000 MB/s) y deja que
+    /// los picos se vuelvan a aprender con el uso.
+    @objc private func resetRecordedPeaks() {
+        peakReadMBps = 0
+        peakWriteMBps = 0
+        UserDefaults.standard.removeObject(forKey: Self.peakReadKey)
+        UserDefaults.standard.removeObject(forKey: Self.peakWriteKey)
+        updateSnapshot()
     }
 
     deinit {
@@ -403,18 +437,21 @@ final class SystemMonitorView: NSView {
                 number: .decimal
             )
             details.append(
-                "Actividad de disco: \(percent)% (lectura \(Self.throughputText(io.readMBps)) · escritura \(Self.throughputText(io.writeMBps)) · \(ops) ops/s)"
-                    + " · máximos vistos: L \(Self.throughputText(peakReadMBps)) / E \(Self.throughputText(peakWriteMBps))"
+                "Actividad de disco: \(percent)% de su máximo visto (lectura \(Self.throughputText(io.readMBps)) · escritura \(Self.throughputText(io.writeMBps)) · \(ops) ops/s)"
+                    + " · referencias: L \(Self.throughputText(readReference)) / E \(Self.throughputText(writeReference))"
             )
         }
         if let battery {
-            // Aviso solo cuando va con batería; cargando nunca es una alerta.
+            // Aviso solo cuando va con batería; cargando = valor en VERDE (nunca alerta).
             var severity = 0
             if battery.onBattery && !battery.isCharging {
                 if battery.percent <= Thresholds.batteryCritical { severity = 2 }
                 else if battery.percent <= Thresholds.batteryWarn { severity = 1 }
             }
-            let style = Self.style(for: severity)
+            var style = Self.style(for: severity)
+            if battery.isCharging {
+                style.color = .systemGreen
+            }
             metrics.append(Metric(label: "Batería", value: "\(battery.percent)%", color: style.color, font: style.font))
             let stateText = battery.isCharging ? " (cargando)" : (battery.onBattery ? " (en batería)" : "")
             details.append("Batería \(battery.percent)%\(stateText)")

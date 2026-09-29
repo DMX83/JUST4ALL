@@ -113,7 +113,12 @@ swift run
   (etiquetas atenuadas, separadores tenues, valores a color pleno) y **avisos por color**:
   naranja = atencion (I/O >=60 %; CPU >=80 %; RAM >=85 %; disco >=85 % ocupado; bateria
   <=25 % sin cargador) y rojo = critico/saturado (I/O >=85 %; CPU/RAM >=95 %; disco
-  >=93 %; bateria <=15 %), con mas peso tipografico al subir de nivel.
+  >=93 %; bateria <=15 %), con mas peso tipografico al subir de nivel. El monitor ademas:
+  **clic derecho** → menu (Reiniciar maximos registrados / Abrir Monitor de Actividad) y
+  **bateria en verde al cargar**. Fix relacionado: los botones Atras/Adelante del toolbar
+  prometian «clic derecho: historial» pero su menu nunca se abria (el `menu` nativo de
+  `NSButton` no hace popup en este contexto); ahora usan `J4FMenuButton` (popup manual) y el
+  historial SI se despliega con clic derecho.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

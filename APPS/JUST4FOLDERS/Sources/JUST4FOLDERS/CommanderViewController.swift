@@ -3262,7 +3262,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         case ToolbarID.back:
             item.label = "Atrás"
             item.toolTip = "Volver (clic derecho: historial)"
-            let backButton = NSButton(
+            let backButton = J4FMenuButton(
                 image: NSImage(systemSymbolName: "chevron.left", accessibilityDescription: nil) ?? NSImage(),
                 target: self,
                 action: #selector(goBack)
@@ -3274,7 +3274,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         case ToolbarID.forward:
             item.label = "Adelante"
             item.toolTip = "Avanzar (clic derecho: historial)"
-            let forwardButton = NSButton(
+            let forwardButton = J4FMenuButton(
                 image: NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil) ?? NSImage(),
                 target: self,
                 action: #selector(goForward)
@@ -3512,6 +3512,24 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         let value = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
     }
+}
+
+/// v2.3.6 — NSButton con menú contextual fiable por clic derecho.
+/// El `menu` nativo de `NSButton` NO se abre con el botón derecho en este contexto (verificado
+/// con clic sintético en el botón Atrás del toolbar: se resaltaba pero no mostraba nada), así
+/// que el popup se lanza a mano. Mantiene la misma API (`menu`).
+final class J4FMenuButton: NSButton {
+    override func rightMouseDown(with event: NSEvent) {
+        if let menu = menu {
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+        } else {
+            super.rightMouseDown(with: event)
+        }
+    }
+
+    /// Consumido a propósito: sin esto, al soltar el botón derecho el `NSButtonCell` puede
+    /// disparar la acción normal (la prueba sintética abrió el Monitor de Actividad al soltar).
+    override func rightMouseUp(with event: NSEvent) {}
 }
 
 /// v2.3.6 — control de pestañas con clic derecho. `NSSegmentedControl` no expone menú
