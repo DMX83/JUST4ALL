@@ -151,6 +151,12 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   `just4pict-cli` no está disponible, el ítem se **oculta** (el resto del submenú `sips` sigue).
   *Validado por CLI sintético (29-sep): Paisaje sobre un JPEG de 267 KB → PNG de 3,0 MB;
   salida idéntica ejecutando el CLI a mano.*
+- [ ] **Vista previa lateral (v2.3.8)**: seleccionar una foto (JPEG/PNG) → se pinta al instante,
+  también si acaba de aparecer (p. ej. la salida de «Mejorar con JUST4PICT»); un PDF se pinta por
+  QuickLook; sin selección se ve el estado vacío («Selecciona un archivo…») y con varios
+  elementos «N elementos seleccionados». Comprobar que después de mejorar/convertir una imagen la
+  tarjeta NO se queda con el icono genérico del tipo de fichero (fallo corregido en v2.3.8).
+  *Validado (29-sep): PNG recién creado + JPEG renderizados, PDF por QuickLook, carpeta con icono.*
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.
 - [ ] Decision de diseno: la vista previa perdio ~65pt de alto (fila del selector + franja de la
   toolbar); valorar selector compacto (iconos) o moverlo a la barra de herramientas.

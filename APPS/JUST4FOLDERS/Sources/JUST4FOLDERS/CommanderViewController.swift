@@ -381,6 +381,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     private let previewInfoLabel = NSTextField(labelWithString: "")
     /// v2.1 — icono del estado vacío del preview (sin selección).
     private let previewPlaceholderIcon = NSImageView()
+    /// v2.3.8 — imágenes pintadas en local (ver `LocalImagePreview`) en vez de por QuickLook.
+    private let previewImageView = NSImageView()
+    /// v2.3.8 — reintentos pendientes de `refreshPreviewItem()` (QuickLook puede fallar el 1º).
+    private var previewRefreshTokens: [DispatchWorkItem] = []
     /// v2.3 (Panel Hub F1) — selector de módulo del panel derecho y host del contenido.
     private let previewModuleSelector = NSSegmentedControl(
         labels: ["Vista previa", "DESK", "PICT"],
@@ -2704,6 +2708,13 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         ql?.translatesAutoresizingMaskIntoConstraints = false
         previewView = ql
 
+        // v2.3.8 — las fotos se pintan en local (NSImageView) en lugar de por QuickLook: ver
+        // LocalImagePreview. El resto de tipos (PDF, vídeo, documentos…) sigue por QuickLook.
+        previewImageView.imageScaling = .scaleProportionallyUpOrDown
+        previewImageView.imageFrameStyle = .none
+        previewImageView.translatesAutoresizingMaskIntoConstraints = false
+        previewImageView.isHidden = true
+
         previewInfoLabel.font = J4FDesign.captionFont()
         previewInfoLabel.textColor = .secondaryLabelColor
         previewInfoLabel.alignment = .center
@@ -2730,6 +2741,14 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
                 ql.bottomAnchor.constraint(equalTo: previewInfoLabel.topAnchor, constant: -6)
             ])
         }
+        // v2.3.8 — mismo hueco que el preview de QuickLook (queda por encima en la jerarquía).
+        previewContentHost.addSubview(previewImageView)
+        NSLayoutConstraint.activate([
+            previewImageView.leadingAnchor.constraint(equalTo: previewContentHost.leadingAnchor),
+            previewImageView.trailingAnchor.constraint(equalTo: previewContentHost.trailingAnchor),
+            previewImageView.topAnchor.constraint(equalTo: previewContentHost.topAnchor),
+            previewImageView.bottomAnchor.constraint(equalTo: previewInfoLabel.topAnchor, constant: -6)
+        ])
         NSLayoutConstraint.activate([
             previewInfoLabel.leadingAnchor.constraint(equalTo: previewContentHost.leadingAnchor, constant: 4),
             previewInfoLabel.trailingAnchor.constraint(equalTo: previewContentHost.trailingAnchor, constant: -4),
@@ -2984,8 +3003,23 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         guard previewPaneVisible, let ql = previewView else { return }
         let selected = activePanel.selectedURLs()
         let url = selected.count == 1 ? selected.first : nil
-        ql.previewItem = url as NSURL?
-        ql.isHidden = (url == nil)
+
+        // v2.3.8 — imágenes en local; el resto por QuickLook con reintentos. Sin esto, un fichero
+        // recién creado (p.ej. la salida de «Mejorar con JUST4PICT») se quedaba con el icono
+        // genérico del tipo de fichero hasta cambiar la selección.
+        if let url, LocalImagePreview.isImage(url), let image = LocalImagePreview.image(at: url) {
+            previewImageView.image = image
+            previewImageView.isHidden = false
+            ql.previewItem = nil
+            ql.isHidden = true
+            cancelPreviewRefreshes()
+        } else {
+            previewImageView.image = nil
+            previewImageView.isHidden = true
+            ql.previewItem = url as NSURL?
+            ql.isHidden = (url == nil)
+            schedulePreviewRefreshes()
+        }
 
         guard let url else {
             // v2.1 — estado vacío claro en vez de tarjeta en blanco.
@@ -3012,6 +3046,26 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             lines.append("Etiquetas: " + tags.joined(separator: ", "))
         }
         previewInfoLabel.stringValue = lines.joined(separator: "\n")
+    }
+
+    /// v2.3.8 — QuickLook puede devolver «sin vista previa» en el PRIMER intento (fichero
+    /// recién creado o servicio en frío) y el icono genérico se quedaba pegado hasta cambiar
+    /// de selección: reintentamos un par de veces con `refreshPreviewItem()`.
+    private func schedulePreviewRefreshes() {
+        cancelPreviewRefreshes()
+        for delay in [0.4, 1.6] {
+            let work = DispatchWorkItem { [weak self] in
+                guard let self, let ql = self.previewView, !ql.isHidden else { return }
+                ql.refreshPreviewItem()
+            }
+            previewRefreshTokens.append(work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+        }
+    }
+
+    private func cancelPreviewRefreshes() {
+        previewRefreshTokens.forEach { $0.cancel() }
+        previewRefreshTokens.removeAll()
     }
 
     /// Ola 2 — barra de progreso del trabajo en curso (se oculta al terminar).
@@ -4021,6 +4075,9 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
 
     func refreshCurrentDirectory() {
         loadDirectory(currentURL, pushHistory: false)
+        // v2.3.8 — tras crear ficheros (JUST4PICT/JUST4PDF, conversiones…) el preview puede
+        // estar mostrando un resultado fallido del fichero recién aparecido: reintentar.
+        onSelectionChanged?()
     }
 
     func setIncludeHidden(_ includeHidden: Bool) {
@@ -4033,6 +4090,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     /// Recarga tras cambios hechos por ventanas auxiliares (rename en lote, duplicados…).
     func reloadAfterExternalChange() {
         loadDirectory(currentURL, pushHistory: false)
+        onSelectionChanged?()
     }
 
     func refreshForChangedPaths(_ changedPaths: [String]) {

@@ -23,6 +23,10 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       presets (Automático · Retrato · Paisaje · Documento · Ecommerce) sobre `just4pict-cli`, en background
       y sin sobrescribir (`Just4PictActions.swift`). Validado e2e: menú → Paisaje → PNG de 3 MB desde un
       JPEG de 267 KB; IDÉNTICO al CLI a mano.
+- [x] 🟠 **Vista previa lateral fiable (v2.3.8)**: las imágenes se pintan en local con ImageIO
+      (`LocalImagePreview.swift`) en vez de por QuickLook — éste devolvía el icono genérico la primera vez
+      que se pedía un fichero recién creado y se quedaba pegado. QuickLook sigue para PDF/vídeo/documentos
+      y ahora reintenta (`refreshPreviewItem()` a 0,4/1,6 s); al crear ficheros la vista previa se refresca.
 
 **Código**
 - [ ] 🟠 Integración JUST4PDF **F3** (opcional): progreso en la cola de trabajos, Quick Actions del Finder

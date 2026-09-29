@@ -95,6 +95,13 @@
   antiguos de JUST4PICT abrían la GUI y colgaban el comando (lección). Ítem oculto sin CLI;
   presets deshabilitados sin imágenes. Validado e2e (29-sep): menú → Paisaje → PNG nuevo de 3 MB
   desde un JPEG de 267 KB, misma salida que el CLI a mano. Queda el **módulo del Panel Hub**.
+- [x] **Vista previa lateral fiable (v2.3.8)**: el panel mostraba el **icono genérico** del tipo
+  de fichero cuando QuickLook fallaba el primer intento (fichero recién creado o servicio en
+  frío) y quedaba pegado hasta cambiar la selección. Fix: las imágenes se pintan en local con
+  ImageIO (`LocalImagePreview.swift`; orientación EXIF + máx. 2600 px) y QuickLook se reserva
+  para el resto, ahora con reintentos (`refreshPreviewItem()` a 0,4/1,6 s); tras crear ficheros
+  (`refreshCurrentDirectory()`/`reloadAfterExternalChange()`) la vista previa se refresca.
+  Validado: PNG recién creado, JPEG, PDF (QuickLook) y carpeta; 55 tests verdes.
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, unificar el diario de

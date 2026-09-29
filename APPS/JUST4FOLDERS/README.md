@@ -131,6 +131,15 @@ swift run
   (`Just4PictActions.swift`, espejo de `Just4PdfActions`). Validado e2e (29-sep): menu →
   Paisaje → `a-foto-test.jpeg` (267 KB) ⇒ `a-foto-test-enhanced-local.png` (3 MB), original
   intacto; la CLI directa con el mismo preset da exactamente lo mismo.
+- **Vista previa fiable (v2.3.8)**: la tarjeta lateral mostraba el **icono genérico** del tipo de
+  fichero cuando QuickLook fallaba el primer intento — caso típico: un fichero **recién creado**
+  (p. ej. la salida de «Mejorar con JUST4PICT») o el servicio «en frío» tras arrancar — y ese
+  resultado se quedaba pegado hasta cambiar la selección. Ahora las **imágenes** (JPEG/PNG/HEIC…)
+  se pintan en local con ImageIO (`LocalImagePreview.swift`: orientación EXIF aplicada y recorte
+  a 2600 px), sin depender de QuickLook; el resto de tipos (PDF, vídeo, documentos) sigue por
+  QuickLook **con reintentos** (`refreshPreviewItem()` a los 0,4 s y 1,6 s). Además, al crear
+  ficheros (PICT/PDF, conversiones…) la recarga del panel refresca la vista previa en vez de
+  dejar pegado el resultado fallido anterior.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del
