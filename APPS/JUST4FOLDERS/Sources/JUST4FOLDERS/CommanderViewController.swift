@@ -348,8 +348,9 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         static let deletePermanent = NSToolbarItem.Identifier("j4f.toolbar.deletePermanent")
         static let tasks = NSToolbarItem.Identifier("j4f.toolbar.tasks")
         static let refresh = NSToolbarItem.Identifier("j4f.toolbar.refresh")
-        static let diagnostics = NSToolbarItem.Identifier("j4f.toolbar.diagnostics")
         static let search = NSToolbarItem.Identifier("j4f.toolbar.search")
+        /// v2.3.6 — indicadores de CPU/RAM/batería al final de la barra.
+        static let monitor = NSToolbarItem.Identifier("j4f.toolbar.monitor")
     }
 
     private let leftPanel = FilePanelViewController(side: .left)
@@ -426,6 +427,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     /// v2.2b — botón de la barra de herramientas que alterna 2 paneles ⇄ 1 panel.
     private weak var panelModeToolbarItem: NSToolbarItem?
     private weak var panelModeToolbarButton: NSButton?
+    /// v2.3.6 — indicadores de CPU/RAM/batería al final del toolbar (vista creada una vez).
+    private lazy var systemMonitorView = SystemMonitorView()
 
     private let activeIndicatorLabel = NSTextField(labelWithString: "IZQ")
     /// v2.1 — split raíz (autocuración de divisorias).
@@ -508,6 +511,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NotificationCenter.default.addObserver(self, selector: #selector(onGalleryThumbSizeRequested(_:)), name: .j4fGalleryThumbSize, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onToggleSemanticSearchRequested), name: .j4fToggleSemanticSearch, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onEditShortcutsRequested), name: .j4fEditShortcuts, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onExportDiagnosticsRequested), name: .j4fExportDiagnostics, object: nil)
     }
 
     /// Ola 3 — alterna lista/galería del panel activo (⌥⌘G).
@@ -552,6 +556,11 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    /// v2.3.6 — exportar diagnóstico desde el menú Operaciones (antes era botón del toolbar).
+    @objc private func onExportDiagnosticsRequested() {
+        exportDiagnostics()
+    }
+
     // MARK: - Paleta de comandos (Ola 3)
 
     @objc private func onOpenCommandPaletteRequested() {
@@ -590,6 +599,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             },
             .init(title: "Búsqueda semántica (IA) — activar/desactivar", hint: "⌥⌘B") { [weak self] in self?.onToggleSemanticSearchRequested() },
             .init(title: "Editar atajos…", hint: "⌥⌘K") { [weak self] in self?.onEditShortcutsRequested() },
+            .init(title: "Exportar diagnóstico…", hint: "") { [weak self] in self?.exportDiagnostics() },
             .init(title: "Renombrar en lote…", hint: "⇧⌘R") { [weak self] in self?.onBatchRenameRequested() },
             .init(title: "Buscar duplicados…", hint: "⇧⌘D") { [weak self] in self?.onFindDuplicatesRequested() },
             .init(title: "Ordenar esta carpeta…", hint: "⌥⌘O") { [weak self] in self?.onOrderFolderRequested() },
@@ -741,17 +751,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     @objc private func onRenameTabRequested() {
-        let alert = NSAlert()
-        alert.messageText = "Renombrar pestaña"
-        alert.informativeText = "Deja el campo vacío para volver al nombre de la carpeta."
-        alert.addButton(withTitle: "Renombrar")
-        alert.addButton(withTitle: "Cancelar")
-        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
-        field.stringValue = activePanel.currentTabTitle()
-        alert.accessoryView = field
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        activePanel.renameCurrentTab(as: field.stringValue)
-        statusLabel.stringValue = "Pestaña renombrada."
+        // v2.3.6 — el diálogo vive en el panel: lo comparten ⌥⌘R y el clic derecho sobre una tab.
+        activePanel.promptRenameActiveTab()
     }
 
     @objc private func onMoveTabLeftRequested() {
@@ -3235,12 +3236,15 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        // v2.3.6 — «Diagnostics» sale del toolbar: es herramienta de soporte, no de uso
+        // diario. Sigue disponible en el menú Operaciones, la paleta (⌘K) y el editor de
+        // atajos; en su lugar van los indicadores de CPU/RAM/batería.
         [
             ToolbarID.back, ToolbarID.forward, ToolbarID.home, ToolbarID.panelMode, .flexibleSpace,
             ToolbarID.newTab, ToolbarID.copy, ToolbarID.move, ToolbarID.delete,
             ToolbarID.mkdir, ToolbarID.rename, ToolbarID.deletePermanent,
             .flexibleSpace, ToolbarID.refresh, .space,
-            ToolbarID.tasks, ToolbarID.diagnostics, .space, ToolbarID.search
+            ToolbarID.tasks, .space, ToolbarID.search, .space, ToolbarID.monitor
         ]
     }
 
@@ -3280,7 +3284,7 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             forwardButton.setAccessibilityLabel("Adelante")
             item.view = forwardButton
         case ToolbarID.home:
-            item.label = "Home"
+            item.label = "Inicio"
             item.toolTip = "Ir al Home del usuario"
             item.image = NSImage(systemSymbolName: "house", accessibilityDescription: nil)
             item.target = self
@@ -3303,65 +3307,66 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
             panelModeToolbarItem = item
             panelModeToolbarButton = panelModeButton
         case ToolbarID.newTab:
-            item.label = "New Tab"
-            item.toolTip = "Nueva tab (Cmd+T)"
+            item.label = "Nueva pestaña"
+            item.toolTip = "Nueva pestaña (⌘T)"
             item.image = NSImage(systemSymbolName: "plus.square.on.square", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(newTab)
         case ToolbarID.copy:
-            item.label = "Copy"
+            item.label = "Copiar"
             item.toolTip = "Copiar al otro panel (F5)"
             item.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(copySelection)
         case ToolbarID.move:
-            item.label = "Move"
+            item.label = "Mover"
             item.toolTip = "Mover al otro panel (F6)"
             item.image = NSImage(systemSymbolName: "arrow.right.doc.on.clipboard", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(moveSelection)
         case ToolbarID.delete:
-            item.label = "Delete"
+            item.label = "Papelera"
             item.toolTip = "Enviar a Papelera (F8)"
             item.image = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(deleteSelection)
         case ToolbarID.mkdir:
-            item.label = "Mkdir"
+            item.label = "Nueva carpeta"
             item.toolTip = "Crear carpeta (F7)"
             item.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(createDirectory)
         case ToolbarID.rename:
-            item.label = "Rename"
+            item.label = "Renombrar"
             item.toolTip = "Renombrar item seleccionado"
             item.image = NSImage(systemSymbolName: "pencil", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(renameSelection)
         case ToolbarID.deletePermanent:
-            item.label = "Delete Permanent"
+            item.label = "Eliminar"
             item.toolTip = "Eliminar definitivamente"
             item.image = NSImage(systemSymbolName: "trash.slash", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(deleteSelectionPermanently)
         case ToolbarID.tasks:
-            item.label = "Tasks"
+            item.label = "Tareas"
             item.toolTip = "Abrir Task Manager"
             item.image = NSImage(systemSymbolName: "list.bullet.rectangle", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(openTaskManager)
         case ToolbarID.refresh:
-            item.label = "Refresh"
+            item.label = "Refrescar"
             item.toolTip = "Refrescar panel activo"
             item.image = NSImage(systemSymbolName: "arrow.clockwise", accessibilityDescription: nil)
             item.target = self
             item.action = #selector(manualRefresh)
-        case ToolbarID.diagnostics:
-            item.label = "Diagnostics"
-            item.toolTip = "Exportar diagnostico"
-            item.image = NSImage(systemSymbolName: "stethoscope", accessibilityDescription: nil)
-            item.target = self
-            item.action = #selector(exportDiagnostics)
+        case ToolbarID.monitor:
+            // v2.3.6 — indicadores en vivo. El ítem es una vista; su ciclo de vida va
+            // ligado a la ventana (arranca/para el timer en viewDidMoveToWindow).
+            item.label = "Monitoreo"
+            item.toolTip = "CPU, memoria y batería de esta Mac · clic para abrir Monitor de Actividad"
+            item.visibilityPriority = .high
+            item.view = systemMonitorView
         case ToolbarID.search:
             searchField.placeholderString = globalSearchScope ? "Buscar en todo el índice…" : "Buscar en esta carpeta…"
             searchField.toolTip = globalSearchScope
@@ -3509,6 +3514,27 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     }
 }
 
+/// v2.3.6 — control de pestañas con clic derecho. `NSSegmentedControl` no expone menú
+/// contextual propio, así que al pulsar con el botón derecho el control avisa a su panel
+/// con el índice pulsado (calculado por geometría: los segmentos son de ancho uniforme)
+/// y el evento, para que el panel sitúe el menú.
+private final class J4FTabsSegmentedControl: NSSegmentedControl {
+    var onRightClickSegment: ((Int, NSEvent) -> Void)?
+
+    override func rightMouseDown(with event: NSEvent) {
+        guard segmentCount > 0 else {
+            super.rightMouseDown(with: event)
+            return
+        }
+        let point = convert(event.locationInWindow, from: nil)
+        let segmentWidth = bounds.width / CGFloat(segmentCount)
+        guard segmentWidth > 0 else { return }
+        let rawIndex = Int(floor((point.x - bounds.minX) / segmentWidth))
+        let index = max(0, min(segmentCount - 1, rawIndex))
+        onRightClickSegment?(index, event)
+    }
+}
+
 private final class FilePanelViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, NSCollectionViewDataSource, NSCollectionViewDelegate, NSTextFieldDelegate {
     var onActivate: (() -> Void)?
     var onStatus: ((String) -> Void)?
@@ -3534,7 +3560,7 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private let side: PanelSide
     private let tableView = FocusAwareTableView()
     private let rowCountLabel = NSTextField(labelWithString: "")
-    private let tabsControl = NSSegmentedControl()
+    private let tabsControl = J4FTabsSegmentedControl()
     private let indexedSearch = IndexedSearchService.shared
     private let flatToggleButton = NSButton()
     /// v2.0 — registro del panel (os_log) para fallos silenciosos (IA, índice…).
@@ -4133,39 +4159,72 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         loadDirectory(currentURL, pushHistory: false)
     }
 
+    // MARK: - Pestañas completas (Ola 2)
+
+    /// v2.3.6 — cierra la pestaña `index` (clic derecho incluido). Solo recarga el
+    /// directorio si la pestaña cerrada era la activa.
     @discardableResult
-    func closeCurrentTab() -> Bool {
-        guard tabURLs.count > 1 else { return false }
-        tabURLs.remove(at: activeTabIndex)
-        if activeTabIndex < tabCustomTitles.count {
-            tabCustomTitles.remove(at: activeTabIndex)
+    func closeTab(at index: Int) -> Bool {
+        guard tabURLs.count > 1, tabURLs.indices.contains(index) else { return false }
+        let wasActive = index == activeTabIndex
+        tabURLs.remove(at: index)
+        if index < tabCustomTitles.count {
+            tabCustomTitles.remove(at: index)
         }
-        if activeTabIndex >= tabURLs.count {
-            activeTabIndex = max(0, tabURLs.count - 1)
+        if wasActive {
+            if activeTabIndex >= tabURLs.count {
+                activeTabIndex = max(0, tabURLs.count - 1)
+            }
+            historyBack.removeAll()
+            historyForward.removeAll()
+            refreshTabsControl()
+            loadDirectory(tabURLs[activeTabIndex], pushHistory: false)
+        } else {
+            if index < activeTabIndex {
+                activeTabIndex -= 1
+            }
+            refreshTabsControl()
         }
-        historyBack.removeAll()
-        historyForward.removeAll()
-        refreshTabsControl()
-        loadDirectory(tabURLs[activeTabIndex], pushHistory: false)
         return true
     }
 
-    // MARK: - Pestañas completas (Ola 2)
+    @discardableResult
+    func closeCurrentTab() -> Bool {
+        closeTab(at: activeTabIndex)
+    }
 
-    func currentTabTitle() -> String {
-        guard activeTabIndex < tabURLs.count else { return "" }
-        let url = tabURLs[activeTabIndex]
+    /// v2.3.6 — cierra todas las pestañas salvo `index` (clic derecho, «Cerrar las demás»).
+    func closeOtherTabs(keeping index: Int) {
+        guard tabURLs.count > 1, tabURLs.indices.contains(index) else { return }
+        let url = tabURLs[index]
+        let custom = index < tabCustomTitles.count ? tabCustomTitles[index] : nil
+        tabURLs = [url]
+        tabCustomTitles = [custom]
+        activeTabIndex = 0
+        historyBack.removeAll()
+        historyForward.removeAll()
+        refreshTabsControl()
+        loadDirectory(url, pushHistory: false)
+    }
+
+    func tabTitle(at index: Int) -> String {
+        guard tabURLs.indices.contains(index) else { return "" }
+        let url = tabURLs[index]
         let base = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
-        let custom = activeTabIndex < tabCustomTitles.count ? tabCustomTitles[activeTabIndex] : nil
+        let custom = index < tabCustomTitles.count ? tabCustomTitles[index] : nil
         return custom ?? base
     }
 
-    /// Duplica la pestaña actual (misma carpeta e historial limpio).
-    func duplicateCurrentTab() {
-        guard activeTabIndex >= 0, activeTabIndex < tabURLs.count else { return }
-        let url = tabURLs[activeTabIndex]
-        let custom = activeTabIndex < tabCustomTitles.count ? tabCustomTitles[activeTabIndex] : nil
-        let insertAt = activeTabIndex + 1
+    func currentTabTitle() -> String {
+        tabTitle(at: activeTabIndex)
+    }
+
+    /// Duplica la pestaña `index` (misma carpeta e historial limpio).
+    func duplicateTab(at index: Int) {
+        guard tabURLs.indices.contains(index) else { return }
+        let url = tabURLs[index]
+        let custom = index < tabCustomTitles.count ? tabCustomTitles[index] : nil
+        let insertAt = index + 1
         tabURLs.insert(url, at: insertAt)
         tabCustomTitles.insert(custom, at: min(insertAt, tabCustomTitles.count))
         activeTabIndex = insertAt
@@ -4173,28 +4232,149 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         historyForward.removeAll()
         refreshTabsControl()
         loadDirectory(url, pushHistory: false)
-        tabCustomTitles[activeTabIndex] = custom
+    }
+
+    /// Duplica la pestaña actual (misma carpeta e historial limpio).
+    func duplicateCurrentTab() {
+        duplicateTab(at: activeTabIndex)
+    }
+
+    /// Renombra la pestaña `index` (cadena vacía = volver al nombre de la carpeta).
+    func renameTab(at index: Int, as name: String) {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard index < tabCustomTitles.count else { return }
+        tabCustomTitles[index] = clean.isEmpty ? nil : clean
         refreshTabsControl()
     }
 
     /// Renombra la pestaña actual (cadena vacía = volver al nombre de la carpeta).
     func renameCurrentTab(as name: String) {
-        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard activeTabIndex < tabCustomTitles.count else { return }
-        tabCustomTitles[activeTabIndex] = clean.isEmpty ? nil : clean
+        renameTab(at: activeTabIndex, as: name)
+    }
+
+    /// v2.3.6 — diálogo «Renombrar pestaña» sobre cualquier índice: lo comparten el
+    /// atajo ⌥⌘R (pestaña activa) y el menú del clic derecho.
+    func promptRenameTab(at index: Int) {
+        guard tabURLs.indices.contains(index) else { return }
+        let alert = NSAlert()
+        alert.messageText = "Renombrar pestaña"
+        alert.informativeText = "Deja el campo vacío para volver al nombre de la carpeta."
+        alert.addButton(withTitle: "Renombrar")
+        alert.addButton(withTitle: "Cancelar")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
+        field.stringValue = tabTitle(at: index)
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        renameTab(at: index, as: field.stringValue)
+        onStatus?("Pestaña renombrada.")
+    }
+
+    func promptRenameActiveTab() {
+        promptRenameTab(at: activeTabIndex)
+    }
+
+    /// Mueve la pestaña `index` una posición (izquierda = -1).
+    func moveTab(at index: Int, by delta: Int) {
+        let target = index + delta
+        guard tabURLs.indices.contains(index), tabURLs.indices.contains(target) else { return }
+        tabURLs.swapAt(index, target)
+        if index < tabCustomTitles.count, target < tabCustomTitles.count {
+            tabCustomTitles.swapAt(index, target)
+        }
+        if activeTabIndex == index {
+            activeTabIndex = target
+        } else if activeTabIndex == target {
+            activeTabIndex = index
+        }
         refreshTabsControl()
     }
 
     /// Mueve la pestaña actual una posición (izquierda = -1).
     func moveCurrentTab(by delta: Int) {
-        let target = activeTabIndex + delta
-        guard target >= 0, target < tabURLs.count else { return }
-        tabURLs.swapAt(activeTabIndex, target)
-        if activeTabIndex < tabCustomTitles.count, target < tabCustomTitles.count {
-            tabCustomTitles.swapAt(activeTabIndex, target)
-        }
-        activeTabIndex = target
-        refreshTabsControl()
+        moveTab(at: activeTabIndex, by: delta)
+    }
+
+    // MARK: - Menú contextual de pestañas (v2.3.6)
+
+    /// Clic derecho sobre una pestaña: las acciones operan sobre esa pestaña concreta,
+    /// sin cambiar la activa (como el menú de pestañas de Safari).
+    private func showTabContextMenu(forTabAt index: Int, event: NSEvent) {
+        guard tabURLs.indices.contains(index) else { return }
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        let close = NSMenuItem(title: "Cerrar pestaña", action: #selector(tabMenuClose(_:)), keyEquivalent: "")
+        close.target = self
+        close.representedObject = index
+        close.isEnabled = tabURLs.count > 1
+        menu.addItem(close)
+
+        let closeOthers = NSMenuItem(title: "Cerrar las demás", action: #selector(tabMenuCloseOthers(_:)), keyEquivalent: "")
+        closeOthers.target = self
+        closeOthers.representedObject = index
+        closeOthers.isEnabled = tabURLs.count > 1
+        menu.addItem(closeOthers)
+
+        menu.addItem(.separator())
+
+        let duplicate = NSMenuItem(title: "Duplicar pestaña", action: #selector(tabMenuDuplicate(_:)), keyEquivalent: "")
+        duplicate.target = self
+        duplicate.representedObject = index
+        menu.addItem(duplicate)
+
+        let rename = NSMenuItem(title: "Renombrar pestaña…", action: #selector(tabMenuRename(_:)), keyEquivalent: "")
+        rename.target = self
+        rename.representedObject = index
+        menu.addItem(rename)
+
+        menu.addItem(.separator())
+
+        let moveLeft = NSMenuItem(title: "Mover a la izquierda", action: #selector(tabMenuMoveLeft(_:)), keyEquivalent: "")
+        moveLeft.target = self
+        moveLeft.representedObject = index
+        moveLeft.isEnabled = index > 0
+        menu.addItem(moveLeft)
+
+        let moveRight = NSMenuItem(title: "Mover a la derecha", action: #selector(tabMenuMoveRight(_:)), keyEquivalent: "")
+        moveRight.target = self
+        moveRight.representedObject = index
+        moveRight.isEnabled = index < tabURLs.count - 1
+        menu.addItem(moveRight)
+
+        NSMenu.popUpContextMenu(menu, with: event, for: tabsControl)
+    }
+
+    @objc private func tabMenuClose(_ sender: NSMenuItem) {
+        guard let index = sender.representedObject as? Int else { return }
+        _ = closeTab(at: index)
+    }
+
+    @objc private func tabMenuCloseOthers(_ sender: NSMenuItem) {
+        guard let index = sender.representedObject as? Int else { return }
+        closeOtherTabs(keeping: index)
+        onStatus?("Cerradas las demás pestañas; queda «\(tabTitle(at: activeTabIndex))».")
+    }
+
+    @objc private func tabMenuDuplicate(_ sender: NSMenuItem) {
+        guard let index = sender.representedObject as? Int else { return }
+        duplicateTab(at: index)
+        onStatus?("Pestaña duplicada.")
+    }
+
+    @objc private func tabMenuRename(_ sender: NSMenuItem) {
+        guard let index = sender.representedObject as? Int else { return }
+        promptRenameTab(at: index)
+    }
+
+    @objc private func tabMenuMoveLeft(_ sender: NSMenuItem) {
+        guard let index = sender.representedObject as? Int else { return }
+        moveTab(at: index, by: -1)
+    }
+
+    @objc private func tabMenuMoveRight(_ sender: NSMenuItem) {
+        guard let index = sender.representedObject as? Int else { return }
+        moveTab(at: index, by: 1)
     }
 
     // MARK: - Workspaces (Ola 3)
@@ -4314,7 +4494,11 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tabsControl.target = self
         tabsControl.action = #selector(tabSelectionChanged)
         tabsControl.setAccessibilityLabel("Pestanas del panel \(side.rawValue)")
-        tabsControl.toolTip = "Click en tab actual para subir al directorio padre"
+        tabsControl.toolTip = "Clic: subir al directorio padre · Clic derecho: cerrar, duplicar, renombrar, mover"
+        // v2.3.6 — clic derecho sobre una pestaña: menú de acciones de tab (incluye cerrar).
+        tabsControl.onRightClickSegment = { [weak self] index, event in
+            self?.showTabContextMenu(forTabAt: index, event: event)
+        }
         refreshTabsControl()
 
         tableView.focusDelegate = self

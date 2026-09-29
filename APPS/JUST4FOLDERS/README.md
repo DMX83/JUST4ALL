@@ -97,6 +97,13 @@ swift run
   Usa el CLI real `just4pdf-cli` (PATH del usuario o venv del repo; fallback
   `python -m just4pdf.cli`), en background, con nombres unicos junto al origen y **nunca
   sobrescribe**; el submenu solo aparece si hay una accion usable.
+- **Pestanas y toolbar (v2.3.6)**: clic derecho sobre una pestana del panel → «Cerrar
+  pestana», «Cerrar las demas», «Duplicar pestana», «Renombrar pestana…», «Mover a la
+  izquierda/derecha» (las acciones operan sobre la pestana pulsada, sin cambiar la activa).
+  El toolbar deja el boton `Diagnostics` (pasa al menu Operaciones, a la paleta ⌘K y al editor
+  de atajos), normaliza sus etiquetas al espanol y termina con indicadores de vida de
+  **CPU · RAM · Bateria** (refresco cada 2 s; clic abre el Monitor de Actividad;
+  `SystemMonitor.swift`, solo lectura: Mach/IOKit, sin dependencias).
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del

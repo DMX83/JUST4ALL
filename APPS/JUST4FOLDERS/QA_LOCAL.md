@@ -80,6 +80,11 @@
   limpiados). CLI JUST4PDF: 7 tests + smoke manual (compress 1936→1326 B; pdf2img 4 PNG).
   **Pendiente de clic manual**: Comprimir (3 niveles), Exportar paginas, Crear PDF con imagenes
   y Abrir con JUST4PDF (misma plomeria del merge ya validado).
+- [x] Pestañas con clic derecho (v2.3.6): con 2 pestañas, clic derecho sobre la primera → menú
+  con «Cerrar pestaña» · «Cerrar las demás» · «Duplicar pestaña» · «Renombrar pestaña…» ·
+  «Mover a la izquierda» (deshabilitado, es la primera) · «Mover a la derecha» (captura);
+  pulsar «Cerrar pestaña» cerró la tab extra y quedó «1: dmx83». Toolbar: ítem `Diagnostics`
+  ya no está; indicadores «CPU 18% · RAM 71% · Batería 82%» al final (captura 1:1); 55 tests.
 - [x] `swift test`: 55 en `J4FOpsTests`, 0 fallos.
 
 ## Checklist manual — Panel Hub v2.3.x (para verificar con la app en mano)
@@ -109,6 +114,16 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   páginas a imágenes…» y «Abrir con JUST4PDF» (requiere la app JUST4PDF registrada); «Crear PDF
   con estas imágenes…» seleccionando 2+ imágenes (sin PDFs). El submenú solo aparece con
   selección usable.
+- [ ] **Pestanas (v2.3.6)**: clic derecho sobre una pestaña en cada estado (1 tab: Cerrar y
+  Cerrar las demas deshabilitados; 2+: habilitados), «Renombrar pestaña…» sobre una tab no
+  activa (debe renombrarla SIN cambiarla de activa) y «Mover a la derecha» en la ultima
+  (deshabilitado). Comprobar que el clic derecho NO cambia la pestana activa.
+- [ ] **Monitor (v2.3.6)**: los valores de CPU/RAM se mueven (abrir una operacion pesada);
+  bateria con y sin cargador (⚡ al cargar); clic → abre Monitor de Actividad; al cerrar la
+  ventana el timer se detiene (sin lecturas en segundo plano). En Mac sin bateria el bloque
+  desaparece (solo CPU · RAM).
+- [ ] **Exportar diagnostico (v2.3.6)**: menu `Operaciones ▸ Exportar diagnóstico…` y paleta
+  (⌘K) generan el zip con `summary.json` etc.
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.
 - [ ] Decision de diseno: la vista previa perdio ~65pt de alto (fila del selector + franja de la
   toolbar); valorar selector compacto (iconos) o moverlo a la barra de herramientas.
@@ -196,7 +211,8 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
 
 ### 8) Diagnóstico
 
-- Botón `Diagnostics` genera zip.
+- `Operaciones ▸ Exportar diagnóstico…` (o paleta ⌘K) genera el zip — v2.3.6: ya no es boton
+  del toolbar.
 - Zip contiene `summary.json`, `preferences.json`, y `job-snapshots.json` (si existe).
 
 ## Criterio de pase local

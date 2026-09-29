@@ -61,6 +61,8 @@ extension Notification.Name {
     static let j4fGalleryThumbSize = Notification.Name("j4f.galleryThumbSize")
     static let j4fToggleSemanticSearch = Notification.Name("j4f.toggleSemanticSearch")
     static let j4fEditShortcuts = Notification.Name("j4f.editShortcuts")
+    /// v2.3.6 — exportar diagnóstico: sale del toolbar (herramienta de soporte) al menú Operaciones.
+    static let j4fExportDiagnostics = Notification.Name("j4f.exportDiagnostics")
 }
 
 @main
@@ -162,6 +164,10 @@ struct Just4FoldersApp: App {
                     NotificationCenter.default.post(name: .j4fEditShortcuts, object: nil)
                 }
                 .keyboardShortcut("k", modifiers: [.command, .option])
+                Divider()
+                Button("Exportar diagnóstico…") {
+                    NotificationCenter.default.post(name: .j4fExportDiagnostics, object: nil)
+                }
                 Divider()
                 Button("Guardar workspace…") {
                     NotificationCenter.default.post(name: .j4fWorkspaceSave, object: nil)

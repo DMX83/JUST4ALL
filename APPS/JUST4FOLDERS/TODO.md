@@ -60,6 +60,15 @@
   en FOLDERS (reglas de visibilidad; runner en background con detección PATH → venv del repo;
   nombres únicos). Merge validado e2e desde el menú; CLI validado (compress real 1936→1326 B).
   Evaluación completa y pendientes en `JUST4PDF_INTEGRATION.md`.
+- [x] **Pestañas con clic derecho · toolbar revisado · monitor del sistema (v2.3.6)**:
+  menú contextual sobre cada pestaña del panel (Cerrar pestaña · Cerrar las demás · Duplicar ·
+  Renombrar… · Mover izq/der) con acciones **por índice** (no cambian la pestaña activa;
+  validado e2e: clic derecho → «Cerrar pestaña» cerró la tab extra). «Exportar diagnóstico»
+  sale del toolbar (herramienta de soporte) al menú Operaciones + paleta ⌘K + editor de atajos;
+  etiquetas del toolbar normalizadas a español (Inicio/Copiar/Mover/Papelera/Nueva carpeta/…);
+  indicadores **CPU · RAM · Batería** al final del toolbar (`SystemMonitor.swift`: Mach ticks
+  CPU, `vm_statistics64`, IOKit; refresco 2 s; clic → Monitor de Actividad; el timer solo vive
+  mientras la vista está en ventana). Captura verificada: «CPU 18% · RAM 71% · Batería 82%».
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, «mejorar» con pipeline de
