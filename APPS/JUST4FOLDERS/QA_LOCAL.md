@@ -3,9 +3,10 @@
 ## Estado actual validado por CLI
 
 - `swift build`: OK
-- `swift test`: OK (55 tests, 28-sep)
+- `swift test`: OK (**73 tests**, 29-sep)
 - `scripts/perf_100k_listing.sh`: OK (28-sep: listado 100k + crawl/consultas del indice)
 - `scripts/qa_smoke.sh`: OK (28-sep: build+tests+arranque+AX)
+- `scripts/qa_keys.swift`: OK (29-sep: foco AX + teclas con modificadores reales)
 - `swift run JUST4FOLDERS`: arranca (sin crash inmediato)
 
 ## Incidencia de busqueda profunda (2026-02-19) — RESUELTA (28-sep)
@@ -305,3 +306,36 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
 - Sin crashes ni bloqueos.
 - Operaciones de archivos finalizan con estado correcto.
 - UI responde por teclado y mouse en flujos principales.
+
+## Herramientas de validación (teclado y foco)
+
+Las capturas de pantalla no dicen **dónde está el foco** ni permiten enviar teclas **con
+modificadores reales**, y ahí estaban los bugs de v2.3.13–v2.3.15. Para eso está
+`scripts/qa_keys.swift` (Swift suelto, sin dependencias):
+
+```bash
+PID=$(pgrep -x JUST4FOLDERS | head -1)
+swift scripts/qa_keys.swift focus $PID        # «rol=AXTable desc=Contenido del panel Izquierdo»
+swift scripts/qa_keys.swift key 36            # Return / tecla grande
+swift scripts/qa_keys.swift key 36 num        # «Enter» de un teclado Windows (numericPad)
+swift scripts/qa_keys.swift key 76 num        # Enter del teclado numérico
+swift scripts/qa_keys.swift key 51            # Retroceso (⌫) → debe volver
+swift scripts/qa_keys.swift key 36 caps       # Bloqueo de mayúsculas activo
+```
+
+Detalles que ahorran tiempo:
+
+- Los eventos sintéticos van a la app **en primer plano**: activarla antes de cada envío
+  (`osascript -e 'tell application "System Events" to set frontmost of (first process whose unix
+  id is <PID>) to true'`).
+- El oráculo fiable del estado de los paneles es una **captura recortada de la cabecera** de cada
+  panel (`screencapture -o -x -l <WID>` + `sips -c 70 1800 --cropOffset 75 400`), no las claves de
+  `defaults` (no se actualizan al navegar).
+- `swift test` **no** reconstruye el ejecutable: hacer `swift build` y **relanzar la app** antes de
+  validar en vivo.
+- `scripts/qa_keys.swift focus` necesita permiso de **Accesibilidad** para el terminal; si falta,
+  lo dice (`AXError -25211`).
+- **Si la app está en otro escritorio/espacio**, `CGWindowListCopyWindowInfo(.optionOnScreenOnly)`
+  no la ve: el script ya reintenta con `.optionAll` (pasó en la sesión del 29-sep: la app estaba
+  viva, con ventana, pero en otro Space, y la búsqueda del WID devolvía vacío). El error de AX en
+  ese estado es `-25212` («no hay valor»), no un problema de permisos.

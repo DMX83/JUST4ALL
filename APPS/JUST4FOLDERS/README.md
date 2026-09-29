@@ -30,6 +30,79 @@ swift run
 ./scripts/build_dmg.sh
 ```
 
+## Teclado (mapa de teclas y foco) — v2.3.15
+
+Mapa final, el clásico de los gestores de ficheros: **Return/Enter abre** y **Retroceso ⌫ vuelve**.
+
+### Abrir, volver, navegar
+
+| Tecla | Acción |
+| --- | --- |
+| **Return / Enter** | **Abrir** la selección: entra en la carpeta o abre el fichero (igual que el doble clic, **F4** y **⌘↓**) |
+| **Retroceso ⌫** | **Volver** a la ubicación anterior (historial atrás; si se agota, sube un nivel; en la raíz, beep) |
+| **⌘[** · **⌘]** | Atrás · Adelante (el mismo historial, ahora también en el menú y en la paleta ⌘K) |
+| **⌘↑** · **⌘↓** | Subir un nivel · Abrir selección |
+| **⌘L** | Ir a ruta: la barra de dirección se vuelve editable (Return navega a la ruta, Esc cancela) |
+
+### Panel, vistas y foco
+
+| Tecla | Acción |
+| --- | --- |
+| **Tab** | Cambia el panel activo (en modo de un solo panel, cuál de los dos se ve) |
+| **⌘\\** | Modo de un solo panel ⇄ dos paneles |
+| **⌥⌘F** · **⌥⌘G** · **⌥⌘P** · **⌥⌘E** | Vista aplanada · galería · vista previa lateral · árbol del panel |
+| **Espacio** o **F3** | QuickLook (con el preview abierto, ↑/↓ cambian de elemento) |
+| **F2** | Renombrar |
+| **F4** | Abrir con la app por defecto |
+| **F5** · **F6** | Copiar · Mover la selección **al otro panel** (commander clásico) |
+| **F7** · **F8** | Nueva carpeta · Borrar (a la Papelera; definitivo según «Comportamiento de borrar», con confirmación) |
+| Escribir sobre la lista | Filtro rápido (**⌫** borra un carácter, **Esc** limpia el filtro) |
+
+### Operaciones y ventana
+
+| Tecla | Acción |
+| --- | --- |
+| **⌘K** · **⌥⌘K** | Paleta de comandos · editar atajos (JSON) |
+| **⌘F** | Buscar: alterna «esta carpeta ⇄ todo el índice» |
+| **⌘C ⌘X ⌘V ⌘D** | Copiar · Cortar · Pegar (también desde Finder) · Duplicar |
+| **⌘A** · **⌘T** · **⌘W** | Seleccionar todo · nueva pestaña · cerrar pestaña/ventana |
+| **⇧⌘R** · **⇧⌘D** | Renombrar en lote · Buscar duplicados |
+| **⌥⌘O** · **⌥⌘Z** | Ordenar esta carpeta (con IA opcional) · Deshacer la última ordenación |
+| **⌥⌘B** | Búsqueda semántica (IA) |
+| **⌥⌘S** · **⌥⌘L** | Guardar workspace · restaurar el último workspace |
+| **⌥⌘T** · **⌥⌘R** · **⌥⌘←/→** | Pestañas: duplicar · renombrar · mover |
+
+### Dónde está el foco: qué hace cada tecla
+
+| El foco está en… | Return / Enter | Retroceso ⌫ |
+| --- | --- | --- |
+| Lista o galería de un panel | Abre lo seleccionado | Vuelve a la ubicación anterior |
+| Sidebar con una fila seleccionada | Abre esa ubicación | Vuelve el panel activo |
+| Árbol del panel con un nodo de **otra** carpeta | Abre ese nodo | Vuelve el panel activo |
+| Sidebar sin selección, hub/vista previa o toolbar | Abre lo seleccionado en el panel bajo el puntero (o en el activo) | Vuelve el panel bajo el puntero (o el activo) |
+| Barra de dirección (⌘L) o buscador | Navega a la ruta escrita / lanza la búsqueda | Borra un carácter |
+| Cualquier campo de texto en edición (renombrar…) | Confirma el valor | Borra un carácter |
+
+### Notas de implementación
+
+- **Nada de teclas en silencio**: en v2.3.13 y anteriores, si el foco no estaba **exactamente** en
+  la lista/la galería, Return se perdía. Al arrancar, AppKit daba el foco a la tabla del sidebar
+  «Ubicaciones autorizadas» **sin selección** y la tecla se consumía sin efecto visible. Ahora el
+  sidebar solo se queda con Return si de verdad abre una ubicación, hay respaldo por panel
+  (el que esté bajo el puntero y, si no, el activo) y el commander arranca con el foco en la lista
+  del panel activo.
+- **Modificadores de ruido**: macOS añade `.numericPad` (el **Enter del teclado numérico**, que es
+  lo que reporta la tecla grande «Enter» de muchos **teclados Windows**), `.function` (F1–F12 y
+  flechas) y `.capsLock`. Ninguno invalida ya los atajos sin modificador — eso también devolvió la
+  vida a **F5–F8** con las teclas F reales. Ver `KeyNavigationFlags` y `KeyNavigationKeys` (J4FUI,
+  con tests).
+- **El filtro rápido tiene prioridad**: con un filtro activo, ⌫ borra el último carácter en vez de
+  navegar; Esc lo limpia.
+- **Los campos de texto mandan**: mientras se edita un campo el primer respondiente es el editor,
+  así que Return/⌫ se comportan como teclas de edición normales.
+- La barra de dirección y el buscador conservan su Return propio (navegar / buscar), verificado en
+  el delegado del panel (`pathEditField` devuelve `false` para `insertNewline`).
+
 ## Novedades 28-sep (tarde-noche)
 
 - **Busqueda global (⌘F)**: la barra del commander busca en la carpeta actual; **⌘F** alterna a

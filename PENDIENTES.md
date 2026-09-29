@@ -16,7 +16,7 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 - [ ] ⚪️ Si aparece el MCP `tradingview-local` (de Claude Desktop) en la lista de herramientas: desactivarlo.
 - [ ] ⚪️ Opcional: `nextEditSuggestions` (consume cupo de Copilot, no de DeepSeek).
 
-## 1) JUST4FOLDERS (v2.3.9 — orden por Tamaño + vista previa fiable)
+## 1) JUST4FOLDERS (v2.3.15 — teclado: Return abre, Retroceso vuelve)
 
 **Hecho hoy (29-sep)**
 - [x] 🟠 **Integración JUST4PICT por CLI**: submenú **JUST4PICT ▸ → «Mejorar con JUST4PICT ▸»** con 5
@@ -43,9 +43,16 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       sistema: 18,9 s vs 14,4 s de `du`).
 - [ ] 🔵 Validar en hardware real la copia a volumen externo (sin clones APFS) y la conservación de
       metadatos en el Finder (checklist de `QA_LOCAL.md`).
-- [x] 🟠 **Navegación con Return (v2.3.12)**: Return en la lista vuelve a la ubicación anterior y, sin
-      historial, sube un nivel; atajos nuevos ⌘[ / ⌘] / ⌘↑ / ⌘↓ en el menú Navegación (antes el historial
-      solo tenía botón y paleta). Validado en vivo.
+- [x] 🟠 **Teclado: abrir/volver y foco (v2.3.12 → v2.3.15)**: mapa final **Return/Enter = abrir** y
+      **Retroceso ⌫ = volver** (`KeyNavigationKeys`, con tests) + atajos nuevos ⌘[ / ⌘] / ⌘↑ / ⌘↓
+      en el menú Navegación. En v2.3.12 Return se puso a «volver» por una confusión de tecla del
+      usuario; por el camino aparecieron dos bugs reales de foco y modificadores: al arrancar el
+      foco era la tabla del sidebar vacía (la tecla se consumía en silencio) y macOS añade
+      `.numericPad`/`.function`/`.capsLock` (la tecla grande «Enter» de los teclados Windows llega
+      como Enter del teclado numérico). Ahora hay respaldo de foco por panel, el arranque enfoca la
+      lista y los modificadores de ruido se ignoran (también arregla F5–F8). 73 tests verdes.
+- [ ] 🔵 Comprobar a mano: `⌘L` + Return navega a la ruta escrita, y F5–F8 con las teclas F reales
+      (`QA_LOCAL.md`; herramienta `scripts/qa_keys.swift`).
 - [ ] 🟠 Pico de CPU al arrancar: perfilar el warm-up del **índice SQLite** (`sample` mostró sqlite3VdbeExec
       como dominante; los tamaños ya no son el cuello) y decidir si conviene diferirlo.
 

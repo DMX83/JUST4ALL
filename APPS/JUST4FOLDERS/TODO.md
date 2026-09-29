@@ -125,11 +125,29 @@
   gastados; mecanismo 400×8 KB 0,054 s vs 0,684 s (12,6x); motor completo 2,602 s → 0,114 s;
   `~/Library` (419k ficheros) 18,9 s de recorrido vs 14,4 s de `du` ⇒ caché en disco para no
   repetirlo (TTL 6 h). 61 tests verdes (4 nuevos).
-- [x] **Navegación con teclado: Return = ubicación anterior (v2.3.12)**: Return en la lista vuelve a
-  la ubicación anterior (historial atrás) y, si no hay historial, sube un nivel (beep si no hay a
-  dónde ir); abrir sigue en doble clic/F4/⌘↓. Menú Navegación: Atrás ⌘[, Adelante ⌘], Subir un
-  nivel ⌘↑, Abrir selección ⌘↓ (+ paleta). Validado en vivo: entrar en `dmx83` y Return → vuelve a
-  `/Users`; «Subir un nivel» desde `~/` → `/Users` → `/`; «Atrás» desde `/` → `/Users`.
+- [x] **Navegación con teclado (v2.3.12 → v2.3.15)**: el menú Navegación ganó Atrás ⌘[, Adelante ⌘],
+  Subir un nivel ⌘↑ y Abrir selección ⌘↓ (+ paleta ⌘K), así que el historial dejó de depender del
+  ratón. *Corrección de rumbo (v2.3.15)*: en v2.3.12 Return se puso a «volver» porque el usuario lo
+  pidió así, pero la tecla que usaba era **Retroceso ⌫**; el mapa final es **Return/Enter = abrir**
+  y **Retroceso ⌫ = volver**, en un contrato explícito y testeado (`KeyNavigationKeys`, J4FUI). Con
+  un filtro rápido activo, ⌫ borra del filtro en vez de navegar. Validado en vivo: ↓ + Enter(num)
+  `~/` → `1DMX83`; ⌫ → `~/`; Enter del teclado numérico (76) → entra.
+- [x] **Ninguna tecla en silencio: foco y modificadores (v2.3.13 · v2.3.14)**: el primer intento de
+  «Return = volver» (v2.3.13) no se notaba porque el foco no estaba en la lista: al arrancar, AppKit
+  lo daba a la tabla del sidebar «Ubicaciones autorizadas» **sin selección**, y la tecla se
+  **consumía en silencio** (`guard row >= 0`). Ahora el sidebar solo se queda con la tecla si abre
+  de verdad una ubicación (`openSelectedSidebarLocation` devuelve `Bool`), el árbol solo si el nodo
+  apunta a otra carpeta, hay respaldo por panel (el que esté bajo el puntero → el activo),
+  `isTableFirstResponder` acepta vistas descendientes y el arranque pone el foco en la lista del
+  panel activo (`didSetInitialKeyboardFocus`). Además se ignoran los modificadores de ruido de macOS
+  (`.numericPad` —el «Enter» de los **teclados Windows**—, `.function` —F1–F12/flechas— y
+  `.capsLock`) en `KeyNavigationFlags` (J4FUI), lo que también devolvió la vida a **F5–F8** con las
+  teclas F reales. Validado en vivo con capturas y con la herramienta de accesibilidad: foco de
+  arranque = «Contenido del panel Izquierdo»; keyCode 36 y 76 con `numericPad` responden; ⌫ con el
+  sidebar enfocado y sin selección vuelve. 73 tests verdes (12 nuevos).
+- [ ] 🔵 **Comprobar a mano** (`QA_LOCAL.md`): `⌘L` → teclear una ruta → **Return** navega a esa ruta
+  (los keystrokes sintéticos no entran en campos de texto) y **F5–F8** responden con las teclas F
+  reales (no el atajo multimedia). Herramienta: `scripts/qa_keys.swift`.
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, unificar el diario de
