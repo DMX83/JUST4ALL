@@ -102,6 +102,14 @@
   para el resto, ahora con reintentos (`refreshPreviewItem()` a 0,4/1,6 s); tras crear ficheros
   (`refreshCurrentDirectory()`/`reloadAfterExternalChange()`) la vista previa se refresca.
   Validado: PNG recién creado, JPEG, PDF (QuickLook) y carpeta; 55 tests verdes.
+- [x] **Orden por Tamaño correcto (v2.3.9)**: ordenaba con `sizeBytes` (nil en carpetas) ⇒ todas
+  las carpetas comparaban igual y `sorted` (no estable) rebarajaba las filas en cada recarga.
+  Fix: `sortableSizeBytes` (tamaño efectivo) + desempate por nombre en todas las columnas; al
+  pulsar la cabecera Tamaño se piden todos los tamaños y se reordena UNA vez al terminar
+  («Calculando tamaños… (N)» → «Tamaños listos: N»), con las desconocidas al final y sin escanear
+  al arrancar. Los avisos del watcher ya no pisan los mensajes de operación. Validado en vivo:
+  home ordenado 0 KB → 6 → 7 → 8 → 35 KB → 213 KB → 945 KB → 6,7 MB → … → 263 GB (Library sin
+  calcular al final); 55 tests verdes.
 - [ ] **Integración JUST4PDF F3** (opcional): progreso en la cola de trabajos, Quick Actions del
   Finder (v0.3 de JUST4PDF) y módulo del Panel Hub (F4).
 - [ ] Panel Hub — pendientes menores: reglas favoritas por extensión, unificar el diario de

@@ -16,7 +16,7 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 - [ ] ⚪️ Si aparece el MCP `tradingview-local` (de Claude Desktop) en la lista de herramientas: desactivarlo.
 - [ ] ⚪️ Opcional: `nextEditSuggestions` (consume cupo de Copilot, no de DeepSeek).
 
-## 1) JUST4FOLDERS (v2.3.7 — «Mejorar con JUST4PICT ▸»)
+## 1) JUST4FOLDERS (v2.3.9 — orden por Tamaño + vista previa fiable)
 
 **Hecho hoy (29-sep)**
 - [x] 🟠 **Integración JUST4PICT por CLI**: submenú **JUST4PICT ▸ → «Mejorar con JUST4PICT ▸»** con 5
@@ -27,6 +27,11 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       (`LocalImagePreview.swift`) en vez de por QuickLook — éste devolvía el icono genérico la primera vez
       que se pedía un fichero recién creado y se quedaba pegado. QuickLook sigue para PDF/vídeo/documentos
       y ahora reintenta (`refreshPreviewItem()` a 0,4/1,6 s); al crear ficheros la vista previa se refresca.
+- [x] 🟠 **Orden por Tamaño correcto (v2.3.9)**: ordenaba con `sizeBytes` (nil en carpetas) y la lista se
+      rebarajaba en cada recarga; ahora usa el tamaño efectivo + desempate por nombre, pide todos los
+      tamaños al pulsar la cabecera y reordena una sola vez al terminar (las desconocidas, al final).
+- [x] 🟠 Nit de estado: el aviso «Actualizado (N cambio(s) en disco)» del watcher ya no pisa los mensajes
+      de operación (prioridad temporal en el estado del commander).
 
 **Código**
 - [ ] 🟠 Integración JUST4PDF **F3** (opcional): progreso en la cola de trabajos, Quick Actions del Finder
@@ -35,9 +40,6 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       el drop del módulo DESK (hoy mueve sin diario), selector compacto (la vista previa perdió ~65 pt de
       alto). El módulo del Panel Hub con el pipeline de PICT sigue pendiente.
 - [ ] 🟠 Nit conocido: la última columna («Tipo») puede recortar 1 carácter si el ancho queda justo.
-- [ ] 🟠 Nit de estado: el aviso «Actualizado (N cambio(s) en disco)» del watcher pisa el mensaje de resultado
-      de la operación recién terminada (p. ej. «JUST4PICT: 1 imagen(es) mejoradas…») — dar prioridad temporal
-      a los mensajes de operación.
 - [ ] ⚪️ Drag & drop interno de ficheros entre paneles (histórico) — comprobar y decidir.
 
 **Validación manual** (`QA_LOCAL.md` § «Checklist manual — Panel Hub v2.3.x»)

@@ -28,14 +28,17 @@ private struct FileRow {
     /// v1.2 — tamaño calculado en background para carpetas (nil = aún no calculado).
     var folderSizeBytes: Int64? = nil
 
+    /// v2.3.9 — tamaño con el que se ordena y se muestra: los ficheros el suyo y las carpetas el
+    /// calculado en background. `fileSize` es nil en carpetas, así que antes TODAS comparaban
+    /// igual al ordenar por Tamaño y `sorted` — que no es estable — rebarajaba las filas en cada
+    /// recarga: la lista «bailaba» y el orden no era por tamaño real.
+    var sortableSizeBytes: Int64? {
+        isDirectory ? folderSizeBytes : sizeBytes
+    }
+
     var sizeDisplay: String {
-        if let sizeBytes {
-            return ByteCountFormatter.string(fromByteCount: sizeBytes, countStyle: .file)
-        }
-        if let folderSizeBytes {
-            return ByteCountFormatter.string(fromByteCount: folderSizeBytes, countStyle: .file)
-        }
-        return "--"
+        guard let bytes = sortableSizeBytes else { return "--" }
+        return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 
     var modifiedDisplay: String {
@@ -442,6 +445,8 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
     /// v2.1 — split de paneles (autocuración del reparto 50/50).
     private weak var panelsSplit: NSSplitView?
     private let statusLabel = NSTextField(labelWithString: "Listo")
+    /// v2.3.9 — hasta esta hora el aviso del watcher no pisa el mensaje de estado recién puesto.
+    private var statusProtectedUntil: Date = .distantPast
     private let volumeWarningLabel = NSTextField(labelWithString: "")
     private let searchField = NSSearchField()
     /// v2.0 — registro propio del commander (os_log; visible con `log stream`).
@@ -1373,12 +1378,10 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         }
 
         leftPanel.onStatus = { [weak self] text in
-            self?.statusLabel.stringValue = "◀  \(text)"
-            self?.refreshToolbarValidation()
+            self?.showStatus(text, side: .left)
         }
         rightPanel.onStatus = { [weak self] text in
-            self?.statusLabel.stringValue = "▶  \(text)"
-            self?.refreshToolbarValidation()
+            self?.showStatus(text, side: .right)
         }
         leftPanel.onSelectionChanged = { [weak self] in
             guard let self else { return }
@@ -2675,6 +2678,19 @@ final class CommanderViewController: NSViewController, NSToolbarDelegate, NSSear
         return true
     }
 
+    /// v2.3.9 — mensajes de estado con prioridad: el aviso del watcher («Actualizado (N cambio(s)
+    /// en disco).») no debe pisar un mensaje de operación recién publicado (p. ej. «Calculando
+    /// tamaños…» al ordenar por Tamaño), venga del panel que venga.
+    private func showStatus(_ text: String, side: PanelSide) {
+        let isWatcherNotice = text.hasPrefix("Actualizado (")
+        if isWatcherNotice, Date() < statusProtectedUntil { return }
+        if !isWatcherNotice {
+            statusProtectedUntil = Date().addingTimeInterval(4)
+        }
+        statusLabel.stringValue = (side == .left ? "◀  " : "▶  ") + text
+        refreshToolbarValidation()
+    }
+
     /// Refresca el preview cuando cambia la selección del panel que lo alimenta.
     fileprivate func previewSourceSelectionChanged(_ source: FilePanelViewController) {
         updatePreviewPane()
@@ -3670,6 +3686,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
     private let tagColorCache = NSCache<NSString, NSNumber>()
     /// v1.2 — carpetas cuyo tamaño se está calculando ya (evita peticiones repetidas).
     private var folderSizeRequests: Set<String> = []
+    /// v2.3.9 — lote de tamaños en curso al ordenar por Tamaño (se reordena al terminar).
+    private var folderSizeBatchPending = 0
+    private var folderSizeBatchActive = false
+    /// v2.3.9 — solo se calculan TODOS los tamaños si el usuario pidió ordenar por Tamaño
+    /// (pulsando la cabecera): un orden por tamaño persistido no debe escanear subárboles al
+    /// arrancar. Las filas visibles siguen calculándose solas (comportamiento v1.2).
+    private var sizeSortRequestsAllSizes = false
     /// v2.0 — formatos por carpeta (aplanada/orden/ocultos, estilo Directory Opus).
     private let folderFormatStore = FolderFormatStore.shared
     private var isRestoringFormat = false
@@ -5863,9 +5886,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         tableView.tableColumns.firstIndex { $0.identifier.rawValue == "size" } ?? -1
     }
 
-    private func requestFolderSize(for url: URL) {
+    @discardableResult
+    private func requestFolderSize(for url: URL) -> Bool {
         let path = url.standardizedFileURL.path
-        guard !folderSizeRequests.contains(path) else { return }
+        guard !folderSizeRequests.contains(path) else { return false }
         folderSizeRequests.insert(path)
         Task { [weak self] in
             let size = await FolderSizeCalculator.shared.size(of: url, includeHidden: false)
@@ -5875,17 +5899,58 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 self.applyFolderSize(size, forPath: path)
             }
         }
+        return true
     }
 
     private func applyFolderSize(_ size: Int64, forPath path: String) {
         updateFolderSize(in: &allRows, path: path, size: size)
         updateFolderSize(in: &flatRows, path: path, size: size)
+        defer { folderSizeBatchStepFinished() }
         guard let idx = rows.firstIndex(where: { $0.url.standardizedFileURL.path == path }) else { return }
         rows[idx].folderSizeBytes = size
         let column = sizeColumnIndex
         if column >= 0 {
             tableView.reloadData(forRowIndexes: IndexSet(integer: idx), columnIndexes: IndexSet(integer: column))
         }
+    }
+
+    // MARK: - Orden por Tamaño (v2.3.9)
+
+    /// Pide los tamaños de TODAS las carpetas listadas (no solo las visibles) cuando la lista se
+    /// ordena por Tamaño y reordena UNA sola vez al terminar: el orden final es por tamaño real y
+    /// la lista no se rebaraja mientras llegan los valores.
+    private func startFolderSizeBatchIfNeeded() {
+        guard sortColumn == "size" else {
+            folderSizeBatchPending = 0
+            folderSizeBatchActive = false
+            sizeSortRequestsAllSizes = false
+            return
+        }
+        let pendingRows = rows.filter { $0.isDirectory && $0.folderSizeBytes == nil }
+        guard sizeSortRequestsAllSizes, !folderSizeBatchActive else { return }
+        guard !pendingRows.isEmpty else { return }
+        // Red de seguridad: en listados enormes (vista aplanada de un árbol grande) no tiene
+        // sentido calcular cientos de subárboles solo por un clic en la cabecera.
+        guard pendingRows.count <= 500 else {
+            onStatus?("\(pendingRows.count) carpetas sin tamaño: se ordena con los tamaños ya calculados.")
+            return
+        }
+        // OJO: se cuentan TODAS las filas sin tamaño (estén ya en vuelo o no), porque el lote se
+        // cierra cuando llega el último valor — si solo se contaran las peticiones nuevas, un
+        // listado cuyas filas visibles ya se están calculando (lo normal) nunca reordenaría.
+        for row in pendingRows { requestFolderSize(for: row.url) }
+        folderSizeBatchPending = pendingRows.count
+        folderSizeBatchActive = true
+        onStatus?("Calculando tamaños para ordenar por Tamaño… (\(pendingRows.count))")
+    }
+
+    private func folderSizeBatchStepFinished() {
+        guard folderSizeBatchActive else { return }
+        folderSizeBatchPending = max(0, folderSizeBatchPending - 1)
+        guard folderSizeBatchPending == 0 else { return }
+        folderSizeBatchActive = false
+        applySortAndReload()
+        onStatus?("Tamaños listos: \(rows.count) elemento(s).")
     }
 
     private func updateFolderSize(in array: inout [FileRow], path: String, size: Int64) {
@@ -6189,6 +6254,10 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         guard let descriptor = tableView.sortDescriptors.first else { return }
         sortColumn = descriptor.key ?? "name"
         ascending = descriptor.ascending
+        // v2.3.9 — el usuario ha pedido orden por tamaño: ahora sí se calculan todos los tamaños.
+        if sortColumn == "size" {
+            sizeSortRequestsAllSizes = true
+        }
         applySortAndReload()
         saveFormat()
     }
@@ -6223,10 +6292,21 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         }
 
         rows = filtered.sorted { lhs, rhs in
-            let result: ComparisonResult
+            var result: ComparisonResult
             switch sortColumn {
             case "size":
-                result = compareOptional(lhs.sizeBytes, rhs.sizeBytes)
+                // v2.3.9 — las carpetas sin tamaño todavía van SIEMPRE al final (en ambos
+                // sentidos): si no, una carpeta grande en cálculo se quedaba arriba.
+                switch (lhs.sortableSizeBytes, rhs.sortableSizeBytes) {
+                case let (l?, r?):
+                    result = compareOptional(l, r)
+                case (.none, .none):
+                    result = .orderedSame
+                case (.none, .some):
+                    return false
+                case (.some, .none):
+                    return true
+                }
             case "modified":
                 result = compareOptional(lhs.modifiedDate, rhs.modifiedDate)
             case "type":
@@ -6237,6 +6317,13 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
                 } else {
                     result = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
                 }
+            }
+            // v2.3.9 — desempate por nombre SIEMPRE: `sorted` no es estable, así que dos filas
+            // «iguales» (mismo tamaño, misma fecha o mismo tipo) se rebarajaban en cada recarga
+            // (el síntoma: la lista «bailaba» al ordenar por Tamaño, que en carpetas era siempre
+            // .orderedSame porque `fileSize` es nil).
+            if result == .orderedSame {
+                result = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
             }
             if ascending {
                 return result == .orderedAscending
@@ -6262,6 +6349,8 @@ private final class FilePanelViewController: NSViewController, NSTableViewDataSo
         updateEmptyState()
         // v2.1 — si el ancho cambió (árbol de panel, ventana…), evita columnas cortadas.
         fitColumnsIfNeeded()
+        // v2.3.9 — ordenar por Tamaño necesita los tamaños de todas las carpetas listadas.
+        startFolderSizeBatchIfNeeded()
     }
 
     /// v2.0 — hits del índice para una consulta; con búsqueda semántica activa la IA expande

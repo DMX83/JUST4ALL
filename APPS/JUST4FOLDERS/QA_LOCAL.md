@@ -157,6 +157,14 @@ Validado por automatizacion/capturas; falta el tacto real (raton/teclado humano)
   elementos «N elementos seleccionados». Comprobar que después de mejorar/convertir una imagen la
   tarjeta NO se queda con el icono genérico del tipo de fichero (fallo corregido en v2.3.8).
   *Validado (29-sep): PNG recién creado + JPEG renderizados, PDF por QuickLook, carpeta con icono.*
+- [ ] **Orden por Tamaño (v2.3.9)**: en una carpeta con carpetas de tamaños distintos, pulsar la
+  cabecera **Tamaño** → la lista se ordena por tamaño REAL (los ficheros por su tamaño y las
+  carpetas por el suyo), las que aún se están calculando quedan **al final**, y el orden NO cambia
+  solo (antes se rebarajaba en cada recarga). Barra de estado: «Calculando tamaños para ordenar por
+  Tamaño… (N)» y al terminar «Tamaños listos: N elemento(s)». Volver a pulsar alterna
+  ascendente/descendente; ordenar por Nombre/Modificado/Tipo debe ser estable (mismo orden al
+  recargar). *Validado (29-sep): home con 28 carpetas ordenado 0 KB → 6 KB → … → 263 GB, Library
+  sin calcular al final.*
 - [ ] Drag & drop interno de ficheros entre paneles (pendiente historico) — comprobar tambien.
 - [ ] Decision de diseno: la vista previa perdio ~65pt de alto (fila del selector + franja de la
   toolbar); valorar selector compacto (iconos) o moverlo a la barra de herramientas.

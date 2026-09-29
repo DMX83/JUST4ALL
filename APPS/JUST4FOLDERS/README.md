@@ -140,6 +140,17 @@ swift run
   QuickLook **con reintentos** (`refreshPreviewItem()` a los 0,4 s y 1,6 s). Además, al crear
   ficheros (PICT/PDF, conversiones…) la recarga del panel refresca la vista previa en vez de
   dejar pegado el resultado fallido anterior.
+- **Orden por Tamaño, correcto (v2.3.9)**: la columna Tamaño ordenaba con `fileSize`, que en
+  carpetas es **nil** ⇒ todas las carpetas comparaban igual y, como `sorted` no es estable, la
+  lista se **rebarajaba en cada recarga** (y el orden no era por tamaño real). Ahora se ordena
+  con el **tamaño efectivo** (ficheros el suyo; carpetas el calculado en background) y con
+  **desempate por nombre** (orden determinista en todas las columnas). Al pulsar la cabecera
+  **Tamaño** se piden los tamaños de todas las carpetas listadas y se reordena **una sola vez**
+  al terminar (aviso «Calculando tamaños… (N)» → «Tamaños listos: N elemento(s)»), con las
+  carpetas aún sin calcular **al final** de la lista. No se lanzan escaneos al arrancar: solo
+  cuando el usuario pide ordenar por Tamaño (las filas visibles se siguen calculando solas).
+  Además, los avisos del watcher («Actualizado (N cambio(s) en disco)») ya no pisan los mensajes
+  de operación: el estado tiene prioridad temporal.
 - **Contenido que llena la ventana completa (v2.2d)**: tras detectar que el hosting de SwiftUI
   dejaba la vista del controlador en tamano «fitting» (hueco muerto a la derecha y banda inferior
   de ~36pt), se corrige con `.ignoresSafeArea()` en `ContentView` y con el ancho del split del
