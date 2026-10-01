@@ -65,10 +65,11 @@ de desarrollo.
       puede mandarlo desde ya. Verificado de punta a punta contra el servidor local: `tz=America/New_York`
       → `2026-10-01T11:00:00-04:00`; zona inventada → `+02:00` (Madrid); PATCH con `tz` → también. Tests:
       24 del diario en el servidor (2 nuevos) y 22 en la app (1 nuevo).
-- [ ] 🔵 **Desplegar el servidor** (`./deploy/release.sh` en el repo LifeOS) para que la hora escrita a mano
-      se aplique de verdad: hasta entonces la app enseña el aviso (y oculta el token) pero el servidor
-      sigue guardando la entrada con la hora del momento. Después, reabrir y guardar la entrada de esa
-      noche le aplica las 11:00.
+- [x] ✅ **Desplegado en producción y verificado por el dueño (1-oct-2026)**: release en CT115 (build de api y web,
+migraciones, recreación del stack), `/health/live`, `/health/ready` y `/` a 200, y `lifeos-doctor` con sesión
+→ **«todo bien»** (las nueve pantallas decodifican). Copia de rollback: `/root/lifeos-pre-20261001.tgz`.
+El dueño **editó la entrada de «fui a pelarme» y le puso la hora: funcionó**. Notas del procedimiento y del
+post-chequeo (4 contenedores sin reinicios, discos al 21 % y 31 %, backups diarios al día) en el skill del repo.
 - [x] 🟠 `JournalModels.swift`: contrato del diario (entrada, referencias, candidatos, altas y ediciones).
 - [x] 🟠 `APIClient` + `LifeOSService` + `LifeOSModel`: listar, crear, editar, borrar y candidatos.
 - [x] 🟠 Pantalla **Diario** (⌘3) con compositor (título opcional, texto, ánimo y energía), entradas agrupadas
@@ -157,11 +158,10 @@ de desarrollo.
       usuario **no se toca nada** (`taken`) y si la cuenta ya tiene otra identidad **no se cambia sola**
       (`conflict`). 7 tests, y `UserResponse` gana `google_linked` para que la app sepa si ya está vinculada.
       Copia de rollback del CT: `/root/lifeos-pre-20260930-vincular.tgz`.
-- [ ] 🟠 **El repo del servidor tiene sin commitear lo que YA está en producción** (30-sep-2026): el parche del
-      flujo nativo (`api/app/{main,connectors,schemas}.py`), los tests, y las dos herramientas nuevas
-      (`api/scripts/mover_espacio.py` y `verificar_espacios.py`). Producción ejecuta el **árbol de trabajo**, así
-      que un `git reset` o un `checkout` dejaría lo desplegado fuera del repo. Hacer los commits y comprobar que
-      `git diff` queda limpio antes del próximo release.
+- [x] ✅ **Resuelto (1-oct-2026)**: el árbol de trabajo del servidor está **commiteado** (`9b7f1cc5` en
+      `feat/lifeos-apple-design`: parche del flujo nativo, tests y las dos herramientas de espacios) y las
+      notas del despliegue (`4cad6771`); los dos commits están **publicados** en `origin`. Producción ya
+      ejecuta exactamente lo que está en el repo.
 - [ ] 🟠 **En producción no está publicado `/openapi.json`** (404, con el resto de la API viva): el diagnóstico
       tiene que sondear endpoint por endpoint en vez de leer el contrato. Se arregla en el proxy (NPM) o
       habilitando el documento; sirve también para cualquier cliente.

@@ -1,4 +1,4 @@
-# PENDIENTES — JUST4ALL (revisión 29-sep-2026)
+# PENDIENTES — JUST4ALL (revisión 1-oct-2026)
 
 Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trabajo.
 
@@ -10,8 +10,8 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 
 - [ ] 🔵 Recargar la ventana de VS Code para aplicar los ajustes de DeepSeek
       (`reasoningEffort` max→**medium**, `maxTokens` 16384, `debugMode` metadata) y verificar en *Manage Models*.
-- [ ] 🟠 **«Configure Tools»: bajar de ~90 a ≤64 herramientas** (desactivar Pylance MCP ~25, .NET ~9,
-      Containers, Notebook y Browser si no se usan) → menos tokens por petición.
+- [x] ❌ **Descartado por el dueño**: «Configure Tools ≤64» (dijo que no cree que el número de herramientas
+      consuma apenas; no volver a proponerlo).
 - [ ] ⚪️ Con ≤64 tools: probar `deepseek-copilot.experimental.stabilizeToolList: true` (mejor cache-hit).
 - [ ] ⚪️ Si aparece el MCP `tradingview-local` (de Claude Desktop) en la lista de herramientas: desactivarlo.
 - [ ] ⚪️ Opcional: `nextEditSuggestions` (consume cupo de Copilot, no de DeepSeek).
@@ -124,9 +124,46 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       aceleración con aviso según formato.
 - [ ] 🟠 Errores de apertura con mensajes accionables; pipeline de releases; QA en macOS 13/14/15 (Intel y AS).
 
-## 7) LIFEOS (nuevo, 30-sep — cliente nativo de la API de LifeOS)
+## 7) LIFEOS (cliente nativo de la API de LifeOS)
 
-**Hecho hoy**: paquete SPM `APPS/LIFEOS` (LifeOSAPI · LifeOSCore · LifeOSUI · LIFEOS + tests), acceso con
+App en `APPS/LIFEOS` (SPM: `LifeOSAPI` · `LifeOSCore` · `LifeOSUI` · `LIFEOS` + `lifeos-doctor`), servidor en
+`0_server_dorticos` (CT115 · `https://lifeos.perlatec.net`). **F1–F3 cerradas** (30-sep) y **desplegado el
+1-oct-2026**, con el Diario ya afinado y **verificado por el dueño** (editó una entrada y le puso la hora:
+funcionó). Todo commiteado y publicado (`f8ecd06` en JUST4ALL, `4cad6771` en el servidor).
+
+**Hecho (30-sep – 1-oct)**
+- [x] 🟠 Paquete SPM completo: capturar con propuesta revisable, Hoy, Agenda, Ejecutar, Diario, Buscar, Bandeja y
+      Ajustes; voz (audio → transcripción en el servidor); ⌥Espacio; menú de barra; avisos del sistema; cola sin
+      conexión idempotente; acceso nativo (Google y usuario/contraseña con TOTP) y «vincular Google».
+- [x] 🟠 Diario afinado: ánimo y energía en escala de color rojo → verde (con palabra y número, no solo color),
+      aviso en el compositor de lo que hará `@hora:`/`@fecha:`, hora escrita a mano (`@hora:1100` = 11:00) y
+      **zona horaria del dispositivo que escribe** (`tz`), con la del espacio como respaldo.
+- [x] 🔵 Producción verificada tras el release: `/health/live`, `/health/ready` y `/` a 200; `lifeos-doctor` con
+      sesión → «todo bien» (las nueve pantallas decodifican); 4 contenedores sin reinicios; discos al 21 % y
+      31 %; backups diarios cifrados al día.
+
+**Pendiente**
+- [ ] 🔵 Recorrer la app con datos reales: Bandeja, Capturar y Ajustes; provocar una **propuesta** desde el panel
+      ⌥Espacio y confirmarla; **avisos del sistema**; **cola sin conexión**; menú de barra con las cifras; y
+      decidir el **choque de ⌥Espacio con JUST4DESK** (gana quien lo registra antes).
+- [ ] 🟠 **Revisión del dueño de las previsualizaciones de diseño**: `APPS/LIFEOS/docs/design/v2-apple/` (38
+      imágenes, claro y oscuro) — decir qué cambiar antes de seguir puliendo la UI.
+- [ ] 🟠 **F4 «Enviar a LifeOS»**: menú **Servicios** + **drag & drop** + `application(_:open:)` →
+      `POST /captures` y `POST /documents/upload`. Es la pieza que falta para que sea una app de Mac redonda
+      (la voz ya está dentro).
+- [ ] 🟠 **`/openapi.json` no está publicado en producción** (404 con el resto de la API viva): arreglarlo en el
+      proxy (NPM) o habilitar el documento. Además desbloquea generar los modelos Swift desde el contrato.
+- [ ] 🟠 **Bandeja**: `GET /captures` corta a las 100 más recientes **antes** de filtrar (el aviso ya está en la
+      pantalla) y no existe `DELETE` de capturas (no son entidades: `/entities/{id}` da 404).
+- [ ] 🔴 **Las cuentas creadas con Google no pueden tener contraseña** (hallazgo: nacen con una aleatoria y
+      `POST /auth/password` exige la actual): decidir el arreglo (fijar la primera contraseña o «¿olvidaste la
+      contraseña?» por correo). Mientras, la app ofrece «Usar la sesión que ya tengo en la web».
+- [ ] ⚪️ Detalles: buscar/exportar entradas del diario y racha de días escritos; animación de entrada de la
+      propuesta; icono del menú de barra con la cifra de pendientes; publicar a Google Tasks/Calendar desde la
+      app; promover el panel flotante de ⌥Espacio a `PACKAGES/J4SHARED` (hoy copiado de DESK); firmar y
+      notarizar el DMG si sale de este Mac.
+- [ ] 🔵 Decidir si la web admite `?view=` (o rutas) para que «Abrir en LifeOS» lleve a la sección y no solo al
+      inicio: hoy es una sola página sin rutas.
 Google y con usuario/contraseña, pantallas Hoy/Capturar/Diario/Bandeja/Ajustes, ⌥Espacio, menú de barra,
 avisos del sistema y cola sin conexión. Rediseño visual v2 (estilo Apple, claro y oscuro), **diario** (texto que
 manda, selector de menciones con vínculos reales) y **F3 cerrada**: agenda con tres carriles y pares por decidir,
@@ -171,9 +208,15 @@ ambos daban 404), `/health/live|ready` → 200 y `lifeos-doctor` dice «Acceso n
 
 ### Orden sugerido
 
-1. **Hoy/mañana (10 min)**: validación manual rápida de lo de hoy (pestañas, monitor, Atrás/Adelante)
-   mientras está fresco → tachar en `QA_LOCAL.md`.
-2. **5 min, ahorro continuo**: recargar ventana + «Configure Tools» ≤64.
-3. **JUST4PICT CLI** (`just4pict-cli`): desbloquea la integración completa con FOLDERS.
-4. **FOLDERS**: JUST4PDF F3 o Panel Hub menores (elegir según uso).
-5. **Hub/global**: icono + assets reales cuando se acerque una demo/distribución.
+1. **LIFEOS, lo más caliente**: `docs/design/v2-apple/` para que el dueño diga qué cambiar, y en paralelo la
+   ronda de validación con datos reales (Bandeja/Capturar/Ajustes, propuesta desde ⌥Espacio, avisos, cola sin
+   conexión, y decidir el ⌥Espacio compartido con JUST4DESK).
+2. **LIFEOS F4 «Enviar a LifeOS»** (Servicios + drag & drop + `application(_:open:)`): es lo que cierra la app.
+3. **10 min, mientras está fresco**: la validación manual que quedó de FOLDERS (`⌘L` + Return, F5–F8 con las
+   teclas F reales) y el checklist del Panel Hub → tachar en `QA_LOCAL.md`.
+4. **FOLDERS**: JUST4PDF F3 o los menores del Panel Hub (elegir según uso).
+5. **Servidor LifeOS**: publicar `/openapi.json` en el proxy (desbloquea el cliente Swift generado) y las dos
+   decisiones de producto que quedan (contraseña de las cuentas de Google, `?view=` en la web).
+6. **Hub/global**: icono y assets reales cuando se acerque una demo o distribución.
+7. **JUST4PICT · JUST4PDF · JUST4DESK · JUST4CONVERT**: cuando haya hueco; de esos, **DESK N6** (DMG + Quick
+   Action del Finder) es el que más desbloquea.
