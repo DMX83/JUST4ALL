@@ -124,6 +124,49 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       aceleración con aviso según formato.
 - [ ] 🟠 Errores de apertura con mensajes accionables; pipeline de releases; QA en macOS 13/14/15 (Intel y AS).
 
+## 7) LIFEOS (nuevo, 30-sep — cliente nativo de la API de LifeOS)
+
+**Hecho hoy**: paquete SPM `APPS/LIFEOS` (LifeOSAPI · LifeOSCore · LifeOSUI · LIFEOS + tests), acceso con
+Google y con usuario/contraseña, pantallas Hoy/Capturar/Diario/Bandeja/Ajustes, ⌥Espacio, menú de barra,
+avisos del sistema y cola sin conexión. Rediseño visual v2 (estilo Apple, claro y oscuro), **diario** (texto que
+manda, selector de menciones con vínculos reales) y **F3 cerrada**: agenda con tres carriles y pares por decidir,
+ejecutar acciones y buscar/cronología.
+89 tests offline + 14 contra el servidor local verdes, DMG validado y firmado con identidad de desarrollo,
+tarjeta en el hub. Parche del servidor aplicado en el repo de LifeOS (**188 tests verdes**) y **desplegado en
+producción el 30-sep-2026**: `/auth/native/login` → 200, `/auth/native/exchange` → 401 con código falso (antes
+ambos daban 404), `/health/live|ready` → 200 y `lifeos-doctor` dice «Acceso nativo disponible». Sin migración
+(el `state` y los códigos de un solo uso viven en Redis). Además: entrada sin contraseña con
+**«Usar la sesión que ya tengo en la web»**, útil para cuentas de Google en servidores sin el parche.
+
+- [x] ✅ **Desplegado el parche del servidor** (30-sep-2026, copia de rollback en el CT115:
+      `/root/lifeos-pre-20260930-googleauth.tgz`). Ya no hay que caer al respaldo: el botón de Google funciona.
+- [ ] 🔵 Probar en vivo: **Google de punta a punta** (pulsar «Continuar con Google» en la app), ⌥Espacio con
+      otra app delante, avisos reales, cola sin conexión y menú de barra. Detalle en `APPS/LIFEOS/TODO.md` §0 y §1.
+- [x] ✅ **«Vincular con Google» hecho y desplegado (30-sep-2026)** — el arreglo de raíz del lío de las dos
+      cuentas. Servidor: `POST /api/v1/auth/google/link` (autenticado) + retorno `lifeos://auth?linked=…` con
+      `ok`/`already`/`taken`/`conflict`/`expired`; `UserResponse` gana `google_linked`. App: botón en
+      **Ajustes → Sesión**. 7 tests, incluidos los dos que importan: si ese Google ya es de **otro** usuario no se
+      toca nada, y si la cuenta ya tiene otra identidad no se cambia sola. Rollback del CT:
+      `/root/lifeos-pre-20260930-vincular.tgz`.
+- [x] ✅ **Datos trasladados a la cuenta de Google (30-sep-2026)**: `amachin.83@gmail.com` tiene ya **138
+      entidades** + 13 capturas + 13 propuestas + la conexión de Google de escritura; `owner` queda vacía. Se hizo
+      con `api/scripts/mover_espacio.py` (simula por defecto, se niega a mover si hay claves únicas que chocarían,
+      y comprueba totales antes de confirmar), con volcado previo de las filas afectadas en
+      `0_server_dorticos/backups/` y la copia completa de la base del 30-sep en el CT107.
+- [x] 🟠 **F4 (menos publicar en Google)**: voz, **enviar a LifeOS** (menú Servicios, abrir ficheros, arrastrar a
+      la ventana), **arranque al iniciar sesión** y preferencia para soltar ⌥Espacio, y **anillo del menú de
+      barra** con lo cerrado que está el día. 128 tests offline + 195 del servidor en verde (§2).
+- [ ] ⚪️ Publicar en Google Tasks/Calendar desde la app (`POST /tasks/{id}/google/publish`) — lo único que queda
+      de F4.
+- [ ] 🟠 Deuda: promover el atajo global a `J4SHARED`, capturas del hub con contenido real (§3).
+- [ ] 🔴 **El repo del servidor tiene sin commitear lo que YA está en producción** (parche de auth, vinculación,
+      herramientas de traslado). Producción ejecuta el árbol de trabajo: un `git reset` dejaría lo desplegado
+      fuera del repo. Hacer los commits.
+- ⚠️ **Ojo con ⌥Espacio**: JUST4DESK usa el mismo atajo global; si las dos apps están abiertas, gana la que lo
+  registró primero. En LIFEOS ya se puede desactivar desde Ajustes.
+- ℹ️ **Un despliegue del servidor deja ~2-3 minutos de 502** en `lifeos.perlatec.net`: `release.sh` recrea el
+  stack y la web es la última en arrancar. Es normal; se comprueba después de que imprima su `compose ps`.
+
 ---
 
 ### Orden sugerido

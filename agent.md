@@ -12,6 +12,7 @@
   - **JUST4FOLDERS**: Organización de archivos/carpetas (AppKit-first, hosting mínimo de SwiftUI)
   - **JUST4PICT**: Mejoramiento de imágenes por lotes (SwiftUI)
   - **JUST4DESK**: Buscador instantáneo + organizador de documentos (SwiftUI)
+  - **LIFEOS**: Cliente nativo de la API de LifeOS — captura, «Hoy» y bandeja (SwiftUI)
 - **Sources/JUST4ALL/**: Código fuente del hub principal (Swift)
 - **scripts/**: Scripts de build, empaquetado, release y utilidades.
 - **build/**: Artefactos de compilación.
@@ -64,10 +65,18 @@
 - **Distribución**: DMG `JUST4DESK-<version>.dmg` + SHA256SUMS en GitHub Releases.
 - **Notas**: Privacidad local-first (a DeepSeek solo texto truncado); nunca borra archivos (journal + undo); memoria maestra en `APPS/JUST4DESK/MEMORY.md`; skill de agente en `.github/skills/just4desk/`.
 
+### 7. LIFEOS
+- **Lenguaje**: Swift (SwiftUI, SPM modular: LifeOSAPI, LifeOSCore, LifeOSUI + ejecutable LIFEOS).
+- **Función**: Cliente nativo de la API de LifeOS. Cubre el ciclo diario: captura con propuesta revisable, «Hoy» (cierre del día y avisos), bandeja y ajustes. Atajo global ⌥Espacio, menú de barra, avisos del sistema y cola sin conexión idempotente.
+- **Auth**: Google con `ASWebAuthenticationSession` (el servidor devuelve `lifeos://auth?code=…`), o usuario/contraseña con TOTP. El token vive en el llavero y viaja como `Authorization: Bearer`. Hay respaldo automático por el endpoint clásico si el servidor no tiene el flujo nativo.
+- **Build**: `swift build` / `swift test` / `./scripts/build_dmg.sh`; macOS 14+ (bundle `com.dmx83.lifeos`).
+- **Distribución**: DMG `LIFEOS-<version>.dmg` + SHA256SUMS en GitHub Releases.
+- **Notas**: **es la única subapp que necesita servidor** (no funciona sola). El parche del servidor (2 endpoints + `?native=true` en el authorize) está aplicado en `../0_server_dorticos/LifeOS` y **pendiente de desplegar**. Alcance acotado a propósito: objetivos, métricas, conocimiento, documentos y conectores siguen en la web.
+- **Referencias**: `APPS/LIFEOS/README.md`, `APPS/LIFEOS/TODO.md`, `PLAN_LIFEOS_MACOS_API.md`, skill `.github/skills/lifeos/`.
+
 ---
 
 ## Flujos de build, testing y release
-
 ### Build y empaquetado
 
 - Cada subapp tiene su propio script `build_dmg.sh` para generar el binario y empaquetar en DMG.

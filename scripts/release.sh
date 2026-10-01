@@ -16,6 +16,7 @@ echo "Building subapp DMGs..."
 (cd "$REPO_ROOT/APPS/JUST4CONVERT" && ./scripts/build_dmg.sh)
 (cd "$REPO_ROOT/APPS/JUST4PICT" && ./scripts/build_dmg.sh)
 (cd "$REPO_ROOT/APPS/JUST4DESK" && ./scripts/build_dmg.sh)
+(cd "$REPO_ROOT/APPS/LIFEOS" && ./scripts/build_dmg.sh)
 (cd "$REPO_ROOT/APPS/JUST4PDF" && ./packaging/build_dmg.sh)
 
 echo "Preparing versioned release assets..."

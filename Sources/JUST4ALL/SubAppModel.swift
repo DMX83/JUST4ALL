@@ -185,6 +185,31 @@ enum SubAppsCatalog {
                 "Assets/JUST4DESK/screen-1.png",
                 "Assets/JUST4DESK/screen-2.png"
             ]
+        ),
+        SubApp(
+            name: "LIFEOS",
+            subtitle: "Tu organizador personal, en el Mac",
+            bundleId: "com.dmx83.lifeos",
+            assetPrefix: "LIFEOS",
+            accent: Color(red: 0.37, green: 0.36, blue: 0.85),
+            systemIcon: "target",
+            description: "Captura lo que se te ocurre, confirma lo que LifeOS propone, mira como va tu dia y cierra la jornada. Atajo global, menu de barra y avisos del sistema aunque la app este en segundo plano, y capturas sin conexion que se envian solas. Necesita tu cuenta y tu servidor de LifeOS (lifeos.perlatec.net o el de tu red local).",
+            requirements: ["macOS 14+", "Cuenta y servidor de LifeOS", "Google o usuario y contrasena"],
+            links: [
+                SubAppLink(label: "Consola web de LifeOS", url: "https://lifeos.perlatec.net")
+            ],
+            version: pinnedVersion,
+            changelog: [
+                "Cliente nativo del ciclo diario sobre la API de LifeOS",
+                "Acceso con Google igual que la web, o usuario y contrasena con verificacion en dos pasos",
+                "Captura con propuesta revisable: nada se guarda sin tu confirmacion",
+                "Avisos del sistema y captura sin conexion que se envia sola"
+            ],
+            logoName: "Assets/LIFEOS/logo.png",
+            screenshots: [
+                "Assets/LIFEOS/screen-1.png",
+                "Assets/LIFEOS/screen-2.png"
+            ]
         )
     ]
 

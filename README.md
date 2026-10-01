@@ -16,6 +16,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - APPS/JUST4FOLDERS: App nativa macOS (AppKit-first): commander de 2 paneles con indice instantaneo e IA, Panel Hub (DESK/PICT), monitor del sistema y copias instantaneas por clon APFS.
 - APPS/JUST4PICT: App nativa macOS en SwiftUI para mejoramiento automatico de imagenes.
 - APPS/JUST4DESK: App nativa macOS en SwiftUI para busqueda instantanea y organizacion automatica de documentos.
+- APPS/LIFEOS: Cliente nativo macOS para LifeOS (captura, tu dia y bandeja) sobre la API de LifeOS; la primera subapp que necesita servidor.
 - App principal (este repo): JUST4ALL en Swift (Sources/ y Resources/).
 
 ## Documentacion rapida
@@ -26,6 +27,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - JUST4FOLDERS: `APPS/JUST4FOLDERS/README.md` y `APPS/JUST4FOLDERS/TODO.md`
 - JUST4PICT: `APPS/JUST4PICT/README.md`, `APPS/JUST4PICT/TODO.md`, `APPS/JUST4PICT/ENHANCE_ARCHITECTURE.md`, `APPS/JUST4PICT/QA_BATCH_LOCAL.md`
 - JUST4DESK: `APPS/JUST4DESK/README.md`, `APPS/JUST4DESK/TODO.md`, `APPS/JUST4DESK/MEMORY.md` (memoria maestra)
+- LIFEOS: `APPS/LIFEOS/README.md` y `APPS/LIFEOS/TODO.md` (plan en `PLAN_LIFEOS_MACOS_API.md`)
 - Estado y pendientes del conjunto (por app, con prioridades): `PENDIENTES.md`
 
 ## Submodulos
@@ -35,6 +37,7 @@ JUST4ALL es una app para macOS que agrupa varios submodulos con objetivos difere
 - JUST4FOLDERS: Commander de archivos con indice instantaneo, busqueda global/semantica y organizacion asistida por IA. Incluye Panel Hub (DESK/PICT), monitor del sistema (CPU/RAM/disco/IO/bateria) y motor de copia con clon APFS (v2.3.11).
 - JUST4PICT: App nativa macOS para mejorar imagenes por lotes con presets automaticos.
 - JUST4DESK: App nativa macOS para buscar al instante y archivar automaticamente documentos en una taxonomia ordenada.
+- LIFEOS: App nativa macOS que se conecta por API a LifeOS (lifeos.perlatec.net o tu servidor) para capturar, confirmar y cerrar el dia.
 - JUST4ALL: Hub macOS para lanzar subapps con vista de detalles.
 
 ## Principios del proyecto
@@ -52,6 +55,7 @@ El repositorio contiene al menos los siguientes submodulos:
 - JUST4FOLDERS (SwiftUI)
 - JUST4PICT (SwiftUI)
 - JUST4DESK (SwiftUI)
+- LIFEOS (SwiftUI; cliente nativo de la API de LifeOS, requiere servidor)
 
 ### Estado funcional resumido
 
@@ -88,6 +92,14 @@ El repositorio contiene al menos los siguientes submodulos:
   - Buscador instantaneo con indice local (SQLite FTS5 + FSEvents); bench 100k: crawl ~7 s, queries tipicas <40 ms.
   - Organizador automatico: watcher de carpeta de entrada con estabilidad de fichero, extraccion local
     (PDFKit/Vision OCR), clasificacion con reglas + DeepSeek opcional y taxonomia con undo/cuarentena.
+- LIFEOS:
+  - Cliente nativo macOS sobre la API de LifeOS: acceso con Google (como la web) o usuario/contrasena con TOTP;
+    token en el llavero y `Authorization: Bearer`.
+  - Ciclo diario: captura con propuesta revisable (nada se guarda sin confirmar), «Hoy» con el cierre del dia
+    y los avisos, bandeja y ajustes. Agenda completa, diario y voz quedan para la siguiente ronda.
+  - Atajo global ⌥Espacio con panel de captura, menu de barra y avisos del sistema; cola sin conexion con
+    clave de idempotencia (reintentar no duplica).
+  - **Necesita servidor**: el parche del flujo nativo esta aplicado en el repo de LifeOS y pendiente de desplegar.
 
 ## Build y ejecucion (alto nivel)
 
@@ -118,6 +130,12 @@ El repositorio contiene al menos los siguientes submodulos:
 
 - App nativa macOS en SwiftUI: buscador instantaneo (FTS5 + FSEvents) y organizador automatico de documentos.
 - Ejecutar: `swift run` en `APPS/JUST4DESK`; build DMG con `./scripts/build_dmg.sh`.
+
+### LIFEOS
+
+- App nativa macOS en SwiftUI que consume la API de LifeOS. Requiere cuenta y servidor (no funciona sola).
+- Ejecutar: `swift run LIFEOS` en `APPS/LIFEOS` (para Google hace falta la app empaquetada); tests: `swift test`.
+- Build DMG: `./scripts/build_dmg.sh`. Ver `APPS/LIFEOS/README.md`.
 - Configuracion IA opcional: `DEEPSEEK_API_KEY` (entorno o `.env.secrets`); sin clave funciona solo con reglas locales.
 - Ver detalles en `APPS/JUST4DESK/README.md`.
 
