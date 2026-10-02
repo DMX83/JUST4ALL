@@ -9,6 +9,22 @@ Formato de build usado en artefactos:
 - Build stamp: `J4ABuildStamp` (`YYYYMMDDHHMMSS-<commit-corto>`)
 - Artefacto: `JUST4PICT-<version>+<buildStamp>.dmg`
 
+## [Unreleased] - 2026-10-02
+
+### Changed — Repaso de diseño
+
+- Los controles del lote (preset, formato, destino, calidad, modo y acciones) pasan a **una sola tarjeta**
+  con jerarquía; antes eran cuatro filas sueltas con el mismo peso visual y la acción principal perdida
+  en el extremo derecho.
+- Imágenes, Preview y Actividad son ahora tarjetas con título e icono y **estado vacío legible** (icono +
+  frase + pista): antes los huecos sin contenido se veían como cajas negras.
+- La ventana acepta **arrastrar imágenes y carpetas** (`onDrop`, con aviso al pasar por encima), que era lo
+  primero que se intenta con una herramienta de imágenes.
+- El **sello de compilación** sale de la cabecera y de la barra de título (queda como tooltip): no dice
+  nada al usuario y competía con el nombre de la app.
+- «Enhance» pasa a llamarse **«Mejorar»**, en línea con el resto de la interfaz.
+- Nuevo `PictDesign.swift` (escala de tipografía, medidas y piezas compartidas `PictSection` / `PictEmptyState`).
+
 ## [Unreleased] - 2026-03-23
 
 ### Changed

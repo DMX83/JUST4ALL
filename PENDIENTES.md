@@ -81,6 +81,11 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 
 ## 2) JUST4PICT
 
+- [x] ✅ **Repaso de diseño (2-oct-2026)**: los controles del lote viven en una sola tarjeta (`PictDesign`),
+      las listas (Imágenes, Preview, Actividad) son tarjetas con su estado vacío —ya no hay cajas negras—,
+      la ventana acepta **arrastrar imágenes o carpetas**, el sello de compilación sale de la cabecera y del
+      título (queda en un tooltip) y la acción del preview dice «Mejorar» en vez de «Enhance».
+
 - [x] 🟠 **CLI mínimo `just4pict-cli`** (lote sin UI) — HECHO (29-sep): ver `APPS/JUST4PICT/README.md`.
 - [x] 🟠 **Integración del CLI en FOLDERS** — HECHO (29-sep): «Mejorar con JUST4PICT ▸» (5 presets) en el
       clic derecho de JUST4FOLDERS; validado e2e. Queda como opcional un «Editar con JUST4PICT» (abrir la app
@@ -112,6 +117,13 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 - [ ] 🟠 Icono placeholder → icono real (icns) y validar tamaños.
 - [ ] 🟠 Logos y screenshots reales en `Sources/JUST4ALL/Resources/Assets`.
 - [ ] 🟠 Textos, links y requisitos reales por subapp; copy del panel de detalle; accesibilidad básica.
+- [x] ✅ **Rediseño de la ventana del hub (2-oct-2026)**: una sola escala de tipografía y medidas
+      (`HubDesign`), tarjetas iguales que ya no parten el nombre de la app, rejilla que se adapta al ancho,
+      distintivos de estado («Instalada» / «Copia local» / «Actualización» / «Sin instalar») con color **y**
+      palabra, panel de detalle con datos reales (lee la versión del bundle instalado) y estados vacíos con
+      sentido (ya no se pintan recuadros «Screenshot»); atajos ⌘1–⌘6 y ⌘↩, claro/oscuro adaptativos.
+      Verificado con capturas en los dos modos. Además: «instalada» ahora es estar en `/Applications`
+      (antes LaunchServices hacía que el hub dijera «6 instaladas» sin haber instalado ninguna).
 - [x] ✅ **Subapps a un clic desde el Dock y la barra de menús (2-oct-2026)**: el hub instala un icono en la
       barra de menús y el **clic derecho sobre su icono del Dock** abre la lista de las seis subapps
       («Levantar una app») + «Abrir JUST4ALL». Si la elegida no está instalada, el hub se abre y ofrece su

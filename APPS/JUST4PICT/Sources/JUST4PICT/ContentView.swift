@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 private enum ActivityLogFilter: String, CaseIterable, Identifiable {
     case all = "Todos"
@@ -52,6 +53,8 @@ struct ContentView: View {
     @State private var activityFilter: ActivityLogFilter = .all
     @State private var isShowingPreviewLightbox = false
     @State private var lightboxSelection: PreviewKind = .original
+    /// Si el usuario está arrastrando ficheros sobre la ventana.
+    @State private var isDropTargeted = false
 
     private let enhancer = ImageEnhancer()
     private let historyStore = PictHistoryStore()
@@ -171,24 +174,35 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 16) {
             header
             Divider()
-            configurationSection
-            modeSelectorSection
-            if aiState.recipeForRun != nil {
-                aiRecipeSection
+
+            // Todo lo que se ajusta antes de lanzar el lote vive en una sola tarjeta: antes eran
+            // cuatro filas sueltas de controles con la misma importancia que las listas.
+            PictSection(title: "Lote", symbol: "slider.horizontal.3") {
+                VStack(alignment: .leading, spacing: 14) {
+                    configurationSection
+                    modeSelectorSection
+
+                    if aiState.recipeForRun != nil {
+                        aiRecipeSection
+                    }
+
+                    actionSection
+                    outputSection
+                }
             }
-            actionSection
-            outputSection
+
             progressSection
             imagesSection
             beforeAfterSection
             activitySection
             historySection
+
             Text(statusMessage)
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
+                .font(PictDesign.caption)
+                .foregroundStyle(.secondary)
         }
-        .padding(24)
-        .frame(minWidth: 860, minHeight: 620, alignment: .topLeading)
+        .padding(22)
+        .frame(minWidth: 880, minHeight: 620, alignment: .topLeading)
     }
 
     private var availablePreviewLightboxItems: [PreviewLightboxItem] {
@@ -315,16 +329,17 @@ struct ContentView: View {
     }
 
     private var outputSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Salida")
-                .font(.system(size: 12, weight: .semibold))
-            Text(outputDirectory?.path ?? "Misma carpeta de cada imagen")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 4) {
+            Divider()
+            Label(outputDirectory?.path ?? "Misma carpeta de cada imagen", systemImage: "folder")
+                .font(PictDesign.caption)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .truncationMode(.middle)
+                .help(outputDirectory?.path ?? "Misma carpeta de cada imagen")
             Text("Perfil de export: \(outputSettings.exportProfile.rawValue)")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
+                .font(PictDesign.caption)
+                .foregroundStyle(.tertiary)
         }
     }
 
@@ -340,21 +355,16 @@ struct ContentView: View {
     }
 
     private var imagesSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Imágenes")
-                .font(.system(size: 12, weight: .semibold))
-
+        PictSection(title: "Imágenes", symbol: "photo.stack") {
             if inputFiles.isEmpty {
-                Text("Sin imágenes seleccionadas")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(Color(.controlBackgroundColor))
-                    .cornerRadius(6)
+                PictEmptyState(
+                    symbol: isDropTargeted ? "arrow.down.circle.fill" : "photo.on.rectangle.angled",
+                    title: isDropTargeted ? "Suelta aquí las imágenes" : "Todavía no hay imágenes",
+                    hint: "Selecciona imágenes, agrega una carpeta o arrástralas a esta ventana."
+                )
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 4) {
+                    LazyVStack(alignment: .leading, spacing: 2) {
                         ForEach(inputFiles, id: \.self) { file in
                             Button {
                                 previewState.selectedPreviewURL = file
@@ -362,10 +372,10 @@ struct ContentView: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: previewState.selectedPreviewURL == file ? "photo.fill.on.rectangle.fill" : "photo")
                                         .font(.system(size: 10))
-                                        .foregroundColor(previewState.selectedPreviewURL == file ? .accentColor : .secondary)
+                                        .foregroundStyle(previewState.selectedPreviewURL == file ? Color.accentColor : Color.secondary)
 
                                     Text(file.lastPathComponent)
-                                        .font(.system(size: 11))
+                                        .font(PictDesign.caption)
                                         .lineLimit(1)
 
                                     itemStatusView(for: file)
@@ -384,45 +394,61 @@ struct ContentView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 170)
-                .padding(10)
-                .background(Color(.controlBackgroundColor))
-                .cornerRadius(6)
+                .frame(maxHeight: PictDesign.listMaxHeight)
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(PictDesign.boxFill)
+                )
             }
+        } trailing: {
+            if !inputFiles.isEmpty {
+                Text("\(inputFiles.count) en cola")
+                    .font(PictDesign.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: isDropTargeted)
+        .onDrop(of: [UTType.fileURL], isTargeted: $isDropTargeted) { providers in
+            handleDrop(providers)
         }
     }
 
     private var activitySection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text("Actividad")
-                    .font(.system(size: 12, weight: .semibold))
-
-                Picker("Filtro", selection: $activityFilter) {
-                    ForEach(ActivityLogFilter.allCases) { option in
-                        Text(option.rawValue).tag(option)
+        PictSection(title: "Actividad", symbol: "list.bullet.rectangle") {
+            if filteredLogs.isEmpty {
+                PictEmptyState(
+                    symbol: "text.alignleft",
+                    title: "Sin actividad todavía",
+                    hint: "Aquí se va contando lo que hace cada lote."
+                )
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 4) {
+                        ForEach(filteredLogs.indices, id: \.self) { index in
+                            Text(filteredLogs[index])
+                                .font(PictDesign.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 320)
-
-                Spacer()
+                .frame(maxHeight: 140)
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(PictDesign.boxFill)
+                )
             }
-
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 4) {
-                    ForEach(filteredLogs.indices, id: \.self) { index in
-                        Text(filteredLogs[index])
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+        } trailing: {
+            Picker("Filtro", selection: $activityFilter) {
+                ForEach(ActivityLogFilter.allCases) { option in
+                    Text(option.rawValue).tag(option)
                 }
             }
-            .frame(maxHeight: 140)
-            .padding(10)
-            .background(Color(.controlBackgroundColor))
-            .cornerRadius(6)
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 300)
         }
     }
 
@@ -466,21 +492,13 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 10) {
-                Text("JUST4PICT")
-                    .font(.system(size: 26, weight: .bold))
-                Text(BuildInfo.displayLabel)
-                    .font(.system(size: 11, weight: .bold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.orange.opacity(0.2))
-                    .foregroundColor(.orange)
-                    .clipShape(Capsule())
-            }
+        VStack(alignment: .leading, spacing: 5) {
+            Text("JUST4PICT")
+                .font(PictDesign.title)
+                .help("Compilación \(BuildInfo.buildStamp)")
             Text("Edición y mejoramiento automático de imágenes por lotes")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
+                .font(PictDesign.body)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -593,22 +611,7 @@ struct ContentView: View {
     }
 
     private var beforeAfterSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Preview Mejora")
-                    .font(.system(size: 12, weight: .semibold))
-                Spacer()
-                if let selectedPreviewURL = previewState.selectedPreviewURL {
-                    Text(selectedPreviewURL.lastPathComponent)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                    Text("Modo: \(selectedMode.rawValue)")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.secondary)
-                }
-            }
-
+        PictSection(title: "Preview de la mejora", symbol: "wand.and.stars") {
             Group {
                 if previewState.isGeneratingPreview {
                     VStack(spacing: 8) {
@@ -625,12 +628,12 @@ struct ContentView: View {
                             Button {
                                 Task { await enhancePreview() }
                             } label: {
-                                Label("Enhance", systemImage: "wand.and.stars")
+                                Label("Mejorar", systemImage: "wand.and.stars")
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(previewState.selectedPreviewURL == nil || previewState.isGeneratingPreview || isAnalyzingWithAI)
 
-                            Text(previewState.previewNeedsRefresh ? "La preview está desactualizada. Pulsa Enhance para regenerarla." : "Pulsa Enhance para generar la mejora.")
+                            Text(previewState.previewNeedsRefresh ? "La preview está desactualizada: pulsa Mejorar para regenerarla." : "Pulsa Mejorar para generar la comparación.")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                         }
@@ -682,16 +685,24 @@ struct ContentView: View {
                         }
                     }
                 } else {
-                    Text("Selecciona una imagen para ver la comparación")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
+                    PictEmptyState(
+                        symbol: "photo.on.rectangle.angled",
+                        title: "Selecciona una imagen de la lista",
+                        hint: "Aquí verás la comparación antes/después con el control deslizante."
+                    )
                 }
             }
-            .padding(10)
-            .background(Color(.controlBackgroundColor))
-            .cornerRadius(6)
+        } trailing: {
+            if let selectedPreviewURL = previewState.selectedPreviewURL {
+                HStack(spacing: 8) {
+                    Text(selectedPreviewURL.lastPathComponent)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Text("Modo: \(selectedMode.rawValue)")
+                }
+                .font(PictDesign.caption)
+                .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -911,6 +922,43 @@ struct ContentView: View {
         aiState.clearCache()
         previewState.previewTask?.cancel()
         statusMessage = "Selecciona imágenes para iniciar"
+    }
+
+    /// Arrastrar y soltar sobre la ventana: imágenes sueltas o carpetas enteras.
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        let group = DispatchGroup()
+        var dropped: [URL] = []
+
+        for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            group.enter()
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                if let url {
+                    dropped.append(url)
+                }
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) {
+            guard !dropped.isEmpty else { return }
+
+            var collected: [URL] = []
+            for url in dropped {
+                var isDirectory: ObjCBool = false
+                let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+                if exists, isDirectory.boolValue, let inside = try? inputQueue.collectImages(in: url) {
+                    collected.append(contentsOf: inside)
+                } else {
+                    collected.append(url)
+                }
+            }
+
+            let added = inputQueue.merge(collected)
+            appendLog("Arrastradas \(added) imagen(es).")
+            statusMessage = added > 0 ? "\(inputFiles.count) imagen(es) en la cola" : "No se añadió ninguna imagen nueva"
+        }
+
+        return true
     }
 
     private func appendLog(_ message: String) {

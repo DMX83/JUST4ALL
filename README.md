@@ -167,8 +167,12 @@ Para trabajar JUST4ALL y JUST4CONVERT en Xcode al mismo tiempo, se recomienda un
 
 ### UI actual
 
-- Vista con tarjetas de subapps y panel de detalles.
-- Incluye descripcion, requisitos, links y screenshots por subapp.
+- Rejilla de tarjetas (una por subapp) que se adapta al ancho de la ventana, más panel de detalle con
+  descripción, novedades, requisitos, capturas, enlaces e historial.
+- Cada tarjeta y el panel enseñan el **estado real**: instalada en `/Applications`, copia local (el repo o
+  un DMG montado) o sin instalar, con la versión que declara el bundle y la publicada en GitHub.
+- Atajos ⌘1–⌘6 para elegir app y ⌘↩ para abrir; claro y oscuro adaptativos.
+- Icono en la barra de menús y menú del clic derecho del Dock (ver «Instalar el hub en tu Mac»).
 
 ### Build DMG
 

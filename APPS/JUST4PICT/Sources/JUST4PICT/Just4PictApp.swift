@@ -16,7 +16,9 @@ struct Just4PictApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("JUST4PICT \(BuildInfo.displayLabel)") {
+        // El sello de compilación vive en el tooltip del título, no en la barra: al usuario no
+        // le dice nada y ensuciaba la única línea que se lee de un vistazo.
+        WindowGroup("JUST4PICT") {
             ContentView(
                 initialFormat: .preferredDefault,
                 initialQuality: OutputFormat.preferredQualityDefault
@@ -27,7 +29,7 @@ struct Just4PictApp: App {
                     NSApp.activate(ignoringOtherApps: true)
                     DispatchQueue.main.async {
                         guard let window = NSApplication.shared.windows.first else { return }
-                        window.title = "JUST4PICT \(BuildInfo.displayLabel)"
+                        window.title = "JUST4PICT"
                         window.makeKeyAndOrderFront(nil)
                     }
                 }

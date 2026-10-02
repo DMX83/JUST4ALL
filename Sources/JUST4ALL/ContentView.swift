@@ -16,41 +16,43 @@ struct ContentView: View {
     private let apps = SubAppsCatalog.items
     private let historyStore = SubAppHistoryStore()
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 16),
-        GridItem(.flexible(), spacing: 16)
-    ]
-
     var body: some View {
         ZStack {
-            background
+            HubBackground()
 
-            VStack(spacing: 24) {
+            VStack(spacing: 18) {
                 header
-                HStack(alignment: .top, spacing: 20) {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(apps) { app in
-                            SubAppCard(
-                                app: app,
-                                isSelected: selectedApp == app,
-                                isInstalled: isInstalled(app),
-                                hasUpdate: {
-                                    guard let latest = latestReleaseAsset(for: app) else { return false }
-                                    return isUpdateAvailable(for: app, latest: latest.version)
-                                }()
-                            ) {
-                                selectedApp = app
-                                statusMessage = "Seleccionada: \(app.name)"
+
+                HStack(alignment: .top, spacing: 18) {
+                    ScrollView {
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: HubDesign.cardMinWidth), spacing: 14)],
+                            spacing: 14
+                        ) {
+                            ForEach(Array(apps.enumerated()), id: \.element.id) { index, app in
+                                SubAppCard(
+                                    app: app,
+                                    state: state(for: app),
+                                    isSelected: selectedApp == app,
+                                    shortcutHint: "⌘\(index + 1)"
+                                ) {
+                                    selectedApp = app
+                                    statusMessage = "Seleccionada: \(app.name)"
+                                }
+                                .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
                             }
                         }
+                        .padding(.bottom, 6)
                     }
+
                     detailPanel
-                        .frame(width: 360)
+                        .frame(width: HubDesign.detailWidth)
                 }
+
                 footer
             }
-            .padding(30)
-            .frame(minWidth: 980, minHeight: 600)
+            .padding(22)
+            .frame(minWidth: 940, minHeight: 620)
         }
         .alert("No se pudo abrir", isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
@@ -71,53 +73,81 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 6) {
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text("JUST4ALL")
-                    .font(.custom("Avenir Next", size: 30).weight(.bold))
-                Text("Selecciona una subapp para ver detalles")
-                    .font(.custom("Avenir Next", size: 13))
-                    .foregroundColor(.secondary)
+                    .font(HubDesign.wordmark)
+                Text(summaryLine)
+                    .font(HubDesign.caption)
+                    .foregroundStyle(.secondary)
             }
-            Spacer()
-            statusPill(text: statusMessage)
+            Spacer(minLength: 12)
+            HubStatusPill(text: statusMessage)
         }
+    }
+
+    /// «6 apps · 1 instalada · 5 copias locales»: el resumen, de un vistazo.
+    private var summaryLine: String {
+        let states = apps.map { state(for: $0) }
+        let installed = states.filter(\.isInstalledInApplications).count
+        let localCopies = states.filter { if case .localCopy = $0 { return true } else { return false } }.count
+        let updates = states.filter { if case .updateAvailable = $0 { return true } else { return false } }.count
+
+        var parts = ["\(apps.count) apps", "\(installed) \(installed == 1 ? "instalada" : "instaladas")"]
+        if localCopies > 0 {
+            parts.append("\(localCopies) sin instalar (copia en el Mac)")
+        }
+        if updates > 0 {
+            parts.append("\(updates) con actualización")
+        }
+        return parts.joined(separator: " · ")
     }
 
     private var footer: some View {
-        HStack {
-            Text("Apps instaladas en macOS")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-            Spacer()
+        HStack(spacing: 10) {
+            Label("Clic derecho en el icono del Dock para levantar una app", systemImage: "cursorarrow.click.2")
+            Spacer(minLength: 12)
+            Text("⌘1–⌘6 elige · ⌘↩ abre")
         }
+        .font(HubDesign.caption)
+        .foregroundStyle(.tertiary)
     }
 
     private var detailPanel: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        Group {
             if let app = selectedApp {
-                ScrollView {
-                    detailContent(for: app)
-                }
+                VStack(alignment: .leading, spacing: 0) {
+                    ScrollView {
+                        detailContent(for: app)
+                            .padding(18)
+                    }
 
-                Divider()
-                detailActions(for: app)
+                    Divider()
+
+                    detailActions(for: app)
+                        .padding(18)
+                }
             } else {
-                Text("Selecciona una app para ver detalles")
-                    .font(.custom("Avenir Next", size: 12))
-                    .foregroundColor(.secondary)
+                VStack(spacing: 8) {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 26))
+                        .foregroundStyle(.tertiary)
+                    Text("Elige una app de la izquierda")
+                        .font(HubDesign.body)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .padding(18)
         .frame(maxHeight: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color(NSColor.windowBackgroundColor).opacity(0.9))
-                .shadow(color: Color.black.opacity(0.08), radius: 14, x: 0, y: 6)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.background)
+                .shadow(color: .black.opacity(0.10), radius: 14, y: 4)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.white.opacity(0.35), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(.primary.opacity(0.08))
         )
     }
 
@@ -174,93 +204,21 @@ struct ContentView: View {
         }
     }
 
-    private func detailSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.custom("Avenir Next", size: 12).weight(.semibold))
-            content()
-        }
-    }
-
-    private func logoView(for app: SubApp) -> some View {
-        Group {
-            if let image = loadImage(named: app.logoName) {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 76)
-            } else {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(app.accent.opacity(0.15))
-                    Text(app.name)
-                        .font(.custom("Avenir Next", size: 12).weight(.bold))
-                        .foregroundColor(app.accent)
-                }
-                .frame(height: 76)
-            }
-        }
-    }
-
+    /// Captura de la app. Sólo se llama cuando la imagen existe de verdad.
     private func screenshotCard(_ name: String) -> some View {
         Group {
             if let image = loadImage(named: name) {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFill()
-            } else {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(NSColor.windowBackgroundColor))
-                    Text("Screenshot")
-                        .font(.custom("Avenir Next", size: 11))
-                        .foregroundColor(.secondary)
-                }
             }
         }
-        .frame(width: 170, height: 104)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .frame(width: 186, height: 112)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(NSColor.separatorColor), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(.primary.opacity(0.10))
         )
-    }
-
-    private var background: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.94, green: 0.94, blue: 0.92), Color(red: 0.90, green: 0.94, blue: 0.98)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(Color(red: 0.15, green: 0.46, blue: 0.82).opacity(0.08))
-                .frame(width: 420, height: 420)
-                .offset(x: -280, y: -220)
-
-            Circle()
-                .fill(Color(red: 0.18, green: 0.67, blue: 0.47).opacity(0.08))
-                .frame(width: 360, height: 360)
-                .offset(x: 320, y: 260)
-        }
-    }
-
-    private func statusPill(text: String) -> some View {
-        Text(text)
-            .font(.custom("Avenir Next", size: 11).weight(.semibold))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(Color.white.opacity(0.6))
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.white.opacity(0.6), lineWidth: 1)
-            )
-            .foregroundColor(.secondary)
     }
 
     private func loadImage(named name: String) -> NSImage? {
@@ -287,166 +245,162 @@ struct ContentView: View {
         }
     }
 
-    private func appURL(for app: SubApp) -> URL? {
-        SubAppLauncher.installedAppURL(for: app)
-    }
-
-    private func launchLocalDevApp(_ app: SubApp) -> Bool {
-        SubAppLauncher.launchFromSource(app)
-    }
-
     private func detailContent(for app: SubApp) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(app.name)
-                    .font(.custom("Avenir Next", size: 18).weight(.bold))
-                Text(app.subtitle)
-                    .font(.custom("Avenir Next", size: 12))
-                    .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 12) {
+                IconTile(symbol: app.systemIcon, accent: app.accent, size: 52)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(app.name)
+                        .font(HubDesign.title)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Text(app.subtitle)
+                        .font(HubDesign.body)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    StateBadge(state: state(for: app))
+                }
+                Spacer(minLength: 0)
             }
 
-            logoView(for: app)
+            if let logo = loadImage(named: app.logoName) {
+                Image(nsImage: logo)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: 90)
+            }
 
-            Divider()
+            VStack(alignment: .leading, spacing: 7) {
+                FactRow(label: "En este Mac", value: installedText(for: app), accent: state(for: app).isInstalledInApplications ? .primary : .secondary)
+                FactRow(label: "Publicada", value: publishedText(for: app))
+                FactRow(label: "Última vez", value: lastActivityText(for: app))
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.quaternary.opacity(0.4))
+            )
 
-            detailSection(title: "Descripcion") {
+            DetailSection(title: "Descripción", symbol: "text.alignleft") {
                 Text(app.description)
-                    .font(.custom("Avenir Next", size: 12))
-                    .foregroundColor(.secondary)
+                    .font(HubDesign.body)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            detailSection(title: "Version") {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Incluida: \(app.version)")
-                        .font(.custom("Avenir Next", size: 12))
-                        .foregroundColor(.secondary)
-
-                    if let latest = latestReleaseAsset(for: app) {
-                        let latestStr = latest.version.description
-                        let updateAvailable = isUpdateAvailable(for: app, latest: latest.version)
-                        Text(updateAvailable ? "Disponible: \(latestStr) (update)" : "Disponible: \(latestStr)")
-                            .font(.custom("Avenir Next", size: 12))
-                            .foregroundColor(updateAvailable ? .primary : .secondary)
-                    } else if let err = releaseStore.lastError {
-                        Text("Releases: \(err)")
-                            .font(.custom("Avenir Next", size: 11))
-                            .foregroundColor(.secondary)
-                    }
+            if !app.changelog.isEmpty {
+                DetailSection(title: "Novedades", symbol: "sparkles") {
+                    bullets(app.changelog)
                 }
             }
 
-            detailSection(title: "Changelog") {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(app.changelog, id: \.self) { item in
-                        Text("• \(item)")
-                            .font(.custom("Avenir Next", size: 12))
-                            .foregroundColor(.secondary)
+            if !app.requirements.isEmpty {
+                DetailSection(title: "Requisitos", symbol: "checklist") {
+                    bullets(app.requirements)
+                }
+            }
+
+            let screenshots = existingScreenshots(for: app)
+            if !screenshots.isEmpty {
+                DetailSection(title: "Capturas", symbol: "photo.on.rectangle") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(screenshots, id: \.self) { name in
+                                screenshotCard(name)
+                            }
+                        }
+                    }
+                    .frame(height: 118)
+                }
+            }
+
+            if !app.links.isEmpty {
+                DetailSection(title: "Enlaces", symbol: "link") {
+                    VStack(alignment: .leading, spacing: 5) {
+                        ForEach(app.links) { link in
+                            if let url = URL(string: link.url) {
+                                Link(destination: url) {
+                                    Label(link.label, systemImage: "arrow.up.right.square")
+                                        .font(HubDesign.body)
+                                }
+                                .buttonStyle(.link)
+                            }
+                        }
                     }
                 }
             }
 
             historySection(for: app)
-
-            detailSection(title: "Requisitos") {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(app.requirements, id: \.self) { item in
-                        Text("• \(item)")
-                            .font(.custom("Avenir Next", size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-
-            linksSection(for: app)
-
-            detailSection(title: "Screenshots") {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(app.screenshots, id: \.self) { name in
-                            screenshotCard(name)
-                        }
-                    }
-                }
-                .frame(height: 120)
-            }
         }
     }
 
     private func detailActions(for app: SubApp) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(isInstalled(app) ? Color.green : Color.orange)
-                    .frame(width: 8, height: 8)
-                Text(isInstalled(app) ? "Instalada" : "No instalada")
-                    .font(.custom("Avenir Next", size: 12))
-                    .foregroundColor(.secondary)
-            }
+        let appState = state(for: app)
+        let hasDownload = latestReleaseAsset(for: app) != nil
 
+        return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Button("Abrir \(app.name)") {
+                Button {
                     openApp(app)
+                } label: {
+                    Label("Abrir", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!isInstalled(app))
+                .controlSize(.large)
+                .disabled(!appState.canOpen)
+                .keyboardShortcut(.return, modifiers: .command)
 
-                Button(downloadButtonTitle(for: app)) {
+                Button {
                     openDownload(app)
+                } label: {
+                    Label(downloadButtonLabel(for: appState), systemImage: "arrow.down.circle")
                 }
                 .buttonStyle(.bordered)
-                .disabled(latestReleaseAsset(for: app) == nil)
+                .controlSize(.large)
+                .disabled(!hasDownload)
             }
 
-            Text("Descarga desde GitHub Releases")
-                .font(.custom("Avenir Next", size: 11))
-                .foregroundColor(.secondary)
-
-            if latestReleaseAsset(for: app) == nil {
-                Button("Refrescar Releases") {
-                    Task { await releaseStore.refresh() }
-                }
-                .buttonStyle(.bordered)
-                .font(.custom("Avenir Next", size: 11))
-            }
-        }
-    }
-
-    private func linksSection(for app: SubApp) -> some View {
-        detailSection(title: "Links") {
-            VStack(alignment: .leading, spacing: 6) {
-                if app.links.isEmpty {
-                    Text("Links no disponibles")
-                        .font(.custom("Avenir Next", size: 12))
-                        .foregroundColor(.secondary)
-                } else {
-                    ForEach(app.links) { link in
-                        if let url = URL(string: link.url) {
-                            Link(link.label, destination: url)
-                                .font(.custom("Avenir Next", size: 12).weight(.semibold))
-                        }
+            if hasDownload {
+                Text("Se descarga desde GitHub Releases y se comprueba su SHA-256 antes de abrirla.")
+                    .font(HubDesign.caption)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                HStack(spacing: 8) {
+                    Text("Todavía no hay descarga publicada para esta app.")
+                        .font(HubDesign.caption)
+                        .foregroundStyle(.tertiary)
+                    Button("Refrescar") {
+                        Task { await releaseStore.refresh() }
                     }
+                    .buttonStyle(.link)
+                    .font(HubDesign.caption)
                 }
             }
         }
     }
 
     private func historySection(for app: SubApp) -> some View {
-        detailSection(title: "Historial") {
-            let entries = historyStore.history(for: app)
+        let entries = historyStore.history(for: app)
+        return DetailSection(title: "Historial", symbol: "clock.arrow.circlepath") {
             if entries.isEmpty {
-                Text("Sin historial")
-                    .font(.custom("Avenir Next", size: 12))
-                    .foregroundColor(.secondary)
+                Text("Todavía no has abierto ni descargado esta app.")
+                    .font(HubDesign.body)
+                    .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(entries) { entry in
-                        HStack {
-                            Text("\(historyLabel(for: entry)) v\(entry.version)")
-                            Spacer()
+                        HStack(spacing: 8) {
+                            Text(historyLabel(for: entry))
+                            Text("v\(entry.version)")
+                                .font(HubDesign.mono)
+                                .foregroundStyle(.tertiary)
+                            Spacer(minLength: 0)
                             Text(formattedHistoryDate(entry.date))
                         }
-                        .font(.custom("Avenir Next", size: 11))
-                        .foregroundColor(.secondary)
+                        .font(HubDesign.caption)
+                        .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -465,16 +419,69 @@ struct ContentView: View {
         releaseStore.assetsByPrefix[app.assetPrefix]
     }
 
-    private func isUpdateAvailable(for app: SubApp, latest: SemVer) -> Bool {
-        guard let current = SemVer(app.version) else { return false }
-        return latest > current
+    // MARK: - Estado y datos de cada app
+
+    /// El estado que se enseña: lo instalado en /Applications, la copia que haya por el Mac y
+    /// lo publicado en GitHub.
+    private func state(for app: SubApp) -> SubAppState {
+        SubAppState.resolve(
+            installedVersion: SubAppLauncher.installedVersion(of: app),
+            localVersion: SubAppLauncher.knownVersion(of: app),
+            publishedVersion: latestReleaseAsset(for: app)?.version.description
+        )
     }
 
-    private func downloadButtonTitle(for app: SubApp) -> String {
-        if let latest = latestReleaseAsset(for: app), isUpdateAvailable(for: app, latest: latest.version) {
-            return "Actualizar \(app.name)"
+    private func installedText(for app: SubApp) -> String {
+        if let installed = SubAppLauncher.installedVersion(of: app) {
+            return installed
         }
-        return "Descargar \(app.name)"
+        if let local = SubAppLauncher.knownVersion(of: app) {
+            return "\(local) (copia local)"
+        }
+        return "No está en este Mac"
+    }
+
+    private func publishedText(for app: SubApp) -> String {
+        if let latest = latestReleaseAsset(for: app) {
+            return latest.version.description
+        }
+        if releaseStore.lastError != nil {
+            return "Sin datos (revisa la conexión)"
+        }
+        return "Sin publicar"
+    }
+
+    private func lastActivityText(for app: SubApp) -> String {
+        guard let last = historyStore.history(for: app).first else { return "—" }
+        return "\(historyLabel(for: last)) · \(formattedHistoryDate(last.date))"
+    }
+
+    /// Texto del botón de descarga: si hay algo más nuevo, dice a qué versión se salta.
+    private func downloadButtonLabel(for state: SubAppState) -> String {
+        if case .updateAvailable(let installed, let published) = state {
+            return "Actualizar \(installed) → \(published)"
+        }
+        return "Descargar"
+    }
+
+    private func bullets(_ items: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            ForEach(items, id: \.self) { item in
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text("•")
+                        .foregroundStyle(.tertiary)
+                    Text(item)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .font(HubDesign.body)
+        .foregroundStyle(.secondary)
+    }
+
+    /// Sólo las capturas que existen de verdad: antes se pintaban recuadros «Screenshot».
+    private func existingScreenshots(for app: SubApp) -> [String] {
+        app.screenshots.filter { loadImage(named: $0) != nil }
     }
 
     private struct DownloadAsset {
