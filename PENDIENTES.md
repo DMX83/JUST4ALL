@@ -136,10 +136,11 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       `sync_local_dmgs.sh` deja los seis assets + `SHA256SUMS.txt` en `dist/release-assets/`. Los seis DMG
       quedaron reconstruidos y verificados (versión y fecha del binario leídas dentro del DMG).
       Evidencia completa: `AUDITORIA_DMGS.md`.
-- [ ] 🔴 **Publicar el release con los DMGs nuevos** (`v0.1.4`): es acción pública en GitHub, así que espera
-      tu OK. Comando: `gh release create v0.1.4 dist/release-assets/*`. Contexto: el hub pide el tag **viejo**
-      `v0.1.0`; JUST4FOLDERS, JUST4DESK y LIFEOS **nunca** se publicaron (su botón «Descargar» sale
-      deshabilitado) y el `JUST4CONVERT-0.1.0.dmg` de aquel release pesa 349 KB (artefacto de prueba).
+- [x] ✅ **Release `v0.1.4` PUBLICADO (2-oct-2026)**: `gh release create v0.1.4 dist/release-assets/*` →
+      6 DMGs + `SHA256SUMS.txt` (JUST4FOLDERS-2.3.15, JUST4DESK/PICT/PDF/CONVERT/LIFEOS-0.1.0). Antes de
+      publicar se subió `main` (estaba 4 commits adelante de `origin`). Verificado en código: `ReleaseStore`
+      recorre **todos** los releases y elige la mejor versión por prefijo — la nota de «el hub pide v0.1.0»
+      ya no aplica. `v0.1.4` en `https://github.com/DMX83/JUST4ALL/releases/tag/v0.1.4`.
 - [ ] 🟠 Numeración propia para DESK, PICT, PDF, CONVERT y LIFEOS: siguen en `0.1.0` y sólo se distinguen
       por el sello de fecha (con `APPS/<App>/VERSION` ya es cambiar una línea).
 - [ ] 🔴 Firma/notarización, App Store Connect/TestFlight y publicación v1.0.0 — **bloqueado por la licencia

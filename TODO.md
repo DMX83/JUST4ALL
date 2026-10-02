@@ -20,7 +20,8 @@
 
 - [x] Publicar DMGs en GitHub Releases como assets versionados (ej: `JUST4PDF-0.1.0.dmg`).
 - [x] Ajustar JUST4ALL para descargar los DMG desde GitHub Releases a `~/Downloads` y abrirlos.
-- [ ] Build reproducible por subapp (versionado, release notes, checksum).
+- [x] Build reproducible por subapp (versionado, release notes, checksum).
+- [x] **Release `v0.1.4` publicado (2-oct-2026)**: 6 DMGs + `SHA256SUMS.txt` (JUST4FOLDERS 2.3.15; DESK/PICT/PDF/CONVERT/LIFEOS 0.1.0). El hub elige la mejor versión por prefijo entre todos los releases.
 - [ ] Empaquetado final por subapp (DMG, icono, info.plist, firma).
 
 ## Fase 3 - Migracion JUST4CONVERT (desde file_conversor)
