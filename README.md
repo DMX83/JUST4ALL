@@ -213,7 +213,10 @@ Pruebas del hub: `swift test` (7 pruebas: catálogo, menú del Dock y localizaci
 ```
 
 Los DMG de las subapps se distribuyen via **GitHub Releases** como assets versionados
-(por ejemplo `JUST4PDF-0.1.0.dmg`). JUST4ALL descarga esos DMG a `~/Downloads` y los abre.
+(por ejemplo `JUST4FOLDERS-2.3.15.dmg`). El ultimo release es **`v0.1.4`** (2-oct-2026): las seis apps
+mas `SHA256SUMS.txt` en el mismo release. JUST4ALL descarga esos DMG a `~/Downloads` y los abre; para
+elegir que version mostrar recorre **todos** los releases y se queda con la mayor por prefijo, asi que
+no hay tag fijo que actualizar.
 
 ## App maestra
 

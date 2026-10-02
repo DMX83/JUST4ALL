@@ -100,10 +100,9 @@ Y `scripts/sync_local_dmgs.sh` deja los seis assets + `SHA256SUMS.txt` en
 
 ## 3) Lo que queda (necesita decisión)
 
-1. **Publicar el release** con los seis assets nuevos: es acción pública en GitHub, así que
-   no se ha hecho sin permiso. El comando, una vez aprobado:
-   `gh release create v0.1.4 --title "JUST4ALL v0.1.4" --notes-file … dist/release-assets/*`
-   (y, si se quiere, sustituir los assets engañosos de `v0.1.0`/`v0.1.3`).
+1. ✅ **Publicado (2-oct-2026)**: release `v0.1.4` con los seis assets + `SHA256SUMS.txt`
+   (`gh release create v0.1.4 dist/release-assets/*`, y antes `git push origin main`, que estaba
+   4 commits adelante). Pendiente menor: decidir si se borran los assets enganosos de `v0.1.0`/`v0.1.3`.
 2. **Numeración propia** para DESK, PICT, PDF, CONVERT y LIFEOS: hoy siguen en `0.1.0` y sólo
    se distinguen por el sello de fecha. Con `APPS/<App>/VERSION` ya es una línea por app.
 3. **Firma y notarización** (`🔴` en `PENDIENTES.md` §5): sigue bloqueado por la licencia de

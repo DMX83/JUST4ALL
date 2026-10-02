@@ -76,8 +76,9 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 - [ ] 🔵 `Operaciones ▸ Exportar diagnóstico…` y paleta ⌘K generan el zip.
 
 **Artefactos**
-- [ ] ⚪️ `dist/JUST4FOLDERS.dmg` y `build/Build/Products/Release/*.app` están **atrasados** (el .app es de
-      marzo, v0.1.0 = «instancia fantasma»): regenerar antes de distribuir o hacer demos.
+- [x] ✅ **Artefactos al día (2-oct-2026)**: los `dist/*.dmg` y los `.app` de `build/Build/Products/Release/`
+      se regeneraron desde el binario recién compilado (los viejos quedaron archivados en
+      `dist/_obsoletos-20261002/`). Ya no hay «instancia fantasma» que empaquetar por error.
 
 ## 2) JUST4PICT
 
@@ -141,8 +142,12 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
       publicar se subió `main` (estaba 4 commits adelante de `origin`). Verificado en código: `ReleaseStore`
       recorre **todos** los releases y elige la mejor versión por prefijo — la nota de «el hub pide v0.1.0»
       ya no aplica. `v0.1.4` en `https://github.com/DMX83/JUST4ALL/releases/tag/v0.1.4`.
-- [ ] 🟠 Numeración propia para DESK, PICT, PDF, CONVERT y LIFEOS: siguen en `0.1.0` y sólo se distinguen
-      por el sello de fecha (con `APPS/<App>/VERSION` ya es cambiar una línea).
+- [x] ✅ **Instalado en este Mac (2-oct-2026)**: las **seis subapps** copiadas del DMG local a
+      `/Applications` (JUST4FOLDERS 2.3.15; DESK/PICT/PDF/CONVERT/LIFEOS 0.1.0) — al copiar desde un DMG
+      local **no hay cuarentena**, así que **no hay bloqueo de Gatekeeper**. El hub ya las ve como
+      «Instalada» con su versión real (antes `/Applications` sólo tenía `JUST4ALL.app`).
+- [ ] 🟠 **Numeración propia** para DESK, PICT, PDF, CONVERT y LIFEOS: siguen en `0.1.0` y sólo se
+      distinguen por el sello de fecha — con `APPS/<App>/VERSION` ya es cambiar una línea.
 - [ ] 🔴 Firma/notarización, App Store Connect/TestFlight y publicación v1.0.0 — **bloqueado por la licencia
       de Apple** (los DMG locales sí se generan y validan).
 

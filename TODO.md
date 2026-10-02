@@ -22,6 +22,7 @@
 - [x] Ajustar JUST4ALL para descargar los DMG desde GitHub Releases a `~/Downloads` y abrirlos.
 - [x] Build reproducible por subapp (versionado, release notes, checksum).
 - [x] **Release `v0.1.4` publicado (2-oct-2026)**: 6 DMGs + `SHA256SUMS.txt` (JUST4FOLDERS 2.3.15; DESK/PICT/PDF/CONVERT/LIFEOS 0.1.0). El hub elige la mejor versión por prefijo entre todos los releases.
+- [x] **Instaladas en este Mac (2-oct-2026)**: las 6 subapps copiadas a `/Applications` desde los DMGs locales (sin cuarentena, sin bloqueo de Gatekeeper); el hub las muestra como «Instalada».
 - [ ] Empaquetado final por subapp (DMG, icono, info.plist, firma).
 
 ## Fase 3 - Migracion JUST4CONVERT (desde file_conversor)
@@ -80,7 +81,7 @@
 - [x] Regresion de busqueda profunda resuelta (28-sep): indice FTS5 compartido (J4IIndex); 100k entradas en 11,4 s y consultas de 10–25 ms.
 - [x] Commander v2.x (28-sep): busqueda global (⌘F), vista aplanada, rename en lote, duplicados, etiquetas/tamanos, «Ordenar esta carpeta» con IA + busqueda semantica, portapapeles completo, estilos y modo de un solo panel.
 - [x] Panel Hub + monitor + motor rapido (29-sep, v2.3 a v2.3.11): modulos DESK/PICT en el panel derecho, monitor CPU/RAM/disco/IO/bateria en la toolbar, pestanas con menu contextual, vista previa fiable, orden por Tamano correcto, tamanos asignados en disco con cache persistente y copias por clon APFS (medido: 96 MB en 0,009 s y 12,6x en ficheros pequenos).
-- [ ] Pendientes del modulo (JUST4PDF F3, Panel Hub menor, validaciones manuales, artefactos): `APPS/JUST4FOLDERS/TODO.md` y `PENDIENTES.md` (raiz).
+- [ ] Pendientes del modulo (JUST4PDF F3, Panel Hub menor, validaciones manuales): `APPS/JUST4FOLDERS/TODO.md` y `PENDIENTES.md` (raiz).
 - [ ] Pulido App Store y release v1.0.0 — pulido y QA hechos; publicacion bloqueada por la licencia de Apple (firma/notarizacion).
 
 ## Fase 3.3 - JUST4PICT (MVP)
