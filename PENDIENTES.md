@@ -1,4 +1,4 @@
-# PENDIENTES — JUST4ALL (revisión 1-oct-2026)
+# PENDIENTES — JUST4ALL (revisión 2-oct-2026)
 
 Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trabajo.
 
@@ -112,7 +112,24 @@ Consolidado a partir de los TODO de cada app, `QA_LOCAL.md` y la memoria de trab
 - [ ] 🟠 Icono placeholder → icono real (icns) y validar tamaños.
 - [ ] 🟠 Logos y screenshots reales en `Sources/JUST4ALL/Resources/Assets`.
 - [ ] 🟠 Textos, links y requisitos reales por subapp; copy del panel de detalle; accesibilidad básica.
-- [ ] 🟠 Build reproducible por subapp (versionado, release notes, checksum) y empaquetado final.
+- [x] ✅ **Subapps a un clic desde el Dock y la barra de menús (2-oct-2026)**: el hub instala un icono en la
+      barra de menús y el **clic derecho sobre su icono del Dock** abre la lista de las seis subapps
+      («Levantar una app») + «Abrir JUST4ALL». Si la elegida no está instalada, el hub se abre y ofrece su
+      descarga (puente `HubBridge`). La lógica de abrir/localizar vive en `SubAppLauncher`, que comparten
+      ventana, Dock y barra de menús; 7 pruebas nuevas (`swift test`). Instalado y verificado en este Mac.
+- [x] ✅ **Build reproducible por subapp (2-oct-2026)**: cada app se sella con **su** versión
+      (`APPS/<App>/VERSION`; antes todas heredaban la del hub y salían `0.1.0`, así que un DMG nuevo era
+      indistinguible de uno de marzo), los DMG se reconstruyen desde el binario **recién compilado** (los
+      scripts de FOLDERS/DESK/PICT/CONVERT podían empaquetar un `.app` viejo con sello de hoy) y
+      `sync_local_dmgs.sh` deja los seis assets + `SHA256SUMS.txt` en `dist/release-assets/`. Los seis DMG
+      quedaron reconstruidos y verificados (versión y fecha del binario leídas dentro del DMG).
+      Evidencia completa: `AUDITORIA_DMGS.md`.
+- [ ] 🔴 **Publicar el release con los DMGs nuevos** (`v0.1.4`): es acción pública en GitHub, así que espera
+      tu OK. Comando: `gh release create v0.1.4 dist/release-assets/*`. Contexto: el hub pide el tag **viejo**
+      `v0.1.0`; JUST4FOLDERS, JUST4DESK y LIFEOS **nunca** se publicaron (su botón «Descargar» sale
+      deshabilitado) y el `JUST4CONVERT-0.1.0.dmg` de aquel release pesa 349 KB (artefacto de prueba).
+- [ ] 🟠 Numeración propia para DESK, PICT, PDF, CONVERT y LIFEOS: siguen en `0.1.0` y sólo se distinguen
+      por el sello de fecha (con `APPS/<App>/VERSION` ya es cambiar una línea).
 - [ ] 🔴 Firma/notarización, App Store Connect/TestFlight y publicación v1.0.0 — **bloqueado por la licencia
       de Apple** (los DMG locales sí se generan y validan).
 

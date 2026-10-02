@@ -21,6 +21,11 @@ let package = Package(
                 .copy("Resources/Assets"),
                 .copy("Resources/Downloads")
             ]
+        ),
+        .testTarget(
+            name: "JUST4ALLTests",
+            dependencies: ["JUST4ALL"],
+            path: "Tests/JUST4ALLTests"
         )
     ]
 )

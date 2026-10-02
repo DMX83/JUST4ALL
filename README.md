@@ -176,6 +176,26 @@ Para trabajar JUST4ALL y JUST4CONVERT en Xcode al mismo tiempo, se recomienda un
 ./scripts/build_dmg.sh
 ```
 
+### Instalar el hub en tu Mac
+
+```bash
+./scripts/build_dmg.sh                                  # compila Release y deja dist/JUST4ALL.dmg
+cp -R build/Build/Products/Release/JUST4ALL.app /Applications/
+open /Applications/JUST4ALL.app
+```
+
+- Aparece en Launchpad y en Spotlight (⌘Espacio → «JUST4ALL»). Para tenerlo siempre a mano abajo: clic
+  derecho en su icono del Dock → *Opciones* → **Mantener en el Dock**.
+- **Barra de menús** (arriba, junto al reloj): el hub deja un icono; al pulsarlo (clic izquierdo o
+  derecho) se despliega la lista de las seis subapps, «Abrir JUST4ALL» y «Salir de JUST4ALL».
+- **Dock**: con el **clic derecho** sobre el icono de JUST4ALL sale esa misma lista («Levantar una app»),
+  que es la forma rápida de levantar una subapp sin abrir la ventana. Si la elegida todavía no está
+  instalada, el hub se abre solo y ofrece su descarga.
+- El hub busca las subapps instaladas por identificador (LaunchServices) y en `/Applications` y
+  `~/Applications`; si no las encuentra y tiene el repo a mano, las lanza en modo desarrollo.
+
+Pruebas del hub: `swift test` (7 pruebas: catálogo, menú del Dock y localización de subapps).
+
 ### Sincronizar DMGs locales
 
 ```bash

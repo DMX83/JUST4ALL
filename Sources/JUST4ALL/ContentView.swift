@@ -10,6 +10,8 @@ struct ContentView: View {
     @State private var installingApp: SubApp? = nil
     @StateObject private var downloadManager = DownloadManager()
     @StateObject private var releaseStore = ReleaseStore()
+    /// Recibe lo que se elija desde el menú del Dock o de la barra de menús.
+    @ObservedObject private var hubBridge = HubBridge.shared
 
     private let apps = SubAppsCatalog.items
     private let historyStore = SubAppHistoryStore()
@@ -60,6 +62,11 @@ struct ContentView: View {
         }
         .task {
             await releaseStore.refresh()
+        }
+        .onReceive(hubBridge.$pendingApp) { app in
+            // `@Published` emite el valor actual al suscribirse: el `guard` evita actuar de más.
+            guard app != nil else { return }
+            applyBridgeRequest()
         }
     }
 
@@ -115,38 +122,17 @@ struct ContentView: View {
     }
 
     private func openApp(_ app: SubApp) {
-        guard let url = appURL(for: app) else {
-            if launchLocalDevApp(app) {
-                historyStore.record(.opened, for: app)
-                statusMessage = "Abierta (dev): \(app.name)"
-                return
-            }
+        // La lógica vive en SubAppLauncher porque la comparten la ventana, el menú del Dock
+        // y la barra de menús. Aquí sólo se traduce el resultado a mensajes de estado.
+        switch SubAppLauncher.open(app, fallbackToHub: false) {
+        case .opened:
+            historyStore.record(.opened, for: app)
+            statusMessage = "Abierta: \(app.name)"
+        case .openedFromSource:
+            historyStore.record(.opened, for: app)
+            statusMessage = "Abierta (dev): \(app.name)"
+        case .needsInstall:
             openDownload(app)
-            return
-        }
-        NSWorkspace.shared.openApplication(at: url, configuration: .init()) { _, error in
-            if let error = error {
-                let fallbackOpened = NSWorkspace.shared.open(url)
-                if !fallbackOpened {
-                    alertMessage = error.localizedDescription
-                    showAlert = true
-                    statusMessage = "Error al abrir"
-                } else {
-                    historyStore.record(.opened, for: app)
-                    statusMessage = "Abierta: \(app.name)"
-                }
-            } else {
-                historyStore.record(.opened, for: app)
-                statusMessage = "Abierta: \(app.name)"
-            }
-        }
-
-        if NSWorkspace.shared.urlForApplication(withBundleIdentifier: app.bundleId) != nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                if NSRunningApplication.runningApplications(withBundleIdentifier: app.bundleId).isEmpty {
-                    _ = NSWorkspace.shared.open(url)
-                }
-            }
         }
     }
 
@@ -285,102 +271,28 @@ struct ContentView: View {
     }
 
     private func isInstalled(_ app: SubApp) -> Bool {
-        appURL(for: app) != nil
+        SubAppLauncher.isInstalled(app)
+    }
+
+    /// Subapp elegida desde el menú del Dock o de la barra de menús: se selecciona y, si aún
+    /// no está instalada, se abre su descarga (el menú no puede hacer nada de eso solo).
+    private func applyBridgeRequest() {
+        guard let app = hubBridge.takePendingApp() else { return }
+        selectedApp = app
+        if isInstalled(app) {
+            statusMessage = "Elegida en el menú: \(app.name)"
+        } else {
+            statusMessage = "Sin instalar: \(app.name)"
+            openDownload(app)
+        }
     }
 
     private func appURL(for app: SubApp) -> URL? {
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app.bundleId) {
-            return url
-        }
-
-        let applicationsURL = URL(fileURLWithPath: "/Applications/\(app.name).app")
-        if FileManager.default.fileExists(atPath: applicationsURL.path) {
-            return applicationsURL
-        }
-
-        let userApplicationsPath = ("~/Applications/\(app.name).app" as NSString).expandingTildeInPath
-        let userApplicationsURL = URL(fileURLWithPath: userApplicationsPath)
-        if FileManager.default.fileExists(atPath: userApplicationsURL.path) {
-            return userApplicationsURL
-        }
-
-        return nil
+        SubAppLauncher.installedAppURL(for: app)
     }
 
     private func launchLocalDevApp(_ app: SubApp) -> Bool {
-        guard let appDir = localAppDirectory(for: app) else { return false }
-
-        // Prefer prebuilt debug binary if already available.
-        if let binary = localDebugBinaryURL(for: app, appDir: appDir) {
-            do {
-                let process = Process()
-                process.executableURL = binary
-                process.currentDirectoryURL = appDir
-                try process.run()
-                return true
-            } catch {
-                // Fall through to swift run.
-            }
-        }
-
-        // Fallback: run from source in the subapp folder.
-        do {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["swift", "run", app.name]
-            process.currentDirectoryURL = appDir
-            try process.run()
-            return true
-        } catch {
-            return false
-        }
-    }
-
-    private func localAppDirectory(for app: SubApp) -> URL? {
-        for root in localRepoRootCandidates() {
-            let candidate = root.appendingPathComponent("APPS/\(app.name)", isDirectory: true)
-            if FileManager.default.fileExists(atPath: candidate.path) {
-                return candidate
-            }
-        }
-        return nil
-    }
-
-    private func localDebugBinaryURL(for app: SubApp, appDir: URL) -> URL? {
-        let names = [
-            ".build/arm64-apple-macosx/debug/\(app.name)",
-            ".build/x86_64-apple-macosx/debug/\(app.name)"
-        ]
-        for relative in names {
-            let candidate = appDir.appendingPathComponent(relative)
-            if FileManager.default.isExecutableFile(atPath: candidate.path) {
-                return candidate
-            }
-        }
-        return nil
-    }
-
-    private func localRepoRootCandidates() -> [URL] {
-        var roots: [URL] = []
-        let fm = FileManager.default
-
-        roots.append(URL(fileURLWithPath: fm.currentDirectoryPath, isDirectory: true))
-
-        let bundleURL = Bundle.main.bundleURL.standardizedFileURL
-        var cursor = bundleURL
-        for _ in 0..<8 {
-            cursor.deleteLastPathComponent()
-            roots.append(cursor)
-        }
-
-        // De-duplicate by normalized path.
-        var seen = Set<String>()
-        return roots.filter { url in
-            let path = url.standardizedFileURL.path
-            if seen.contains(path) { return false }
-            seen.insert(path)
-            return true
-        }
+        SubAppLauncher.launchFromSource(app)
     }
 
     private func detailContent(for app: SubApp) -> some View {
