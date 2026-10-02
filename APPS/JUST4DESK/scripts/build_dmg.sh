@@ -19,20 +19,25 @@ APP_LABEL="$APP_NAME-$APP_VERSION+$APP_BUILD_STAMP"
 
 xcodebuild -scheme "$APP_NAME" -configuration Release -destination 'platform=macOS' -derivedDataPath "$DERIVED_DIR" CODE_SIGN_ENTITLEMENTS="$ENTITLEMENTS"
 
-APP_PATH=$(find "$DERIVED_DIR" -name "$APP_NAME.app" -type d | head -n 1)
-if [ -z "$APP_PATH" ]; then
-  APP_BIN="$DERIVED_DIR/Build/Products/Release/$APP_NAME"
-  APP_PATH="$DERIVED_DIR/Build/Products/Release/$APP_NAME.app"
+# xcodebuild construye el paquete SwiftPM: deja el BINARIO, no el .app, así que el bundle
+# se rehace siempre desde lo recién compilado. Antes esto colgaba de un `find`: si quedaba
+# un .app de una compilación anterior, se empaquetaba ése y sólo se le cambiaba el sello
+# (un DMG que decía «hoy» llevando código de semanas antes).
+APP_BIN="$DERIVED_DIR/Build/Products/Release/$APP_NAME"
+if [ ! -f "$APP_BIN" ]; then
+  APP_BIN=".build/release/$APP_NAME"
+fi
+if [ ! -f "$APP_BIN" ]; then
+  echo "App executable not found: ni $DERIVED_DIR/Build/Products/Release/$APP_NAME ni .build/release/$APP_NAME"
+  exit 1
+fi
 
-  if [ ! -f "$APP_BIN" ]; then
-    echo "App executable not found."
-    exit 1
-  fi
+APP_PATH="$DERIVED_DIR/Build/Products/Release/$APP_NAME.app"
+rm -rf "$APP_PATH"
+mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
+cp "$APP_BIN" "$APP_PATH/Contents/MacOS/$APP_NAME"
 
-  mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
-  cp "$APP_BIN" "$APP_PATH/Contents/MacOS/$APP_NAME"
-
-  cat > "$APP_PATH/Contents/Info.plist" <<EOF
+cat > "$APP_PATH/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -66,7 +71,6 @@ if [ -z "$APP_PATH" ]; then
 </dict>
 </plist>
 EOF
-fi
 
 INFO_PLIST="$APP_PATH/Contents/Info.plist"
 if [ -f "$INFO_PLIST" ]; then

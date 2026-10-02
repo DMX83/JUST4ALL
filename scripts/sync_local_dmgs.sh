@@ -11,23 +11,51 @@ if [ -z "$SUITE_VERSION" ]; then
   exit 1
 fi
 
+# Versión de una subapp: la suya si declara APPS/<app>/VERSION, si no la del hub.
+app_version() {
+  APP_DIR="$REPO_ROOT/APPS/$1"
+  if [ -f "$APP_DIR/VERSION" ]; then
+    tr -d '[:space:]' < "$APP_DIR/VERSION"
+  else
+    printf '%s' "$SUITE_VERSION"
+  fi
+}
+
+# El nombre del asset lleva la versión REAL de cada app: el hub la compara con la
+# instalada para ofrecer «Actualizar», así que no puede ser la del hub para todas.
 copy_dmg() {
-  SOURCE_PATH="$1"
-  DEST_NAME="$2"
+  SLUG="$1"
+  SOURCE_PATH="$REPO_ROOT/APPS/$SLUG/dist/$SLUG.dmg"
+  DEST_NAME="$SLUG-$(app_version "$SLUG").dmg"
 
   if [ ! -f "$SOURCE_PATH" ]; then
     echo "Missing DMG: $SOURCE_PATH"
+    echo "  -> constrúyelo con APPS/$SLUG/scripts/build_dmg.sh"
     exit 1
   fi
 
   mkdir -p "$ASSETS_DIR"
   cp -f "$SOURCE_PATH" "$ASSETS_DIR/$DEST_NAME"
+
+  # Un solo asset por subapp: si quedaba otro de una versión distinta, fuera.
+  for OLD in "$ASSETS_DIR/$SLUG-"*.dmg; do
+    [ -f "$OLD" ] || continue
+    [ "$(basename "$OLD")" = "$DEST_NAME" ] || rm -f "$OLD"
+  done
+
+  echo "  OK  $DEST_NAME"
 }
 
-copy_dmg "$REPO_ROOT/APPS/JUST4PDF/dist/JUST4PDF.dmg" "JUST4PDF-$SUITE_VERSION.dmg"
-copy_dmg "$REPO_ROOT/APPS/JUST4CONVERT/dist/JUST4CONVERT.dmg" "JUST4CONVERT-$SUITE_VERSION.dmg"
-copy_dmg "$REPO_ROOT/APPS/JUST4PICT/dist/JUST4PICT.dmg" "JUST4PICT-$SUITE_VERSION.dmg"
-copy_dmg "$REPO_ROOT/APPS/JUST4DESK/dist/JUST4DESK.dmg" "JUST4DESK-$SUITE_VERSION.dmg"
-copy_dmg "$REPO_ROOT/APPS/LIFEOS/dist/LIFEOS.dmg" "LIFEOS-$SUITE_VERSION.dmg"
+copy_dmg JUST4PDF
+copy_dmg JUST4CONVERT
+copy_dmg JUST4PICT
+copy_dmg JUST4FOLDERS
+copy_dmg JUST4DESK
+copy_dmg LIFEOS
+
+# SHA256SUMS.txt: sin él el hub se niega a descargar (verifica el hash antes de abrir).
+rm -f "$ASSETS_DIR/SHA256SUMS.txt"
+( cd "$ASSETS_DIR" && shasum -a 256 ./*.dmg > SHA256SUMS.txt )
 
 printf "Prepared release assets in %s\n" "$ASSETS_DIR"
+cat "$ASSETS_DIR/SHA256SUMS.txt"

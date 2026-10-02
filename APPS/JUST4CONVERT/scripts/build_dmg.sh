@@ -25,20 +25,24 @@ chmod +x "$FFMPEG_SOURCE"
 
 xcodebuild -scheme "$APP_NAME" -configuration Release -destination 'platform=macOS' -derivedDataPath "$DERIVED_DIR"
 
-APP_PATH=$(find "$DERIVED_DIR" -name "$APP_NAME.app" -type d | head -n 1)
-if [ -z "$APP_PATH" ]; then
-  APP_BIN="$DERIVED_DIR/Build/Products/Release/$APP_NAME"
-  APP_PATH="$DERIVED_DIR/Build/Products/Release/$APP_NAME.app"
+# xcodebuild construye el paquete SwiftPM: deja el BINARIO, no el .app, así que el bundle
+# se rehace siempre desde lo recién compilado (antes un `find` podía elegir un bundle
+# viejo y el DMG salía con código de días atrás y sello de hoy).
+APP_BIN="$DERIVED_DIR/Build/Products/Release/$APP_NAME"
+if [ ! -f "$APP_BIN" ]; then
+  APP_BIN=".build/release/$APP_NAME"
+fi
+if [ ! -f "$APP_BIN" ]; then
+  echo "App executable not found: ni $DERIVED_DIR/Build/Products/Release/$APP_NAME ni .build/release/$APP_NAME"
+  exit 1
+fi
 
-  if [ ! -f "$APP_BIN" ]; then
-    echo "App executable not found."
-    exit 1
-  fi
+APP_PATH="$DERIVED_DIR/Build/Products/Release/$APP_NAME.app"
+rm -rf "$APP_PATH"
+mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
+cp "$APP_BIN" "$APP_PATH/Contents/MacOS/$APP_NAME"
 
-  mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
-  cp "$APP_BIN" "$APP_PATH/Contents/MacOS/$APP_NAME"
-
-  cat > "$APP_PATH/Contents/Info.plist" <<EOF
+cat > "$APP_PATH/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -63,9 +67,8 @@ if [ -z "$APP_PATH" ]; then
 </plist>
 EOF
 
-  if [ -d "Sources/JUST4CONVERT/ffmpeg" ]; then
-    cp -R "Sources/JUST4CONVERT/ffmpeg" "$APP_PATH/Contents/Resources/"
-  fi
+if [ -d "Sources/JUST4CONVERT/ffmpeg" ]; then
+  cp -R "Sources/JUST4CONVERT/ffmpeg" "$APP_PATH/Contents/Resources/"
 fi
 
 if [ -f "$APP_PATH/Contents/Resources/ffmpeg/ffmpeg" ]; then

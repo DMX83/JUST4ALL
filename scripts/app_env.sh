@@ -12,6 +12,17 @@ if [ -z "$APP_VERSION" ]; then
   APP_VERSION="0.0.0"
 fi
 
+# Versión por app: si existe APPS/<app>/VERSION manda sobre la del hub.
+# Los scripts de cada app exportan PROJECT_ROOT (su carpeta) antes de cargar esto,
+# así que sacamos el nombre de la app de ahí sin pedir nada extra al llamante.
+APP_SLUG="${APP_SLUG:-}"
+if [ -z "$APP_SLUG" ] && [ -n "${PROJECT_ROOT:-}" ]; then
+  APP_SLUG="$(basename "$PROJECT_ROOT")"
+fi
+if [ -n "$APP_SLUG" ] && [ -n "${PROJECT_ROOT:-}" ] && [ -f "$PROJECT_ROOT/VERSION" ]; then
+  APP_VERSION="$(tr -d '[:space:]' < "$PROJECT_ROOT/VERSION")"
+fi
+
 GIT_SHORT_SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 BUILD_TIMESTAMP_UTC="$(date -u +%Y%m%d%H%M%S)"
 APP_BUILD_STAMP="$BUILD_TIMESTAMP_UTC-$GIT_SHORT_SHA"
