@@ -102,8 +102,10 @@ python3 -m http.server 8123 -d docs
 - [ ] **Cuenta de donativos**: hoy el botón «Invítame a un café» apunta a `https://ko-fi.com/amgprotech`
       (marcador). Crear la cuenta en Ko-fi (o Buy Me a Coffee / GitHub Sponsors) y sustituir la URL en
       `index.html` (`sección #apoyar`) y en `legal/privacidad.html` si cambia de plataforma.
-- [ ] **Checkout real**: hoy los botones de compra llevan a un correo (`hola@amgprotech.com`).
-      Sustituir por los enlaces de Paddle o Lemon Squeezy cuando la venta sea posible.
+- [ ] **Checkout y precios**: hoy la web **no muestra precios ni botones de compra** (decisión 6-oct:
+      nada que no se pueda cobrar). Cuando existan cuenta de cobro y licencia comercial del driver NTFS,
+      volver a poner los precios y los enlaces de Paddle/Lemon Squeezy donde estuvo la sección
+      `#apoyar`.
 - [ ] **Confirmar el buzón `hola@amgprotech.com`** (el dominio ya tiene *email forwarding* de
       Namecheap configurado: hay que crear/confirmar la regla).
 - [ ] **Refrescar los Releases**: el último (`v0.1.4`, 2-oct) es anterior a la versión 2.3.19 de
