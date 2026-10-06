@@ -105,6 +105,10 @@
         derecho: ordena y retoca sin salir de la app.</p></div>
       <div class="card"><h3>Duplicados, etiquetas y rename en lote</h3><p>Lo que se usa a diario cuando
         llevas 2 TB de archivos, con monitor de CPU/RAM/disco en la barra.</p></div>
+      <div class="card"><h3>Borrados gigantes, domados</h3><p>Eliminar carpetas de cientos de GB en un
+        disco NTFS va <strong>por lotes y en su propia ventana</strong>: progreso elemento a elemento,
+        bytes liberados, velocidad y tiempo restante, y <strong>cancelar al instante</strong>. El Mac
+        sigue respondiendo —la app para su escáner de tamaños y su buscador mientras dura—.</p></div>
     </div>
   </section>
 
@@ -116,7 +120,8 @@
       <div class="card"><h3>Sin suscripción</h3><p>Pago único con 12 meses de actualizaciones. Si no
         renuevas, la app sigue funcionando igual.</p></div>
       <div class="card"><h3>Sin sorpresas en tu disco</h3><p>Nunca formatea ni «limpia» nada sin tu
-        permiso explícito. Si el disco está hibernado, no se toca: se explica qué hacer.</p></div>
+        permiso explícito. Si el disco está hibernado, no se toca: se explica qué hacer. Y si un borrado
+        se interrumpe y el driver deja ficheros «fantasma», la app lo detecta y te dice cómo liberarlos.</p></div>
       <div class="card"><h3>Sin quitar lo que era gratis</h3><p>Lo que ya se descargaba gratis sigue
         gratis para siempre. El Pro es lo nuevo.</p></div>
     </div>
@@ -204,6 +209,13 @@
       NTFS usa <code>fuse-t</code> + <code>ntfs-3g</code> (libres, sin kext, sin modificar el sistema).
       En uso personal son gratis; en empresas sus autores exigen una licencia comercial, cubierta por el
       plan Negocios.</p></details>
+    <details><summary>¿Puedo borrar carpetas de cientos de GB?</summary><p>Sí, y sin que se bloquee la
+      app: el borrado va por lotes en una ventana aparte, con progreso real y <strong>cancelación
+      instantánea</strong>. Con honestidad: en un NTFS montado con <code>fuse-t</code> cada fichero
+      cuesta alrededor de un segundo —lo medimos— así que borrar muchos GB tarda; si puedes, expulsa el
+      disco y bórralo desde Windows. Y si un borrado se interrumpe a medias, el driver deja ficheros
+      «fantasma» que impiden borrar la carpeta: la app los detecta y te explica cómo soltarlos
+      (expulsar el disco y volver a conectarlo).</p></details>
     <details><summary>¿Puede estropear mi disco?</summary><p>No formatea, no borra y no «limpia» nada sin
       tu permiso. Si Windows dejó el disco en estado «sucio» o hibernado, la app te avisa y espera: no
       escribe para no arriesgar tus datos.</p></details>
