@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JUST4FOLDERS — el gestor de archivos para Mac que escribe en tus discos de Windows</title>
+<meta name="description" content="Commander de 2 paneles para macOS con búsqueda instantánea, IA en español y escritura en discos NTFS gratis para uso personal: sin kext, sin arrancar en Recuperación y sin pagar un driver aparte.">
+<meta property="og:title" content="JUST4FOLDERS — escribe en tus discos de Windows desde el Mac">
+<meta property="og:description" content="Dos paneles, búsqueda instantánea, IA en español y escritura NTFS sin kext. Gratis para uso personal; Pro de pago único, sin suscripción.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://app.amgprotech.com/just4folders/">
+<meta property="og:url" content="https://app.amgprotech.com/just4folders/">
+<meta property="og:image" content="https://app.amgprotech.com/assets/og-just4folders.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="JUST4FOLDERS, el gestor de archivos para Mac que escribe en discos NTFS">
+<meta property="og:locale" content="es_ES">
+<meta property="og:site_name" content="JUST4ALL">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="JUST4FOLDERS — escribe en tus discos de Windows desde el Mac">
+<meta name="twitter:description" content="Commander de 2 paneles para macOS con búsqueda instantánea, IA en español y escritura en discos NTFS gratis para uso personal: sin kext, sin arrancar en Recuperación y sin pagar un driver aparte.">
+<meta name="twitter:image" content="https://app.amgprotech.com/assets/og-just4folders.png">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <span class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" stroke="#4c8dff" stroke-width="1.6"/><path d="M8 13.5h8M12.5 10.5 15.5 13.5 12.5 16.5" stroke="#7fb4ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      JUST4FOLDERS
+    </span>
+    <nav class="tabs">
+      <a href="#ntfs">NTFS</a>
+      <a href="#funciones">Funciones</a>
+      <a href="#precios">Precios</a>
+      <a href="#faq">Dudas</a>
+      <!-- TODO(lanzamiento): apuntar a la URL real de descarga (GitHub Releases del módulo). -->
+      <a class="btn small" href="https://github.com/DMX83/JUST4ALL/releases">Descargar gratis</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <span class="pill">macOS 15 y 26 · Apple Silicon e Intel</span>
+    <h1>El gestor de archivos para Mac que <em>sí escribe</em> en tus discos de Windows.</h1>
+    <p class="lead">Dos paneles, búsqueda instantánea sobre un índice local, IA en español y escritura
+      NTFS <strong>sin kext y sin arrancar en Recuperación</strong>. Gratis para uso personal;
+      Pro con pago único, sin suscripción.</p>
+    <div class="cta-bar">
+      <!-- TODO(lanzamiento): enlace real de descarga -->
+      <a class="btn primary" href="https://github.com/DMX83/JUST4ALL/releases">Descargar gratis para Mac</a>
+      <!-- TODO(lanzamiento): enlace real de compra (Paddle o Lemon Squeezy) con el precio de lanzamiento -->
+      <a class="btn" href="#precios">Pro 29 € (lanzamiento) →</a>
+    </div>
+    <p class="fine">Sin cuenta · Sin telemetría · Sin suscripciones · 30 días de reembolso</p>
+  </section>
+
+  <section id="ntfs">
+    <h2>El problema de verdad: tu disco de Windows en un Mac</h2>
+    <p class="lead">macOS lee NTFS, pero no escribe. Y las salidas clásicas tienen un precio:</p>
+    <div class="grid">
+      <div class="card"><h3>Kext (macFUSE y familia)</h3>
+        <p>Extensión de kernel: obliga a arrancar en <strong>Recuperación</strong> y bajar la seguridad
+           del equipo. Cada actualización de macOS es una lotería.</p></div>
+      <div class="card"><h3>Driver de pago</h3>
+        <p>Funciona, pero cuesta entre <strong>20 y 40 €</strong> y solo sirve para eso: escribir en el disco.</p></div>
+      <div class="card"><h3>Copiarlo todo a otro sitio</h3>
+        <p>El clásico: pasar 1,3 TB por la red para poder formatear. Horas y riesgo sin ninguna ganancia.</p></div>
+    </div>
+    <div class="notice" style="margin-top:22px">
+      <strong>La cuarta vía:</strong> FUSE en espacio de usuario (<code>fuse-t</code> + <code>ntfs-3g</code>).
+      No toca el kernel, no pide Recuperación y no modifica el sistema: se instala, se usa y se desinstala
+      cuando quieras. JUST4FOLDERS lo automatiza: te ofrece montar en escritura, te pide la contraseña
+      <strong>una vez</strong> y comprueba que de verdad se escribe.
+      <br><br>La escritura NTFS es <strong>gratis para uso personal</strong>. En empresas, los autores del
+      driver exigen licencia comercial: para eso está el plan Negocios.
+    </div>
+
+    <div class="steps" style="margin-top:30px">
+      <div class="step"><h3>Conectas el disco</h3><p>Aparece en la app. Si macOS lo ha dejado en solo
+        lectura, te lo dice y te propone montarlo en escritura.</p></div>
+      <div class="step"><h3>Autorizas una vez</h3><p>Se abre Terminal, escribes tu contraseña y la app
+        hace el resto: desmonta, monta con <code>ntfs-3g</code> y verifica la escritura.</p></div>
+      <div class="step"><h3>Escribes</h3><p>Arrastra, renombra, busca y copia en el disco. Si Windows
+        dejó el disco «sucio», la app te avisa y <strong>no toca nada</strong> sin tu permiso.</p></div>
+    </div>
+  </section>
+
+  <section id="funciones">
+    <h2>Y sí, es un gestor de archivos completo</h2>
+    <div class="grid">
+      <div class="card"><h3>Dos paneles con pestañas</h3><p>Favoritos, RECIENTES, árbol de carpetas y
+        discos externos en la barra lateral. Commander de verdad, con teclado.</p></div>
+      <div class="card"><h3>Búsqueda instantánea</h3><p>Índice propio: 100.000 entradas indexadas en
+        ~11 s y consultas de 10–25 ms. Vista aplanada de resultados.</p></div>
+      <div class="card"><h3>IA en español</h3><p>Búsqueda semántica («la factura del seguro del coche»)
+        y «Ordenar esta carpeta» con taxonomía de documentos. Con tu clave de API: ilimitado y gratis para ti.</p></div>
+      <div class="card"><h3>Copias rápidas</h3><p>Clon APFS cuando el destino lo permite: medido
+        <strong>12,6× más rápido</strong> en archivos pequeños. Cola de operaciones con presupuesto de memoria.</p></div>
+      <div class="card"><h3>Panel Hub</h3><p>Vista previa, JUST4DESK y JUST4PICT dentro del panel
+        derecho: ordena y retoca sin salir de la app.</p></div>
+      <div class="card"><h3>Duplicados, etiquetas y rename en lote</h3><p>Lo que se usa a diario cuando
+        llevas 2 TB de archivos, con monitor de CPU/RAM/disco en la barra.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Lo que <em>no</em> vas a encontrar</h2>
+    <div class="grid">
+      <div class="card"><h3>Sin telemetría</h3><p>Ni cuentas, ni servidores nuestros, ni llamadas a casa.
+        La licencia es un fichero; la app funciona sin conexión.</p></div>
+      <div class="card"><h3>Sin suscripción</h3><p>Pago único con 12 meses de actualizaciones. Si no
+        renuevas, la app sigue funcionando igual.</p></div>
+      <div class="card"><h3>Sin sorpresas en tu disco</h3><p>Nunca formatea ni «limpia» nada sin tu
+        permiso explícito. Si el disco está hibernado, no se toca: se explica qué hacer.</p></div>
+      <div class="card"><h3>Sin quitar lo que era gratis</h3><p>Lo que ya se descargaba gratis sigue
+        gratis para siempre. El Pro es lo nuevo.</p></div>
+    </div>
+  </section>
+
+  <section id="precios">
+    <h2>Precios claros, en euros e IVA incluido</h2>
+    <p class="lead">El precio de lanzamiento es temporal: después vuelve al precio normal.</p>
+    <div class="grid" style="align-items:stretch">
+      <div class="price">
+        <span class="pill">Gratis para siempre</span>
+        <div class="amount">0 €</div>
+        <p>Para uso personal.</p>
+        <ul>
+          <li>Dos paneles, pestañas, favoritos y árbol</li>
+          <li>Búsqueda instantánea local</li>
+          <li>Cola de operaciones y clones APFS</li>
+          <li>Monitor del sistema</li>
+          <li><strong>Escritura NTFS incluida</strong></li>
+        </ul>
+        <!-- TODO(lanzamiento): enlace real de descarga -->
+        <a class="btn" href="https://github.com/DMX83/JUST4ALL/releases">Descargar</a>
+      </div>
+      <div class="price featured">
+        <span class="pill">Pro · el más elegido</span>
+        <div class="amount">29 € <s>39 €</s></div>
+        <p>Pago único. Hasta 3 Macs.</p>
+        <ul>
+          <li>Todo lo gratis</li>
+          <li>IA: búsqueda semántica y «Ordenar esta carpeta»</li>
+          <li>Panel Hub (DESK y PICT integrados)</li>
+          <li>Duplicados, etiquetas y reglas avanzadas</li>
+          <li>Rename en lote</li>
+          <li>Soporte prioritario</li>
+          <li>12 meses de actualizaciones</li>
+        </ul>
+        <!-- TODO(lanzamiento): enlace de compra real (Paddle / Lemon Squeezy) -->
+        <a class="btn primary" href="#precios">Comprar Pro</a>
+        <p class="fine">El checkout abre en el lanzamiento. ¿Te aviso con el precio de lanzamiento?
+          <a href="mailto:hola@amgprotech.com?subject=JUST4FOLDERS%20Pro%20-%20avisadme">Avísame por correo</a>.</p>
+      </div>
+      <div class="price">
+        <span class="pill">Suite y empresas</span>
+        <div class="amount">69 € <s>89 €</s></div>
+        <p>Suite JUST4ALL: todas las apps en Pro (FOLDERS + DESK + PICT + CONVERT + PDF).</p>
+        <ul>
+          <li>Negocios: 99 €/puesto (incluye la licencia comercial del driver NTFS)</li>
+          <li>Estudiantes: −50 %</li>
+          <li>Factura con IVA en todos los planes</li>
+          <li>Reembolso de 30 días, sin preguntas</li>
+        </ul>
+        <a class="btn" href="#faq">Ver dudas frecuentes</a>
+      </div>
+    </div>
+    <p class="fine">¿Por qué no suscripción? Porque no queremos secuestrar la app: pagas una vez y la
+      usas; las actualizaciones del primer año van incluidas.</p>
+  </section>
+
+  <section>
+    <h2>Comparado con las alternativas</h2>
+    <table>
+      <thead><tr><th>Necesidad</th><th>Kext + driver</th><th>Driver de pago</th><th>JUST4FOLDERS</th></tr></thead>
+      <tbody>
+        <tr><td>Escribir en NTFS</td><td class="yes">Sí</td><td class="yes">Sí</td><td class="yes">Sí</td></tr>
+        <tr><td>Sin tocar el kernel ni arrancar en Recuperación</td><td class="no">No</td><td class="yes">Sí</td><td class="yes">Sí</td></tr>
+        <tr><td>Gestión de archivos incluida (2 paneles, búsqueda, lote)</td><td class="no">No</td><td class="no">No</td><td class="yes">Sí</td></tr>
+        <tr><td>IA en español (búsqueda semántica, ordenar carpetas)</td><td class="no">No</td><td class="no">No</td><td class="yes">Sí</td></tr>
+        <tr><td>Sin telemetría y sin cuentas</td><td class="no">Depende</td><td class="no">Depende</td><td class="yes">Sí</td></tr>
+        <tr><td>Coste total</td><td class="no">gratis, con riesgo</td><td class="no">20–40 € solo para eso</td><td class="yes">0 € personal · 29 € Pro</td></tr>
+      </tbody>
+    </table>
+    <p class="fine">La escritura NTFS usa <code>fuse-t</code> + <code>ntfs-3g</code> (software libre de
+      terceros, con sus propias licencias). No empaquetamos binarios con licencias copyleft: el driver
+      se instala y se compila en tu Mac.</p>
+  </section>
+
+  <section id="faq">
+    <h2>Dudas frecuentes</h2>
+    <details><summary>¿Es gratis?</summary><p>Sí, para uso personal y sin límite de tiempo, incluida la
+      escritura NTFS. El Pro es para lo nuevo (IA, Panel Hub, duplicados, reglas) y es un pago único.</p></details>
+    <details><summary>¿Por qué me pide la contraseña la primera vez?</summary><p>Montar un disco requiere
+      permisos de administrador en macOS. Se pide <strong>una vez</strong>; la usa macOS, nosotros no la
+      guardamos.</p></details>
+    <details><summary>¿Instala un driver de terceros?</summary><p>Sí, y lo decimos claro: la escritura
+      NTFS usa <code>fuse-t</code> + <code>ntfs-3g</code> (libres, sin kext, sin modificar el sistema).
+      En uso personal son gratis; en empresas sus autores exigen una licencia comercial, cubierta por el
+      plan Negocios.</p></details>
+    <details><summary>¿Puede estropear mi disco?</summary><p>No formatea, no borra y no «limpia» nada sin
+      tu permiso. Si Windows dejó el disco en estado «sucio» o hibernado, la app te avisa y espera: no
+      escribe para no arriesgar tus datos.</p></details>
+    <details><summary>¿Está en la App Store?</summary><p>No: el sandbox de la App Store no permite
+      escribir NTFS con un driver propio. Preferimos la función a la tienda. Las otras apps de la casa
+      (fotos, conversión, PDF) sí irán al Mac App Store.</p></details>
+    <details><summary>¿Y si no renuevo las actualizaciones?</summary><p>La app sigue funcionando igual,
+      para siempre. Renovar es opcional y más barato que comprar de nuevo.</p></details>
+    <details><summary>¿Devuelve el dinero si no me convence?</summary><p>Sí: 30 días desde la compra, sin
+      preguntas.</p></details>
+    <details><summary>¿En qué idiomas está?</summary><p>Hoy en español, con soporte en español. La
+      interfaz en inglés es lo primero de la lista para el mercado internacional.</p></details>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>JUST4FOLDERS</strong> — parte de la familia
+      <a href="../">JUST4ALL</a> para macOS.
+      · <a href="https://github.com/DMX83/JUST4ALL/releases">Descargas</a>
+      · <a href="#faq">Dudas</a></p>
+    <p><a href="../legal/terminos.html">Licencia de uso</a>
+      · <a href="../legal/privacidad.html">Privacidad</a>
+      · <a href="../legal/terceros.html">Licencias de terceros</a>
+      · <a href="mailto:hola@amgprotech.com">Soporte</a></p>
+    <p>Sin cookies de seguimiento en esta página. AMG ProTech LLC · Miami Beach, FL.</p>
+  </div>
+</footer>
+
+</body>
+</html>

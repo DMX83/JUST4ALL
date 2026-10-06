@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Licencias de terceros — JUST4ALL</title>
+<meta name="description" content="Componentes de terceros usados por JUST4ALL, sus licencias y avisos.">
+<meta property="og:title" content="Licencias de terceros — JUST4ALL">
+<meta property="og:description" content="Componentes de terceros usados por JUST4ALL, sus licencias y avisos.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://app.amgprotech.com/legal/terceros.html">
+<meta property="og:url" content="https://app.amgprotech.com/legal/terceros.html">
+<meta property="og:image" content="https://app.amgprotech.com/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Licencias de terceros de JUST4ALL">
+<meta property="og:locale" content="es_ES">
+<meta property="og:site_name" content="JUST4ALL">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Licencias de terceros — JUST4ALL">
+<meta name="twitter:description" content="Componentes de terceros usados por JUST4ALL, sus licencias y avisos.">
+<meta name="twitter:image" content="https://app.amgprotech.com/assets/og.png">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="../" style="text-decoration:none;color:inherit">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6" stroke="#4c8dff" stroke-width="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6" stroke="#4c8dff" stroke-width="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6" stroke="#7fb4ff" stroke-width="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6" stroke="#7fb4ff" stroke-width="1.6"/></svg>
+      JUST4ALL
+    </a>
+    <nav class="tabs">
+      <a href="../">Inicio</a>
+      <a href="../just4folders/">JUST4FOLDERS</a>
+      <a href="mailto:hola@amgprotech.com">Soporte</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap legal">
+<h1>Licencias de terceros</h1>
+<p class="fine">Versión 1.0 · 6 de octubre de 2026 · AMG ProTech LLC (Miami Beach, FL)</p>
+
+<p>JUST4ALL usa componentes de terceros. Los que tienen licencias copyleft <strong>no se empaquetan</strong>
+en las aplicaciones: se instalan o se compilan en el Mac del usuario. Aquí están los avisos y las
+licencias, como exigen sus autores.</p>
+<div class="lic">FUSE-T (fuse-t) — https://github.com/macos-fuse-t/fuse-t
+Distribución binaria: gratis para uso NO comercial. El uso comercial y/o la inclusión en
+software comercial requiere licencia comercial de los autores de FUSE-T.
+Incluye libfuse, bajo GNU Lesser General Public License (LGPL).
+Uso: escritura en discos NTFS desde JUST4FOLDERS (lo instala el usuario; no se redistribuye).
+
+ntfs-3g — https://github.com/macos-fuse-t/ntfs-3g
+GNU General Public License v2.0 (GPL-2.0).
+Uso: escritura en NTFS. En JUST4FOLDERS se COMPILA EN LA MÁQUINA DEL USUARIO desde el código
+fuente: no distribuimos el binario.
+
+ffmpeg — https://ffmpeg.org
+GNU General Public License (compilaciones con --enable-gpl, p. ej. con libx264/x265).
+Uso: conversión de audio y vídeo en JUST4CONVERT. Esta aplicación se distribuye hoy solo para
+uso personal mientras se resuelve su empaquetado.
+
+Real-ESRGAN y ncnn — https://github.com/xinntao/Real-ESRGAN  ·  https://github.com/Tencent/ncnn
+BSD 3-Clause (código). Los pesos de los modelos se obtienen aparte y deben verificarse antes de
+redistribuirlos.
+Uso: escalado de imagen opcional en JUST4PICT (no se incluye en la aplicación; se obtiene localmente).
+
+PyMuPDF — https://github.com/pymupdf/PyMuPDF
+GNU Affero General Public License v3 (AGPL-3.0) o licencia comercial de Artifex.
+Uso: JUST4PDF. Se distribuye hoy solo para uso personal mientras se resuelve su licencia.
+
+PySide6 (Qt) — https://www.qt.io  LGPL-3.0   ·   Pillow — MIT-CMU   ·   img2pdf — LGPL-3.0
+Uso: interfaz y utilidades de JUST4PDF.
+
+Frameworks de Apple (AppKit, SwiftUI, PDFKit, Vision, Core Image, AVFoundation, FSEvents)
+Uso: base de todas las aplicaciones, bajo el acuerdo del Apple Developer Program.
+
+Servicios de IA opcionales (DeepSeek, OpenAI): se usan solo si el usuario los activa
+con su propia clave o con una cuota contratada, sujetos a sus propias condiciones.</div>
+<p>Si eres autor de alguno de estos proyectos y crees que falta un aviso o está mal atribuido,
+escríbenos a <a href="mailto:hola@amgprotech.com">hola@amgprotech.com</a> y lo corregimos.</p>
+</main>
+<footer>
+  <div class="wrap">
+    <p><a href="terminos.html">Licencia de uso</a> · <a href="privacidad.html">Privacidad</a>
+      · <a href="terceros.html">Licencias de terceros</a> · <a href="../">Inicio</a>
+      · <a href="mailto:hola@amgprotech.com">Soporte</a></p>
+    <p>AMG ProTech LLC · Miami Beach, FL · Sin cookies ni analítica en esta web.</p>
+  </div>
+</footer>
+</body>
+</html>
