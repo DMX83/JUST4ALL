@@ -1,11 +1,28 @@
 # docs/ — el sitio publicado de JUST4ALL
 
-> Esta carpeta **es** el sitio web: GitHub Pages publica `docs/` de la rama `main` (es la única
-> carpeta que admite además de la raíz del repositorio). Si renombras la carpeta, el sitio deja de
-> desplegarse.
+> Esta carpeta **es** el sitio web y vive en el **repositorio privado** (`DMX83/JUST4ALL-SRC`).
+> Se publica con [`scripts/publish_site.sh`](../scripts/publish_site.sh), que copia `docs/` al
+> **repositorio público de distribución** (`DMX83/JUST4ALL`), donde GitHub Pages sirve `docs/` de la
+> rama `main` (es la única carpeta que admite además de la raíz). Si renombras la carpeta, el sitio
+> deja de desplegarse.
 
 Sitio estático (sin dependencias externas, sin cookies, sin analítica) que se publica en
 **https://app.amgprotech.com**. Es la única fuente de verdad de la web: las landings viven aquí.
+
+## Dos repositorios (importante)
+
+| Repositorio | Visibilidad | Contenido |
+|---|---|---|
+| `DMX83/JUST4ALL-SRC` | **privado** | Todo el código fuente (`APPS/`, `Sources/`, `PACKAGES/`, `docs/`, scripts) |
+| `DMX83/JUST4ALL` | **público** | Solo `docs/` (la web) y los Releases con los DMG + `SHA256SUMS.txt` |
+
+- El repositorio público **no contiene código**: se reescribió su `main` con un commit de distribución
+  (`README.md` + `docs/`) y las etiquetas antiguas que apuntaban a commits con código se eliminaron.
+  La única etiqueta es `v0.1.4`, apuntando al commit de distribución.
+- La app hub descarga de `DMX83/JUST4ALL` (nombre sin cambios), así que **no hay que recompilarla** al
+  publicar versiones nuevas: basta con subir los DMG al release.
+- Si en algún momento se necesita purgar los objetos antiguos que GitHub conserva sin referencia,
+  hay que pedir a *GitHub Support* un `git gc` del repositorio.
 
 ## Estructura
 
@@ -34,11 +51,15 @@ python3 -m http.server 8123 -d docs
 
 ## Publicar con GitHub Pages (recomendado: gratis, HTTPS, sin servidor)
 
-1. **Subir el sitio al repo** (Pages sirve una carpeta del repositorio):
+1. **Publicar la web** (desde el repositorio privado, sin tocar `origin`):
 
    ```bash
-   git add docs && git commit -m "docs: sitio de productos JUST4ALL" && git push origin main
+   ./scripts/publish_site.sh          # copia docs/ al repo público y hace commit + push
    ```
+
+   El script clona el repositorio público en una carpeta temporal, reemplaza `docs/` y hace `push` a
+   `main`. Como el repositorio público no tiene la historia del privado, **nunca hagas
+   `git push` del repo privado al público**: solo el script publica allí.
 
 2. **Activar Pages apuntando a `/docs`** (ya está hecho; solo hace falta si se desactiva), con la API de GitHub:
 
@@ -78,8 +99,11 @@ python3 -m http.server 8123 -d docs
 
 ## Pendientes antes de anunciarla
 
+- [ ] **Cuenta de donativos**: hoy el botón «Invítame a un café» apunta a `https://ko-fi.com/amgprotech`
+      (marcador). Crear la cuenta en Ko-fi (o Buy Me a Coffee / GitHub Sponsors) y sustituir la URL en
+      `index.html` (`sección #apoyar`) y en `legal/privacidad.html` si cambia de plataforma.
 - [ ] **Checkout real**: hoy los botones de compra llevan a un correo (`hola@amgprotech.com`).
-      Sustituir por los enlaces de Paddle o Lemon Squeezy.
+      Sustituir por los enlaces de Paddle o Lemon Squeezy cuando la venta sea posible.
 - [ ] **Confirmar el buzón `hola@amgprotech.com`** (el dominio ya tiene *email forwarding* de
       Namecheap configurado: hay que crear/confirmar la regla).
 - [ ] **Refrescar los Releases**: el último (`v0.1.4`, 2-oct) es anterior a la versión 2.3.19 de
