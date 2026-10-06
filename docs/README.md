@@ -89,6 +89,21 @@ python3 -m http.server 8123 -d docs
    > `dmx83.github.io`. Comprobación: `dig +short app.amgprotech.com` tiene que devolver las IPs de
    > GitHub Pages (`185.199.108.153`, `.109.153`, `.110.153`, `.111.153`) y **no** `185.209.230.42`.
 
+   > **Resuelto (7-oct):** con el DNS ya correcto el certificado seguía sin emitirse
+   > (`https_certificate: null`). El remedy que funcionó fue **retirar y volver a poner el dominio**
+   > para forzar la emisión:
+   >
+   > ```bash
+   > gh api -X PUT repos/DMX83/JUST4ALL/pages -f cname=""          # quitar
+   > gh api -X PUT repos/DMX83/JUST4ALL/pages -f cname="app.amgprotech.com"
+   > gh api -X PUT repos/DMX83/JUST4ALL/pages -F https_enforced=true
+   > ```
+   >
+   > Queda aprobado hasta 2027-01-04, con **Enforce HTTPS** activo (HTTP responde 301 al HTTPS). Si
+   > algún día vuelve a caducar o a quedarse en `null`, repetir estos tres comandos antes de abrir
+   > incidencia: los CAA del dominio permiten digicert/letsencrypt/sectigo, así que no hay nada que
+   > bloquee la emisión.
+
 ## Alternativas y cuándo conviene cambiar
 
 - **Cloudflare Pages / Netlify**: mismo mecanismo (CNAME), pero además dan **formularios** (lista de
