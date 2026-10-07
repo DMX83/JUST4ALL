@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="JUST4FOLDERS">
+  <!-- JUST4FOLDERS. Glifo: carpeta maciza (el gestor de archivos). Placa 824 en (100,100) r185.
+       Carpeta: 232..748 x 356..752, radio 32, pestana de 56 de alto. Trazo optico 64.
+       Acento: teal #14B8A6 -> #5CE0D2. -->
+  <defs>
+    <linearGradient id="placa" gradientUnits="userSpaceOnUse" x1="100" y1="100" x2="924" y2="924">
+      <stop offset="0" stop-color="#161B26"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="tinta" gradientUnits="userSpaceOnUse" x1="232" y1="324" x2="748" y2="752">
+      <stop offset="0" stop-color="#5CE0D2"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#placa)"/>
+  <path fill="url(#tinta)" d="M 232 388 a 32 32 0 0 1 32 -32 h 132 a 32 32 0 0 1 26 14 l 30 42 h 264 a 32 32 0 0 1 32 32 v 276 a 32 32 0 0 1 -32 32 h -452 a 32 32 0 0 1 -32 -32 z"/>
+</svg>

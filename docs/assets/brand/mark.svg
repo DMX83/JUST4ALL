@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="JUST4ALL">
+  <!--
+    Marca JUST4ALL. Cuatro cuadros redondeados en rejilla 2x2: los cuatro modulos de la suite
+    son un solo sistema. El hub es la rejilla entera; cada app se construye con la misma rejilla.
+
+    Geometria sobre la reticula de 64 (la del favicon): cuadro 17, radio 4, trazo 4, hueco 6.
+    Posiciones: x/y = 12 y 35. Sin placa y sin color fijo: la tinta es currentColor, asi la
+    marca sirve igual sobre claro y sobre oscuro.
+    Orden de los cuadros: 1 arriba-izquierda, 2 arriba-derecha, 3 abajo-izquierda, 4 abajo-derecha.
+    Cuando se aplica a dos tonos (favicon, cabecera del sitio): 1-2 tono principal, 3-4 tono claro.
+  -->
+  <g stroke="currentColor" stroke-width="4" stroke-linejoin="round">
+    <rect x="12" y="12" width="17" height="17" rx="4"/>
+    <rect x="35" y="12" width="17" height="17" rx="4"/>
+    <rect x="12" y="35" width="17" height="17" rx="4"/>
+    <rect x="35" y="35" width="17" height="17" rx="4"/>
+  </g>
+</svg>

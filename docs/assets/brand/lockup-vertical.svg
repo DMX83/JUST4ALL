@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 601 356" width="601" height="356" role="img" aria-label="JUST4ALL">
+  <!--
+    Lockup vertical: marca arriba centrada y logotipo debajo. Se usa cuando el hueco es alto y
+    estrecho (iconos de ficha, sellos, pegatinas, contraportada del DMG).
+    Reticula: marca de 200 de lado centrada sobre un ancho de 601 (el del logotipo), hueco de 56
+    entre la tinta de la marca y la del logotipo, logotipo alineado a su recuadro.
+    Tinta: currentColor. Mismo aire minimo de 100 alrededor del conjunto.
+  -->
+  <g transform="translate(200.5 0)">
+    <g fill="none" stroke="currentColor" stroke-width="18.18" stroke-linejoin="round">
+      <rect x="9.09" y="9.09" width="77.27" height="77.27" rx="18.18"/>
+      <rect x="113.64" y="9.09" width="77.27" height="77.27" rx="18.18"/>
+      <rect x="9.09" y="113.64" width="77.27" height="77.27" rx="18.18"/>
+      <rect x="113.64" y="113.64" width="77.27" height="77.27" rx="18.18"/>
+    </g>
+  </g>
+  <text x="-1" y="353" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="130" font-weight="700" letter-spacing="-3.5" fill="currentColor">JUST4ALL</text>
+</svg>

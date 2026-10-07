@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 601 173" width="601" height="173" role="img" aria-label="JUST4ALL, apps para tu Mac">
+  <!--
+    Variante del logotipo con el lema. La reticula es la misma de wordmark.svg (601 de ancho,
+    altura de mayuscula 100) y el lema cuelga debajo, centrado:
+      - Lema «apps para tu Mac»: cuerpo 40, peso 500, interletra 6 (aire de etiqueta).
+      - Hueco entre la tinta del logotipo y la del lema: 34 (un tercio de la altura de mayuscula).
+      - El lema va en tono secundario: se aplica con opacidad 0,62 sobre la misma tinta.
+    Se usa cuando hay sitio de sobra (pagina, DMG, ficha de la app). En la barra del sitio, no.
+  -->
+  <g fill="currentColor">
+    <text x="-1" y="97" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="130" font-weight="700" letter-spacing="-3.5">JUST4ALL</text>
+    <text x="100" y="164" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="500" letter-spacing="6" opacity="0.62">apps para tu Mac</text>
+  </g>
+</svg>

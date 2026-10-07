@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" fill="none" role="img" aria-label="Plantilla de construccion del icono JUST4ALL">
+  <!--
+    Plantilla de construccion de la familia de iconos JUST4ALL. No es un icono: es la reticula
+    con la que se dibujan los siete (hub + seis apps). Los maestros de cada app estan en
+    docs/Assets/brand/icons/ y todos repiten estos numeros sin excepcion.
+
+    Lienzo          1024 x 1024, con margen transparente (macOS recorta por su cuenta)
+    Placa             824 x 824 en (100,100), radio 185  -> 80,5 % del lienzo, 22,4 % de la placa
+    Zona del glifo    512 x 512 en (256,256)             -> 50 % del lienzo, 62 % de la placa
+    Espacio libre     100 px por lado (el mismo margen de la placa) = 9,8 %
+    Trazo del glifo    64 px, remates y uniones redondeados -> 6,25 % del lienzo
+    Luz               degradado a 135 grados: arriba-izquierda claro, abajo-derecha base
+    Fondo de placa    #161B26 -> #0B0D12 (degradado, misma direccion de luz)
+    Rejilla del hub   640 de lado, cuadros de 236 con trazo 64, hueco 40, radio 59
+
+    Reglas que no se ven en el dibujo pero se cumplen siempre:
+      - El glifo nunca sale de la zona de 512 ni baja de 64 px de grosor optico.
+      - Ningun icono lleva texto, ni filetes de 1 px, ni degradados que cambien la luz.
+      - El acento de cada app tine el glifo, nunca la placa: la placa es identica en los siete.
+  -->
+  <rect x="0.5" y="0.5" width="1023" height="1023" stroke="#2A3140" stroke-width="1"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" stroke="#3C4658" stroke-width="2"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#0B0D12" opacity="0.55"/>
+  <rect x="0" y="0" width="1024" height="1024" stroke="#4C8DFF" stroke-width="1" stroke-dasharray="12 12" opacity="0.7"/>
+  <rect x="156" y="156" width="712" height="712" rx="140" stroke="#4C8DFF" stroke-width="1" stroke-dasharray="8 8" opacity="0.55"/>
+  <rect x="256" y="256" width="512" height="512" stroke="#7FB4FF" stroke-width="1" stroke-dasharray="6 6" opacity="0.8"/>
+  <line x1="512" y1="0" x2="512" y2="1024" stroke="#7FB4FF" stroke-width="1" stroke-dasharray="6 10" opacity="0.45"/>
+  <line x1="0" y1="512" x2="1024" y2="512" stroke="#7FB4FF" stroke-width="1" stroke-dasharray="6 10" opacity="0.45"/>
+  <line x1="100" y1="512" x2="924" y2="512" stroke="#E9ECF3" stroke-width="64" opacity="0.10"/>
+  <g stroke="#7FB4FF" stroke-width="64" opacity="0.35" stroke-linejoin="round">
+    <rect x="224" y="224" width="236" height="236" rx="59"/>
+    <rect x="564" y="224" width="236" height="236" rx="59"/>
+    <rect x="224" y="564" width="236" height="236" rx="59"/>
+    <rect x="564" y="564" width="236" height="236" rx="59"/>
+  </g>
+  <g font-family="-apple-system, Helvetica Neue, Arial, sans-serif" font-size="34" fill="#9AA3B8">
+    <text x="112" y="140">margen 100</text>
+    <text x="112" y="950">placa 824 r185</text>
+    <text x="272" y="248">glifo 512</text>
+    <text x="272" y="812">trazo 64</text>
+    <text x="640" y="248" fill="#7FB4FF">rejilla del hub 640</text>
+    <text x="640" y="812" fill="#4C8DFF">espacio libre 100</text>
+  </g>
+</svg>

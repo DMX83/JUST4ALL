@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="JUST4PDF">
+  <!-- JUST4PDF. Glifo: hoja maciza con esquina doblada (el lector y sus herramientas).
+       Placa 824 en (100,100) r185. Hoja 272..724 x 256..768, radio 44, doblez de 156.
+       Acento: azul #1F73DB -> #5FA3F0. -->
+  <defs>
+    <linearGradient id="placa" gradientUnits="userSpaceOnUse" x1="100" y1="100" x2="924" y2="924">
+      <stop offset="0" stop-color="#161B26"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="tinta" gradientUnits="userSpaceOnUse" x1="272" y1="256" x2="724" y2="768">
+      <stop offset="0" stop-color="#5FA3F0"/>
+      <stop offset="1" stop-color="#1F73DB"/>
+    </linearGradient>
+    <linearGradient id="doblez" gradientUnits="userSpaceOnUse" x1="568" y1="256" x2="724" y2="412">
+      <stop offset="0" stop-color="#9CC6F8"/>
+      <stop offset="1" stop-color="#5FA3F0"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#placa)"/>
+  <path fill="url(#tinta)" d="M 316 300 a 44 44 0 0 1 44 -44 h 208 l 156 156 v 312 a 44 44 0 0 1 -44 44 h -364 a 44 44 0 0 1 -44 -44 z"/>
+  <path fill="url(#doblez)" d="M 568 256 l 156 156 h -112 a 44 44 0 0 0 -44 -44 z"/>
+</svg>

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="JUST4PICT">
+  <!-- JUST4PICT. Glifo: cuadro con montana y sol (la app de imagen). Placa 824 en (100,100) r185.
+       Marco 512x400 en (256,320) r52 con trazo 64; montana y sol macizos.
+       Acento: violeta #9654EB -> #C08BF7. -->
+  <defs>
+    <linearGradient id="placa" gradientUnits="userSpaceOnUse" x1="100" y1="100" x2="924" y2="924">
+      <stop offset="0" stop-color="#161B26"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="tinta" gradientUnits="userSpaceOnUse" x1="256" y1="320" x2="768" y2="720">
+      <stop offset="0" stop-color="#C08BF7"/>
+      <stop offset="1" stop-color="#9654EB"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#placa)"/>
+  <rect x="256" y="320" width="512" height="400" rx="52" fill="none" stroke="url(#tinta)" stroke-width="64"/>
+  <path fill="url(#tinta)" d="M 300 684 L 448 494 L 556 624 L 624 554 L 724 684 z"/>
+  <circle cx="392" cy="412" r="52" fill="url(#tinta)"/>
+</svg>

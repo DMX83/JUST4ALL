@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 904 1352" width="904" height="1352" role="img" aria-label="Los cinco estilos de JUST4ALL">
+  <!-- Generado por scripts/make_brand_assets.py. Los valores salen de
+       PACKAGES/J4STYLE/Sources/J4Style/J4Theme.swift (J4Palette). Es el color de la
+       INTERFAZ: no es la identidad de la marca, que es fija (ver BRAND.md). -->
+  <rect width="100%" height="100%" fill="#0b0d12"/>
+  <text x="40" y="46" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="26" fill="#e9ecf3">Los cinco estilos de la interfaz (J4Palette)</text>
+  <rect x="40" y="72" width="400" height="224" rx="20" fill="#12151e" stroke="#252b3b"/>
+  <text x="64" y="118" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#9aa3b8">Neon · claro</text>
+  <text x="64" y="164" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="18" fill="#61708c">solo existe en oscuro</text>
+  <rect x="464" y="72" width="400" height="224" rx="20" fill="#0A0C12" stroke="#39404f"/>
+  <text x="488" y="118" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#f5f5f7">Neon · oscuro</text>
+  <rect x="488" y="150" width="84" height="84" rx="16" fill="#0A0C12" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="488" y="260" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#0A0C12</text>
+  <rect x="592" y="150" width="84" height="84" rx="16" fill="#22D3EE" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="592" y="260" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#22D3EE</text>
+  <rect x="696" y="150" width="84" height="84" rx="16" fill="#E879F9" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="696" y="260" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#E879F9</text>
+  <rect x="800" y="150" width="84" height="84" rx="16" fill="#103A45" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="800" y="260" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#103A45</text>
+  <rect x="40" y="320" width="400" height="224" rx="20" fill="#FFF5F8" stroke="#39404f"/>
+  <text x="64" y="366" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#1d1d1f">Pinky · claro</text>
+  <rect x="64" y="398" width="84" height="84" rx="16" fill="#FFF5F8" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="64" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#FFF5F8</text>
+  <rect x="168" y="398" width="84" height="84" rx="16" fill="#F472B6" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="168" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#F472B6</text>
+  <rect x="272" y="398" width="84" height="84" rx="16" fill="#C4B5FD" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="272" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#C4B5FD</text>
+  <rect x="376" y="398" width="84" height="84" rx="16" fill="#FDE4F0" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="376" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#FDE4F0</text>
+  <rect x="464" y="320" width="400" height="224" rx="20" fill="#2A1B23" stroke="#39404f"/>
+  <text x="488" y="366" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#f5f5f7">Pinky · oscuro</text>
+  <rect x="488" y="398" width="84" height="84" rx="16" fill="#2A1B23" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="488" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#2A1B23</text>
+  <rect x="592" y="398" width="84" height="84" rx="16" fill="#F9A8D4" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="592" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#F9A8D4</text>
+  <rect x="696" y="398" width="84" height="84" rx="16" fill="#C4B5FD" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="696" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#C4B5FD</text>
+  <rect x="800" y="398" width="84" height="84" rx="16" fill="#5B2C42" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="800" y="508" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#5B2C42</text>
+  <rect x="40" y="568" width="400" height="224" rx="20" fill="#F5F5F7" stroke="#39404f"/>
+  <text x="64" y="614" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#1d1d1f">Moderno · claro</text>
+  <rect x="64" y="646" width="84" height="84" rx="16" fill="#F5F5F7" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="64" y="756" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#F5F5F7</text>
+  <rect x="168" y="646" width="84" height="84" rx="16" fill="#0A84FF" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="168" y="756" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#0A84FF</text>
+  <rect x="272" y="646" width="84" height="84" rx="16" fill="#5E5CE6" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="272" y="756" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#5E5CE6</text>
+  <rect x="376" y="646" width="84" height="84" rx="16" fill="#E8F1FF" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="376" y="756" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#E8F1FF</text>
+  <rect x="464" y="568" width="400" height="224" rx="20" fill="#1C1C1E" stroke="#39404f"/>
+  <text x="488" y="614" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#f5f5f7">Moderno · oscuro</text>
+  <rect x="488" y="646" width="84" height="84" rx="16" fill="#1C1C1E" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="488" y="756" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#1C1C1E</text>
+  <rect x="592" y="646" width="84" height="84" rx="16" fill="#0A84FF" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="592" y="756" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#0A84FF</text>
+  <rect x="696" y="646" width="84" height="84" rx="16" fill="#7C7AFF" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="696" y="756" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#7C7AFF</text>
+  <rect x="800" y="646" width="84" height="84" rx="16" fill="#12345C" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="800" y="756" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#12345C</text>
+  <rect x="40" y="816" width="400" height="224" rx="20" fill="#F6EFE3" stroke="#39404f"/>
+  <text x="64" y="862" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#1d1d1f">Vintage · claro</text>
+  <rect x="64" y="894" width="84" height="84" rx="16" fill="#F6EFE3" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="64" y="1004" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#F6EFE3</text>
+  <rect x="168" y="894" width="84" height="84" rx="16" fill="#B4553A" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="168" y="1004" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#B4553A</text>
+  <rect x="272" y="894" width="84" height="84" rx="16" fill="#3F6152" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="272" y="1004" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#3F6152</text>
+  <rect x="376" y="894" width="84" height="84" rx="16" fill="#F2DED4" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="376" y="1004" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#F2DED4</text>
+  <rect x="464" y="816" width="400" height="224" rx="20" fill="#241D18" stroke="#39404f"/>
+  <text x="488" y="862" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#f5f5f7">Vintage · oscuro</text>
+  <rect x="488" y="894" width="84" height="84" rx="16" fill="#241D18" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="488" y="1004" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#241D18</text>
+  <rect x="592" y="894" width="84" height="84" rx="16" fill="#D9704F" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="592" y="1004" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#D9704F</text>
+  <rect x="696" y="894" width="84" height="84" rx="16" fill="#6E8F7C" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="696" y="1004" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#6E8F7C</text>
+  <rect x="800" y="894" width="84" height="84" rx="16" fill="#4A2A20" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="800" y="1004" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#4A2A20</text>
+  <rect x="40" y="1064" width="400" height="224" rx="20" fill="#EDF2F7" stroke="#39404f"/>
+  <text x="64" y="1110" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#1d1d1f">Cristal · claro</text>
+  <rect x="64" y="1142" width="84" height="84" rx="16" fill="#EDF2F7" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="64" y="1252" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#EDF2F7</text>
+  <rect x="168" y="1142" width="84" height="84" rx="16" fill="#3B82F6" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="168" y="1252" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#3B82F6</text>
+  <rect x="272" y="1142" width="84" height="84" rx="16" fill="#8B5CF6" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="272" y="1252" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#8B5CF6</text>
+  <rect x="376" y="1142" width="84" height="84" rx="16" fill="#DBEAFE" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="376" y="1252" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#3b3b40">#DBEAFE</text>
+  <rect x="464" y="1064" width="400" height="224" rx="20" fill="#0F1720" stroke="#39404f"/>
+  <text x="488" y="1110" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#f5f5f7">Cristal · oscuro</text>
+  <rect x="488" y="1142" width="84" height="84" rx="16" fill="#0F1720" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="488" y="1252" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#0F1720</text>
+  <rect x="592" y="1142" width="84" height="84" rx="16" fill="#60A5FA" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="592" y="1252" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#60A5FA</text>
+  <rect x="696" y="1142" width="84" height="84" rx="16" fill="#A78BFA" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="696" y="1252" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#A78BFA</text>
+  <rect x="800" y="1142" width="84" height="84" rx="16" fill="#1E3A5F" stroke="#000000" stroke-opacity="0.25"/>
+  <text x="800" y="1252" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="15" fill="#a1a1a6">#1E3A5F</text>
+</svg>

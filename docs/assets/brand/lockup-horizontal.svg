@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 857 200" width="857" height="200" role="img" aria-label="JUST4ALL">
+  <!--
+    Lockup horizontal: marca + logotipo, en una linea. Es la forma principal (cabecera del sitio,
+    DMG, ficha de la app, firma de los documentos).
+    Reticula (todo en unidades del propio lienzo, marca de 200 de lado):
+      - Marca: rejilla 2x2 con la geometria de mark.svg escalada a 200 de lado (cuadro 77,27,
+        radio 18,18, trazo 18,18, hueco 27,27). Ocupa 0..200 en x y en y.
+      - Hueco marca-logotipo: 56 (0,28 del lado de la marca).
+      - Logotipo: wordmark.svg a la misma escala, altura de mayuscula 100 (la mitad de la marca).
+      - Alineacion: los dos centrados en la misma linea horizontal (y = 100).
+      - Aire minimo alrededor del lockup: 100 (la mitad del lado de la marca).
+    Tinta: currentColor en las dos piezas. En color, la marca va en el azul de marca y el
+    logotipo en la tinta del texto; el logotipo nunca se pone de un color distinto a la tinta.
+  -->
+  <g fill="none" stroke="currentColor" stroke-width="18.18" stroke-linejoin="round">
+    <rect x="9.09" y="9.09" width="77.27" height="77.27" rx="18.18"/>
+    <rect x="113.64" y="9.09" width="77.27" height="77.27" rx="18.18"/>
+    <rect x="9.09" y="113.64" width="77.27" height="77.27" rx="18.18"/>
+    <rect x="113.64" y="113.64" width="77.27" height="77.27" rx="18.18"/>
+  </g>
+  <text x="255" y="147" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="130" font-weight="700" letter-spacing="-3.5" fill="currentColor">JUST4ALL</text>
+</svg>

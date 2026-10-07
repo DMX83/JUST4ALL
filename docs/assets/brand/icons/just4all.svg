@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="JUST4ALL">
+  <!-- Hub JUST4ALL. Glifo: la rejilla 2x2 de la marca (cuatro modulos que son un sistema).
+       Placa 824 en (100,100) r185; rejilla de 640 de lado, cuadros 236, trazo 64, hueco 40, r59.
+       Acento: azul de marca #4C8DFF -> #7FB4FF. -->
+  <defs>
+    <linearGradient id="placa" gradientUnits="userSpaceOnUse" x1="100" y1="100" x2="924" y2="924">
+      <stop offset="0" stop-color="#161B26"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="tinta" gradientUnits="userSpaceOnUse" x1="224" y1="224" x2="800" y2="800">
+      <stop offset="0" stop-color="#7FB4FF"/>
+      <stop offset="1" stop-color="#4C8DFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#placa)"/>
+  <g fill="none" stroke="url(#tinta)" stroke-width="64" stroke-linejoin="round">
+    <rect x="224" y="224" width="236" height="236" rx="59"/>
+    <rect x="564" y="224" width="236" height="236" rx="59"/>
+    <rect x="224" y="564" width="236" height="236" rx="59"/>
+    <rect x="564" y="564" width="236" height="236" rx="59"/>
+  </g>
+</svg>

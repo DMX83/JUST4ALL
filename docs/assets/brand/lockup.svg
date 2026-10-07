@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 820" width="900" height="820" role="img" aria-label="Lockups JUST4ALL">
+  <!--
+    Hoja de referencia: los dos lockups juntos, con sus medidas. Es la lamina que se mira cuando
+    hay que decidir cual va en un sitio. Los ficheros de trabajo son lockup-horizontal.svg y
+    lockup-vertical.svg; este solo los enseña.
+    Tinta: currentColor en las dos piezas (en color, marca en azul de marca y logotipo en tinta).
+  -->
+  <g font-family="-apple-system, Helvetica Neue, Arial, sans-serif" font-size="26" fill="#9AA3B8">
+    <text x="0" y="24">horizontal · 857 x 200</text>
+    <text x="0" y="404">vertical · 601 x 356</text>
+  </g>
+  <g transform="translate(0 56)">
+    <g fill="none" stroke="currentColor" stroke-width="18.18" stroke-linejoin="round">
+      <rect x="9.09" y="9.09" width="77.27" height="77.27" rx="18.18"/>
+      <rect x="113.64" y="9.09" width="77.27" height="77.27" rx="18.18"/>
+      <rect x="9.09" y="113.64" width="77.27" height="77.27" rx="18.18"/>
+      <rect x="113.64" y="113.64" width="77.27" height="77.27" rx="18.18"/>
+    </g>
+    <text x="255" y="147" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="130" font-weight="700" letter-spacing="-3.5" fill="currentColor">JUST4ALL</text>
+  </g>
+  <g transform="translate(280 436)">
+    <g fill="none" stroke="currentColor" stroke-width="18.18" stroke-linejoin="round">
+      <rect x="9.09" y="9.09" width="77.27" height="77.27" rx="18.18"/>
+      <rect x="113.64" y="9.09" width="77.27" height="77.27" rx="18.18"/>
+      <rect x="9.09" y="113.64" width="77.27" height="77.27" rx="18.18"/>
+      <rect x="113.64" y="113.64" width="77.27" height="77.27" rx="18.18"/>
+    </g>
+    <text x="-1" y="353" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="130" font-weight="700" letter-spacing="-3.5" fill="currentColor">JUST4ALL</text>
+  </g>
+</svg>

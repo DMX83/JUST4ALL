@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="LIFEOS">
+  <!-- LIFEOS. Glifo: diana de tres piezas (el simbolo de la app). Placa 824 en (100,100) r185.
+       Anillos de radio 200 y 104 con trazo 64; centro macizo de radio 40; separacion 32.
+       Acento: violeta de LifeOS #756FE4 -> #A9A4F5. -->
+  <defs>
+    <linearGradient id="placa" gradientUnits="userSpaceOnUse" x1="100" y1="100" x2="924" y2="924">
+      <stop offset="0" stop-color="#161B26"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="tinta" gradientUnits="userSpaceOnUse" x1="312" y1="312" x2="712" y2="712">
+      <stop offset="0" stop-color="#A9A4F5"/>
+      <stop offset="1" stop-color="#756FE4"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#placa)"/>
+  <g fill="none" stroke="url(#tinta)" stroke-width="64">
+    <circle cx="512" cy="512" r="200"/>
+    <circle cx="512" cy="512" r="104"/>
+  </g>
+  <circle cx="512" cy="512" r="40" fill="url(#tinta)"/>
+</svg>

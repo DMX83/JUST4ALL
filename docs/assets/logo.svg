@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 857 200" width="857" height="200" role="img" aria-label="JUST4ALL">
+  <!-- Generado por scripts/make_brand_assets.py desde docs/Assets/brand/lockup-horizontal.svg.
+       Tinta fija porque un <img> no hereda currentColor: esta es la version de fondo
+       oscuro (la tinta del sitio). Sobre fondo claro, la tinta pasa a #0b0d12. -->
+  <g fill="none" stroke="#4c8dff" stroke-width="18.18" stroke-linejoin="round">
+    <rect x="9.09" y="9.09" width="77.27" height="77.27" rx="18.18" stroke="#4c8dff"/>
+    <rect x="113.64" y="9.09" width="77.27" height="77.27" rx="18.18" stroke="#4c8dff"/>
+    <rect x="9.09" y="113.64" width="77.27" height="77.27" rx="18.18" stroke="#7fb4ff"/>
+    <rect x="113.64" y="113.64" width="77.27" height="77.27" rx="18.18" stroke="#7fb4ff"/>
+  </g>
+  <text x="255" y="147" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="130" font-weight="700" letter-spacing="-3.5" fill="#e9ecf3">JUST4ALL</text>
+</svg>

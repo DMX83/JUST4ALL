@@ -34,13 +34,16 @@ Sitio estático (sin dependencias externas, sin cookies, sin analítica) que se 
 | `legal/privacidad.html` | Privacidad: sin telemetría, sin cookies, IA opcional |
 | `legal/terceros.html` | Avisos y licencias de terceros (fuse-t, ntfs-3g, ffmpeg, Real-ESRGAN, PyMuPDF…) |
 | `assets/site.css` · `assets/favicon.svg` | Estilos compartidos y favicon |
+| `assets/logo.svg` · `assets/wordmark.svg` | Lockup y logotipo en color fijo, para usar con `<img>` |
 | `assets/og.png` · `assets/og-just4folders.png` | Tarjetas 1200×630 para compartir en redes (`og:image`) |
+| `assets/brand/` | Maestros SVG de la marca y lámina de los cinco estilos (ver [`BRAND.md`](../BRAND.md)) |
 | `CNAME` · `robots.txt` · `sitemap.xml` · `.nojekyll` | Publicación y SEO |
 
 Las cinco páginas declaran `<link rel="canonical">`, `og:url`, `og:image` (1200×630) y
-`twitter:card`, siempre con el dominio final `https://app.amgprotech.com`. Las `og:image` son PNG
-generados con la paleta de `assets/site.css`; si cambia el mensaje de marca hay que regenerarlas
-(1200×630, fondo `#0b0d12`→`#171d2e`, acento `#4c8dff`).
+`twitter:card`, siempre con el dominio final `https://app.amgprotech.com`. Las `og:image` son PNG y el favicon,
+el logotipo y el lockup salen de los maestros SVG: todo se regenera de una vez con
+`python3 scripts/make_brand_assets.py` (1200×630, fondo `#0b0d12`→`#171d2e`, acento `#4c8dff`). Los
+maestros y las reglas están en [`BRAND.md`](../BRAND.md).
 
 ## Ver en local
 

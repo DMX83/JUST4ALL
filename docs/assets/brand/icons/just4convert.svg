@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="JUST4CONVERT">
+  <!-- JUST4CONVERT. Glifo: dos flechas girando (conversion). Placa 824 en (100,100) r185.
+       Circunferencia r176 en (512,512); dos arcos de 120 grados y dos puntas macizas. Trazo 64.
+       Acento: verde #2EAB78 -> #66D3A4. -->
+  <defs>
+    <linearGradient id="placa" gradientUnits="userSpaceOnUse" x1="100" y1="100" x2="924" y2="924">
+      <stop offset="0" stop-color="#161B26"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="tinta" gradientUnits="userSpaceOnUse" x1="336" y1="336" x2="688" y2="688">
+      <stop offset="0" stop-color="#66D3A4"/>
+      <stop offset="1" stop-color="#2EAB78"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#placa)"/>
+  <g fill="none" stroke="url(#tinta)" stroke-width="64" stroke-linecap="round">
+    <path d="M 359.6 424 A 176 176 0 0 1 664.4 424"/>
+    <path d="M 664.4 600 A 176 176 0 0 1 359.6 600"/>
+  </g>
+  <path fill="url(#tinta)" d="M 692.4 472.5 L 621.6 441.8 L 701.2 395.8 z"/>
+  <path fill="url(#tinta)" d="M 331.6 551.5 L 402.4 582.2 L 322.8 628.2 z"/>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 601 100" width="601" height="100" role="img" aria-label="JUST4ALL">
+  <!--
+    Logotipo JUST4ALL, sin la marca. Tipografia del sistema en negrita (SF Pro Display / Helvetica
+    Neue), caja alta, sin cursiva ni versalitas: la misma voz que la interfaz.
+
+    Medidas sobre una reticula de 601 x 100 (altura de mayuscula = 100):
+      - Cuerpo 130, peso 700, interletra -3,5 (ajustada, para que las dos L no se separen).
+      - La tinta empieza en (0,0) y acaba en (601,100): el viewBox ya es el recuadro de la tinta.
+      - La J baja 3 por debajo de la linea base (dentro del recuadro).
+    Tinta: currentColor, para que funcione sobre claro y sobre oscuro.
+    El logotipo nunca se deforma: si hay que reducirlo, se reduce entero.
+  -->
+  <text x="-1" y="97" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="130" font-weight="700" letter-spacing="-3.5" fill="currentColor">JUST4ALL</text>
+</svg>

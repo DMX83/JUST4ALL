@@ -18,7 +18,12 @@ header.top{position:sticky;top:0;backdrop-filter:blur(12px);background:color-mix
            border-bottom:1px solid var(--line);z-index:10}
 .top .wrap{display:flex;align-items:center;gap:16px;padding:12px 20px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:.2px}
-.brand svg{width:26px;height:26px}
+.brand svg{width:30px;height:30px;flex:0 0 auto;transition:transform .18s ease}
+.brand:hover svg{transform:scale(1.05)}
+@media (prefers-reduced-motion:reduce){
+  .brand svg{transition:none}
+  .brand:hover svg{transform:none}
+}
 nav.tabs{margin-left:auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
 nav.tabs a{color:var(--muted);text-decoration:none;font-size:14.5px}
 nav.tabs a:hover{color:var(--text)}
@@ -83,3 +88,14 @@ footer a:hover{color:var(--text)}
 .legal .lic{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
             padding:16px 18px;margin:14px 0;font:13.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
             color:var(--muted);white-space:pre-wrap}
+
+/* Los cinco estilos del ecosistema: la muestra lleva los colores reales de cada paleta. */
+.styles{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.style-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.style-card h3{margin:12px 0 4px}
+.style-card p{margin:0;color:var(--muted);font-size:14.5px}
+.swatch{display:flex;height:44px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.swatch span{flex:1}
+.swatch span:nth-child(1){background:var(--c1)}
+.swatch span:nth-child(2){flex:1.4;background:var(--c2)}
+.swatch span:nth-child(3){background:var(--c3)}
