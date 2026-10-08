@@ -18,7 +18,7 @@ Sitio estático (sin dependencias externas, sin cookies, sin analítica) que se 
 
 - El repositorio público **no contiene código**: se reescribió su `main` con un commit de distribución
   (`README.md` + `docs/`) y las etiquetas antiguas que apuntaban a commits con código se eliminaron.
-  Las etiquetas `v0.1.4`, `v0.1.5`, `v0.1.6`, `v0.1.7` y `v0.1.8` apuntan al commit de distribución, y
+  Las etiquetas `v0.1.4`, `v0.1.5`, `v0.1.6`, `v0.1.7`, `v0.1.8` y `v0.1.9` apuntan al commit de distribución, y
   cada una lleva sus DMGs publicados como assets del release.
 - La app hub descarga de `DMX83/JUST4ALL` (nombre sin cambios), así que **no hay que recompilarla** al
   publicar versiones nuevas: basta con subir los DMG al release.
@@ -137,6 +137,9 @@ python3 -m http.server 8123 -d docs
 - [x] **El lanzador bilingüe** (8-oct-2026): release **`v0.1.8`**, el hub en español e inglés (se elige
       en su ventana). Verificado descargando los assets: 11/11. Las tarjetas de las tres apps nuevas
       dejan de decir «Beta abierta».
+- [x] **Una cola por disco** (8-oct-2026): release **`v0.1.9`** con **JUST4FOLDERS 2.4.1** (una cola
+      de trabajos por volumen y el progreso de borrado por elementos). Verificado descargando los
+      assets: 10/10.
 - [ ] Versión en **inglés** del sitio. `og:image` y metadatos para compartir: hechos.
 - [ ] Revisión legal del EULA antes de cobrar (hoy es un borrador publicado como versión 1.0).
 
