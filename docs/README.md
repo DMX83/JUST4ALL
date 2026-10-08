@@ -18,7 +18,7 @@ Sitio estático (sin dependencias externas, sin cookies, sin analítica) que se 
 
 - El repositorio público **no contiene código**: se reescribió su `main` con un commit de distribución
   (`README.md` + `docs/`) y las etiquetas antiguas que apuntaban a commits con código se eliminaron.
-  Las etiquetas `v0.1.4`, `v0.1.5`, `v0.1.6`, `v0.1.7`, `v0.1.8`, `v0.1.9`, `v0.1.10`, `v0.1.11` y `v0.1.12` apuntan al commit de distribución, y
+  Las etiquetas `v0.1.4`, `v0.1.5`, `v0.1.6`, `v0.1.7`, `v0.1.8`, `v0.1.9`, `v0.1.10`, `v0.1.11`, `v0.1.12` y `v0.1.13` apuntan al commit de distribución, y
   cada una lleva sus DMGs publicados como assets del release.
 - La app hub descarga de `DMX83/JUST4ALL` (nombre sin cambios), así que **no hay que recompilarla** al
   publicar versiones nuevas: basta con subir los DMG al release.
@@ -145,6 +145,10 @@ python3 -m http.server 8123 -d docs
       falla). Verificado descargando los assets: 10/10.
 - [x] **La IA del mayordomo, en Ajustes** (8-oct-2026): release **`v0.1.11`** con **JUST4BUTLER 0.2.0**
       (proveedor elegible, clave en el Llavero, tope de gasto y catálogo compacto). Verificado
+      descargando los assets: 10/10.
+- [x] **La ventana de Tareas, por disco** (8-oct-2026): release **`v0.1.13`** con **JUST4FOLDERS
+      2.4.2** (una tarjeta por volumen con su progreso agregado, barras dibujadas, el nombre real de
+      cada tarea y sus propios botones; el progreso va por ficheros o elementos). Verificado
       descargando los assets: 10/10.
 - [x] **Los Ajustes se ven funcionar** (8-oct-2026): release **`v0.1.12`** con **JUST4BUTLER 0.2.1**
       (aviso visible, dirección puesta y modelos elegibles desde la lista del proveedor). Verificado
