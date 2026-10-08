@@ -18,8 +18,8 @@ Sitio estático (sin dependencias externas, sin cookies, sin analítica) que se 
 
 - El repositorio público **no contiene código**: se reescribió su `main` con un commit de distribución
   (`README.md` + `docs/`) y las etiquetas antiguas que apuntaban a commits con código se eliminaron.
-  Las etiquetas `v0.1.4`, `v0.1.5` y `v0.1.6` apuntan al commit de distribución, y cada una lleva sus
-  DMGs publicados como assets del release.
+  Las etiquetas `v0.1.4`, `v0.1.5`, `v0.1.6` y `v0.1.7` apuntan al commit de distribución, y cada una
+  lleva sus DMGs publicados como assets del release.
 - La app hub descarga de `DMX83/JUST4ALL` (nombre sin cambios), así que **no hay que recompilarla** al
   publicar versiones nuevas: basta con subir los DMG al release.
 - Si en algún momento se necesita purgar los objetos antiguos que GitHub conserva sin referencia,
@@ -29,7 +29,7 @@ Sitio estático (sin dependencias externas, sin cookies, sin analítica) que se 
 
 | Ruta | Qué es |
 |---|---|
-| `index.html` | Portada de la marca: las seis apps de JUST4ALL, precios y FAQ |
+| `index.html` | Portada de la marca: las nueve subapps de JUST4ALL, precios y FAQ |
 | `just4folders/index.html` | Página de producto de JUST4FOLDERS (la estrella: escritura NTFS) |
 | `legal/terminos.html` | Licencia de uso (EULA de familia) |
 | `legal/privacidad.html` | Privacidad: sin telemetría, sin cookies, IA opcional |
@@ -127,10 +127,13 @@ python3 -m http.server 8123 -d docs
       `#apoyar`.
 - [ ] **Confirmar el buzón `hola@amgprotech.com`** (el dominio ya tiene *email forwarding* de
       Namecheap configurado: hay que crear/confirmar la regla).
-- [x] **Refrescar los Releases** (8-oct-2026): el último es `v0.1.6` y lleva las siete apps al día
-      (JUST4FOLDERS 2.4.0, JUST4PDF 0.3.0, JUST4DESK/JUST4PICT/JUST4CONVERT 0.2.0, JUST4LIFE 1.0.0 y
-      el lanzador 0.1.6) + `SHA256SUMS.txt`. Sigue **sin firmar ni notarizar** mientras no haya
-      licencia de Apple.
+- [x] **Refrescar los Releases** (8-oct-2026): el último era `v0.1.6` y llevaba las **seis
+      subapps publicadas** (JUST4FOLDERS 2.4.0, JUST4PDF 0.3.0, JUST4DESK/JUST4PICT/JUST4CONVERT
+      0.2.0, JUST4LIFE 1.0.0) + el lanzador 0.1.6 + `SHA256SUMS.txt`. Sigue **sin firmar ni
+      notarizar** mientras no haya licencia de Apple.
+- [x] **Publicar las tres subapps nuevas** (8-oct-2026): release **`v0.1.7`** con las nueve subapps,
+      el lanzador y `SHA256SUMS.txt` — JUST4TOOLS, JUST4MONEY y JUST4BUTLER 0.1.0 entran con el
+      lanzador en 0.1.7. Verificado descargando los assets (`shasum -a 256 -c`): 10/10.
 - [ ] Versión en **inglés** del sitio. `og:image` y metadatos para compartir: hechos.
 - [ ] Revisión legal del EULA antes de cobrar (hoy es un borrador publicado como versión 1.0).
 
