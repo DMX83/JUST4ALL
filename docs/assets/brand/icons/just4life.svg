@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="LIFEOS">
-  <!-- LIFEOS. Glifo: diana de tres piezas (el simbolo de la app). Placa 824 en (100,100) r185.
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="JUST4LIFE">
+  <!-- JUST4LIFE. Glifo: diana de tres piezas (el simbolo de la app). Placa 824 en (100,100) r185.
        Anillos de radio 200 y 104 con trazo 64; centro macizo de radio 40; separacion 32.
-       Acento: violeta de LifeOS #756FE4 -> #A9A4F5. -->
+       Acento: violeta de JUST4LIFE #756FE4 -> #A9A4F5. -->
   <defs>
     <linearGradient id="placa" gradientUnits="userSpaceOnUse" x1="100" y1="100" x2="924" y2="924">
       <stop offset="0" stop-color="#161B26"/>
