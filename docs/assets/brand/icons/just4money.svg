@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="JUST4MONEY">
+  <!-- JUST4MONEY. Glifo: una moneda con su «€». Aro de trazo 72 con radio 236 en el centro de la
+       placa, y dentro el símbolo del euro dibujado con arcos (trazo 72, extremos redondeados).
+       Placa 824 en (100,100) r185. Acento: verde de dinero #2EAB78 -> #7FE3B4. -->
+  <defs>
+    <linearGradient id="placa" gradientUnits="userSpaceOnUse" x1="100" y1="100" x2="924" y2="924">
+      <stop offset="0" stop-color="#161B26"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="tinta" gradientUnits="userSpaceOnUse" x1="312" y1="312" x2="712" y2="712">
+      <stop offset="0" stop-color="#7FE3B4"/>
+      <stop offset="1" stop-color="#2EAB78"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#placa)"/>
+  <g fill="none" stroke="url(#tinta)" stroke-width="72" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="512" cy="512" r="236"/>
+    <!-- El arco del euro: abierto a la derecha. -->
+    <path d="M 640 396 A 150 150 0 1 0 640 628"/>
+    <!-- Las dos barras horizontales. -->
+    <path d="M 330 470 L 560 470"/>
+    <path d="M 330 554 L 560 554"/>
+  </g>
+</svg>

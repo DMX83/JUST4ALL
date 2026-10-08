@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="JUST4TOOLS">
+  <!-- JUST4TOOLS. Glifo: llave de tuerca (la caja de herramientas). Cabeza hexagonal hueca arriba
+       a la izquierda, mango en diagonal de trazo 72 con extremo redondeado. Placa 824 en (100,100)
+       r185. Acento: ámbar de JUST4TOOLS #F59E0B -> #FCD34D. -->
+  <defs>
+    <linearGradient id="placa" gradientUnits="userSpaceOnUse" x1="100" y1="100" x2="924" y2="924">
+      <stop offset="0" stop-color="#161B26"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="tinta" gradientUnits="userSpaceOnUse" x1="312" y1="312" x2="712" y2="712">
+      <stop offset="0" stop-color="#FCD34D"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#placa)"/>
+  <g fill="none" stroke="url(#tinta)" stroke-width="72" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Mango: de la cabeza hueca hacia abajo a la derecha. -->
+    <path d="M 430 470 L 690 730"/>
+    <!-- Cabeza hexagonal abierta (el hueco donde entra la tuerca). -->
+    <path d="M 322 262 L 470 262 L 544 390 L 470 518 L 322 518 L 248 390 Z"/>
+  </g>
+  <circle cx="396" cy="390" r="66" fill="url(#placa)"/>
+  <circle cx="396" cy="390" r="60" fill="none" stroke="url(#tinta)" stroke-width="44"/>
+</svg>
