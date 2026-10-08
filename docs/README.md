@@ -18,7 +18,8 @@ Sitio estático (sin dependencias externas, sin cookies, sin analítica) que se 
 
 - El repositorio público **no contiene código**: se reescribió su `main` con un commit de distribución
   (`README.md` + `docs/`) y las etiquetas antiguas que apuntaban a commits con código se eliminaron.
-  La única etiqueta es `v0.1.4`, apuntando al commit de distribución.
+  Las etiquetas `v0.1.4`, `v0.1.5` y `v0.1.6` apuntan al commit de distribución, y cada una lleva sus
+  DMGs publicados como assets del release.
 - La app hub descarga de `DMX83/JUST4ALL` (nombre sin cambios), así que **no hay que recompilarla** al
   publicar versiones nuevas: basta con subir los DMG al release.
 - Si en algún momento se necesita purgar los objetos antiguos que GitHub conserva sin referencia,
@@ -126,8 +127,10 @@ python3 -m http.server 8123 -d docs
       `#apoyar`.
 - [ ] **Confirmar el buzón `hola@amgprotech.com`** (el dominio ya tiene *email forwarding* de
       Namecheap configurado: hay que crear/confirmar la regla).
-- [ ] **Refrescar los Releases**: el último (`v0.1.4`, 2-oct) es anterior a la versión 2.3.19 de
-      JUST4FOLDERS y va **sin firmar ni notarizar**.
+- [x] **Refrescar los Releases** (8-oct-2026): el último es `v0.1.6` y lleva las siete apps al día
+      (JUST4FOLDERS 2.4.0, JUST4PDF 0.3.0, JUST4DESK/JUST4PICT/JUST4CONVERT 0.2.0, JUST4LIFE 1.0.0 y
+      el lanzador 0.1.6) + `SHA256SUMS.txt`. Sigue **sin firmar ni notarizar** mientras no haya
+      licencia de Apple.
 - [ ] Versión en **inglés** del sitio. `og:image` y metadatos para compartir: hechos.
 - [ ] Revisión legal del EULA antes de cobrar (hoy es un borrador publicado como versión 1.0).
 
