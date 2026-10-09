@@ -1,0 +1,150 @@
+# Triaje automático de las incidencias de la suite JUST4ALL.
+#
+# Al abrirse una incidencia, este workflow lee **el propio formulario** y hace tres cosas:
+#
+#   1. deduce de qué app es y le pone su etiqueta (`app:folders`, `app:money`…);
+#   2. distingue un fallo de una idea (`tipo:fallo` / `tipo:idea`) y marca `estado:sin-triar`;
+#   3. mira en qué idioma está escrita y la etiqueta (`idioma:ja`, `idioma:de`…) **solo si está
+#      seguro**: sin confianza no se pone nada, porque una etiqueta equivocada es peor que ninguna.
+#
+# Y contesta una vez con el aviso de que se puede escribir en cualquier idioma.
+#
+# Por qué así: la primera versión pedía crear las etiquetas a mano y usar un token personal. Con esto
+# usa el `GITHUB_TOKEN` del propio repositorio (`permissions: issues: write`), así que **no hace falta
+# ningún token de nadie** y el tablón queda filtrable por app y por idioma desde la primera incidencia.
+#
+# Este fichero vive en el repo privado (`.github/public-workflows/`) porque el repo privado tiene su
+# propia CI; `scripts/publish_site.sh` lo copia al público como `.github/workflows/triaje.yml`.
+name: Triaje de incidencias
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  triaje:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Etiquetar según el formulario e idioma
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue = context.payload.issue;
+            const body = issue.body || "";
+
+            // --- leer el formulario -------------------------------------------------------------
+            // Los formularios de GitHub escriben cada respuesta como «### Título\n\nrespuesta».
+            function campo(titulo) {
+              const partes = body.split(/^### /m);
+              for (const parte of partes) {
+                const lineas = parte.split("\n");
+                const cabecera = (lineas.shift() || "").trim().toLowerCase();
+                if (cabecera.startsWith(titulo.toLowerCase())) {
+                  return lineas.join("\n").trim();
+                }
+              }
+              return "";
+            }
+
+            const etiquetas = new Set();
+
+            // --- 1) de qué app es ---------------------------------------------------------------
+            const apps = {
+              "JUST4FOLDERS": "app:folders",
+              "JUST4DESK": "app:desk",
+              "JUST4TOOLS": "app:tools",
+              "JUST4MONEY": "app:money",
+              "JUST4LIFE": "app:life",
+              "JUST4BUTLER": "app:butler",
+              "JUST4CONVERT": "app:convert",
+              "JUST4PDF": "app:pdf",
+              "JUST4PICT": "app:pict",
+            };
+            const respuestaApp = (campo("¿En qué app?") || campo("¿Para qué app?"))
+              .split("\n")[0].trim().toUpperCase();
+            for (const [nombre, etiqueta] of Object.entries(apps)) {
+              if (respuestaApp.startsWith(nombre)) { etiquetas.add(etiqueta); break; }
+            }
+
+            // --- 2) fallo o idea ----------------------------------------------------------------
+            // El formulario de fallo pregunta «¿En qué app?»; el de idea, «¿Para qué app?». Si no se
+            // reconoce ninguno (por ejemplo si alguien escribe sin plantilla), no se inventa nada.
+            if (campo("¿En qué app?")) etiquetas.add("tipo:fallo");
+            else if (campo("¿Para qué app?")) etiquetas.add("tipo:idea");
+            etiquetas.add("estado:sin-triar");
+
+            // --- 3) en qué idioma está escrita --------------------------------------------------
+            function idioma(texto) {
+              const muestra = texto.slice(0, 1500);
+              // Los alfabetos no latinos se reconocen sin dudar (y en ese orden: el japonés lleva
+              // kanji, así que hay que mirar antes las sílabas).
+              if (/[\u3040-\u30ff]/.test(muestra)) return "ja";
+              if (/[\uac00-\ud7af]/.test(muestra)) return "ko";
+              if (/[\u4e00-\u9fff]/.test(muestra)) return "zh";
+              if (/[\u0400-\u04ff]/.test(muestra)) return "ru";
+
+              // Para el alfabeto latino, voto por palabras muy frecuentes de cada idioma.
+              const palabras = {
+                es: ["que", "de", "no", "el", "la", "con", "para", "una", "cuando", "que se", "esta",
+                     "copia", "fichero", "carpeta", "pero", "tambien", "error"],
+                en: ["the", "and", "with", "this", "not", "when", "file", "please", "copy", "was",
+                     "folder", "but", "also", "error", "does"],
+                de: ["und", "nicht", "mit", "das", "der", "die", "wenn", "datei", "kopie", "ist",
+                     "aber", "auch", "fehler", "ordner", "wird"],
+                fr: ["les", "des", "une", "avec", "pas", "quand", "fichier", "est", "pour", "copie",
+                     "mais", "aussi", "erreur", "dossier", "pas de"],
+                pt: ["que", "nao", "com", "uma", "quando", "arquivo", "esta", "para", "copia",
+                     "mas", "tambem", "erro", "pasta", "muito"],
+              };
+              const sueltas = (muestra.toLowerCase().match(/[a-zà-ÿ]+/g) || []);
+              const conjunto = new Set(sueltas);
+              let mejor = null, mejorPuntos = 0, segundo = 0;
+              for (const [lang, lista] of Object.entries(palabras)) {
+                const puntos = lista.reduce((total, palabra) => total + (conjunto.has(palabra) ? 1 : 0), 0);
+                if (puntos > mejorPuntos) { segundo = mejorPuntos; mejorPuntos = puntos; mejor = lang; }
+                else if (puntos > segundo) { segundo = puntos; }
+              }
+              // Hacen falta varias coincidencias y sacar ventaja: mejor sin etiqueta que con una falsa.
+              return mejorPuntos >= 3 && mejorPuntos > segundo ? mejor : null;
+            }
+
+            const lengua = idioma(`${issue.title}\n${body}`);
+            if (lengua) etiquetas.add(`idioma:${lengua}`);
+
+            // --- crear las etiquetas que falten y aplicarlas -------------------------------------
+            const colores = {
+              "tipo:fallo": "d73a4a", "tipo:idea": "a2eeef", "estado:sin-triar": "fbca04",
+            };
+            for (const nombre of etiquetas) {
+              const color = colores[nombre] || (nombre.startsWith("app:") ? "0e8a16" : "c5def5");
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: nombre });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({
+                  owner, repo, name: nombre, color,
+                  description: "Triaje automático",
+                });
+              }
+            }
+            if (etiquetas.size > 0) {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: issue.number, labels: [...etiquetas],
+              });
+            }
+
+            // --- y una vez, el aviso de idioma ------------------------------------------------
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: issue.number,
+              body: [
+                "Gracias por dedicarle un rato a esto. **Puedes escribir en el idioma que quieras** — " +
+                "*you can write in any language.*",
+                "",
+                "_Etiquetado automáticamente" + (lengua ? ` (\`idioma:${lengua}\`)` : "") +
+                ". Si algo no cuadra, se corrige a mano sin problema._",
+              ].join("\n"),
+            });
