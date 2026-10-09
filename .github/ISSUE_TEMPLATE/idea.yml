@@ -1,0 +1,46 @@
+name: Idea o mejora
+description: Algo que falta, algo que se puede hacer mejor. Puedes escribir en el idioma que quieras — write in any language.
+title: "[Idea] "
+labels: ["tipo:idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Las ideas se leen todas. **Escribe en el idioma que quieras.**
+
+        Si lo que traes es una duda de uso («¿cómo hago…?»), mejor en
+        [Discusiones](https://github.com/DMX83/JUST4ALL/discussions): allí se contesta antes.
+
+  - type: dropdown
+    id: app
+    attributes:
+      label: ¿Para qué app?
+      options:
+        - JUST4FOLDERS
+        - JUST4DESK
+        - JUST4TOOLS
+        - JUST4MONEY
+        - JUST4LIFE
+        - JUST4BUTLER
+        - JUST4CONVERT
+        - JUST4PDF
+        - JUST4PICT
+        - La suite en general
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: ¿Qué propones?
+      description: En una frase, y luego el detalle que quieras.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: ¿Qué problema te resuelve?
+      description: Lo que haces hoy a mano o con otra app. Es lo que decide si la idea entra o no.
+    validations:
+      required: true

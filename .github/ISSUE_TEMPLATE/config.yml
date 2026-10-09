@@ -1,0 +1,10 @@
+# Las incidencias se piden con plantilla (fallo / idea) para que lleguen completas la primera vez.
+# Las preguntas de uso y la conversación van a Discusiones, que se organiza por temas y categorías.
+blank_issues_enabled: false
+contact_links:
+  - name: Preguntas, dudas de uso y comunidad (Discusiones)
+    url: https://github.com/DMX83/JUST4ALL/discussions
+    about: "¿Cómo hago…? ¿A alguien más le pasa? Escribe en el idioma que quieras — write in any language."
+  - name: La web (descargas, guías y avisos)
+    url: https://app.amgprotech.com
+    about: Mira si ya está resuelto antes de preguntar.

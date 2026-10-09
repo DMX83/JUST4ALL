@@ -1,0 +1,91 @@
+name: Fallo (algo no funciona)
+description: Cuéntanos qué se rompió. Puedes escribir en el idioma que quieras — write in any language.
+title: "[Fallo] "
+labels: ["tipo:fallo", "estado:sin-triar"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por tomarte el tiempo. Con estos campos se puede reproducir el fallo sin preguntarte nada más.
+
+        **Escribe en el idioma que quieras** (español, English, Deutsch, 日本語…). Si la app tiene un botón
+        «Copiar informe» o «Diagnóstico», pégalo abajo: ahorra tres correos de ida y vuelta.
+
+  - type: dropdown
+    id: app
+    attributes:
+      label: ¿En qué app?
+      description: Si el fallo es de la suite entera o no lo sabes, elige «No lo sé».
+      options:
+        - JUST4FOLDERS
+        - JUST4DESK
+        - JUST4TOOLS
+        - JUST4MONEY
+        - JUST4LIFE
+        - JUST4BUTLER
+        - JUST4CONVERT
+        - JUST4PDF
+        - JUST4PICT
+        - No lo sé / la suite en general
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versión de la app
+      description: Menú de la app → «Acerca de», o el nombre del DMG que descargaste.
+      placeholder: "2.5.3"
+    validations:
+      required: true
+
+  - type: input
+    id: entorno
+    attributes:
+      label: macOS y tipo de Mac
+      placeholder: "macOS 15.1 · MacBook Pro (Apple Silicon)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: que_hacia
+    attributes:
+      label: ¿Qué estabas haciendo?
+      description: Lo más concreto posible. Si es con una carpeta o un fichero, describe de qué tipo (no hace falta el nombre real).
+      placeholder: "Copiaba una carpeta de 26 GB desde Descargas a una memoria USB exFAT…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: ¿Qué esperabas que pasara?
+    validations:
+      required: true
+
+  - type: textarea
+    id: paso
+    attributes:
+      label: ¿Qué pasó en realidad?
+      description: Mensaje de error literal (si lo hay), si se quedó colgado, si se cerró sola…
+    validations:
+      required: true
+
+  - type: textarea
+    id: informe
+    attributes:
+      label: Informe de diagnóstico (opcional pero muy útil)
+      description: |
+        Si la app ofrece «Copiar informe» o «Diagnóstico», pégalo aquí tal cual.
+        **Revísalo antes**: puede llevar rutas de tu Mac. Quita lo que no quieras publicar.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: privacidad
+    attributes:
+      label: Antes de enviar
+      options:
+        - label: He revisado que el texto no lleva datos personales ni rutas que no quiera publicar.
+          required: true
