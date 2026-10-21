@@ -3,23 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>JUST4ALL — nueve apps nativas para tu Mac, con un solo lanzador</title>
-<meta name="description" content="JUST4ALL reúne apps nativas para macOS: gestor de archivos que escribe NTFS, buscador instantáneo de documentos, mejora de imágenes, conversión de vídeo y PDF. Gratis para uso personal, sin suscripciones y sin telemetría.">
-<meta property="og:title" content="JUST4ALL — nueve apps nativas para tu Mac">
-<meta property="og:description" content="Un lanzador gratuito con apps que resuelven problemas concretos: escribir en discos NTFS, encontrar cualquier documento, mejorar fotos, convertir vídeo y PDF. Sin suscripciones ni telemetría.">
+<title>Just4Folders · gestor de archivos para Mac</title>
+<meta name="description" content="Just4Folders es un gestor de archivos nativo para macOS: dos paneles, búsqueda instantánea, organización de documentos, PDF e imágenes en una sola app. Sin telemetría y con IA opcional.">
+<meta property="og:title" content="Just4Folders">
+<meta property="og:description" content="Dos paneles, búsqueda instantánea, organización de documentos, PDF e imágenes. Una app, muchos módulos.">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://app.amgprotech.com/">
 <meta property="og:url" content="https://app.amgprotech.com/">
-<meta property="og:image" content="https://app.amgprotech.com/assets/og.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="JUST4ALL, nueve apps nativas para macOS con un solo lanzador">
+<meta property="og:image" content="https://app.amgprotech.com/assets/og-just4folders.png">
 <meta property="og:locale" content="es_ES">
-<meta property="og:site_name" content="JUST4ALL">
+<meta property="og:site_name" content="Just4Folders">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="JUST4ALL — nueve apps nativas para tu Mac">
-<meta name="twitter:description" content="JUST4ALL reúne apps nativas para macOS: gestor de archivos que escribe NTFS, buscador instantáneo de documentos, mejora de imágenes, conversión de vídeo y PDF. Gratis para uso personal, sin suscripciones y sin telemetría.">
-<meta name="twitter:image" content="https://app.amgprotech.com/assets/og.png">
 <link rel="stylesheet" href="assets/site.css">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 </head>
@@ -28,15 +22,15 @@
 <header class="top">
   <div class="wrap">
     <span class="brand">
-      <svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><!-- marca JUST4ALL: misma geometria que docs/assets/brand/mark.svg --><rect x="12" y="12" width="17" height="17" rx="4" stroke="#4c8dff" stroke-width="4"/><rect x="35" y="12" width="17" height="17" rx="4" stroke="#4c8dff" stroke-width="4"/><rect x="12" y="35" width="17" height="17" rx="4" stroke="#7fb4ff" stroke-width="4"/><rect x="35" y="35" width="17" height="17" rx="4" stroke="#7fb4ff" stroke-width="4"/></svg>
-      JUST4ALL
+      <svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><g stroke-width="4" stroke-linejoin="round"><rect x="12" y="12" width="17" height="17" rx="4" stroke="#4c8dff"/><rect x="35" y="12" width="17" height="17" rx="4" stroke="#4c8dff"/><rect x="12" y="35" width="17" height="17" rx="4" stroke="#7fb4ff"/><rect x="35" y="35" width="17" height="17" rx="4" stroke="#7fb4ff"/></g></svg>
+      Just4Folders
     </span>
     <nav class="tabs">
-      <a href="#apps">Apps</a>
+      <a href="#funciones">Funciones</a>
+      <a href="#modulos">Módulos</a>
+      <a href="#privacidad">Privacidad</a>
       <a href="#faq">Dudas</a>
-      <a href="#apoyar">Apoyar</a>
-      <!-- TODO(lanzamiento): enlace real de descarga del hub (GitHub Releases). -->
-      <a class="btn small" href="https://github.com/DMX83/JUST4ALL/releases">Descargar gratis</a>
+      <a class="btn small" href="#appstore">App Store</a>
     </nav>
   </div>
 </header>
@@ -44,242 +38,110 @@
 <main class="wrap">
 
   <section class="hero">
-    <span class="pill">Requiere macOS 26.6 · Apple Silicon e Intel</span>
-    <h1>Siete apps nativas para tu Mac. Un solo lanzador.</h1>
-    <p class="lead">JUST4ALL no es una suite hinchada: son herramientas pequeñas que resuelven problemas
-      concretos y difíciles —el disco de Windows que el Mac no escribe, el documento que no encuentras,
-      la foto que quieres mejorar—. <strong>Gratis para uso personal</strong>, sin suscripciones y sin
-      telemetría.</p>
-    <div class="cta-bar" style="display:flex;gap:12px;flex-wrap:wrap">
-      <!-- TODO(lanzamiento): enlace real de descarga -->
-      <a class="btn primary" href="https://github.com/DMX83/JUST4ALL/releases">Descargar el lanzador gratis</a>
-      <a class="btn" href="#apps">Ver las nueve apps →</a>
+    <span class="pill">macOS 14+ · Apple Silicon e Intel</span>
+    <h1>Tu Mac, ordenado. <em>Sin ruido.</em></h1>
+    <p class="lead">Just4Folders es un gestor de archivos nativo con dos paneles, búsqueda instantánea y un
+      rail de módulos: organiza documentos, trabaja con PDF e imágenes y encuentra cualquier cosa
+      sin salir de la app.</p>
+    <div class="cta-bar">
+      <a class="btn primary" href="#appstore">Próximamente en App Store</a>
+      <a class="btn" href="#apoyar">Apoyar el proyecto</a>
     </div>
-    <p class="fine">Sin cuenta · Sin telemetría · Pro de pago único · 30 días de reembolso</p>
+    <p class="fine">Gratis · Sin cuenta · Sin telemetría · Sin suscripciones</p>
   </section>
 
-  <section id="apps">
-    <h2>Las apps</h2>
-    <p class="lead">Cada una se instala por separado desde el lanzador, con descarga verificada
-      (SHA256) y control de versiones.</p>
+  <section id="funciones">
+    <h2>Lo que hace todos los días</h2>
     <div class="grid">
-
-      <div class="card flagship">
-        <span class="pill ok">Gratis para uso personal</span>
-        <h3>JUST4FOLDERS</h3>
-        <p><strong>El gestor de archivos que sí escribe en tus discos de Windows.</strong> Dos paneles,
-           búsqueda instantánea sobre índice propio, IA en español, Panel Hub, escritura NTFS sin kext y
-           borrados de cientos de GB por lotes, con progreso y cancelables.
-           La escritura NTFS es gratis en uso personal.</p>
-        <div class="row"><a class="btn small primary" href="just4folders/">Ver detalles y descargar</a>
-          <span class="pill ok">Disponible</span></div>
-      </div>
-
-      <div class="card">
-        <span class="pill">Gratis · Pro próximamente</span>
-        <h3>JUST4DESK</h3>
-        <p>Tu escritorio inteligente: buscador instantáneo tipo «Everything» (índice local + FSEvents)
-           y archivado automático de documentos con OCR local, taxonomía propia y <strong>undo</strong>.</p>
-        <div class="row"><span class="pill ok">Disponible gratis</span><span class="pill soon">Pro en preparación</span></div>
-      </div>
-
-      <div class="card">
-        <span class="pill">Gratis · Pro próximamente</span>
-        <h3>JUST4PICT</h3>
-        <p>Mejora de imágenes por lotes con presets inteligentes (Core Image), comparativa antes/después
-           y exportación a JPG, PNG, HEIC, WEBP y TIFF.</p>
-        <div class="row"><span class="pill ok">Disponible gratis</span><span class="pill soon">Upscale en preparación</span></div>
-      </div>
-
-      <div class="card">
-        <span class="pill soon">En preparación</span>
-        <h3>JUST4CONVERT</h3>
-        <p>Conversión de audio, vídeo e imagen con presets y procesamiento en paralelo usando ffmpeg.</p>
-        <div class="row"><span class="pill soon">Cerrando licencias del motor</span></div>
-      </div>
-
-      <div class="card">
-        <span class="pill soon">En preparación</span>
-        <h3>JUST4PDF</h3>
-        <p>Lector de PDF nativo, conversión PDF↔imágenes, unir y comprimir, con Quick Actions de macOS.</p>
-        <div class="row"><span class="pill ok">Motor nativo (PDFKit)</span></div>
-      </div>
-
-      <div class="card">
-        <span class="pill">Gratis</span>
-        <h3>JUST4LIFE</h3>
-        <p>Cliente nativo de tu LifeOS: capturar → hoy → agenda → diario → bandeja, con atajo global y
-           avisos aunque esté cerrada. Necesita tu servidor LifeOS.</p>
-        <div class="row"><span class="pill ok">Gratis</span><span class="pill">Requiere LifeOS</span></div>
-      </div>
-
-      <div class="card">
-        <span class="pill ok">Disponible</span>
-        <h3>JUST4TOOLS</h3>
-        <p>Veinte utilidades en un sitio: huellas SHA-256 y comparación, renombrado en lote con
-           deshacer, duplicados, JSON/CSV, Base64, JWT, expresiones regulares, contraseñas, sistema y
-           red, imagen, PDF, OCR y capturas. Todo local.</p>
-        <div class="row"><span class="pill ok">Gratis</span><span class="pill">Sin permisos raros</span><span class="pill">Nada se borra</span></div>
-      </div>
-
-      <div class="card">
-        <span class="pill ok">Disponible</span>
-        <h3>JUST4MONEY</h3>
-        <p>Tu dinero, en tu Mac: cuentas, movimientos y traspasos, categorías, presupuestos, objetivos
-           e informes del mes y del patrimonio. Importa extractos CSV, OFX y QIF <strong>sin
-           duplicar nada</strong> y sin conectarse a ningún banco.</p>
-        <div class="row"><span class="pill ok">Gratis</span><span class="pill">Sin bancos</span><span class="pill">Todo local</span><span class="pill">Cifrado opcional</span></div>
-      </div>
-
-      <div class="card">
-        <span class="pill ok">Disponible</span>
-        <h3>JUST4BUTLER</h3>
-        <p>Un mayordomo con IA para tu Mac: ordénala con tus palabras y te propone un plan. <strong>No
-           hace nada sin tu permiso</strong>, las carpetas del sistema no las toca nunca y todo lo que
-           escribe se puede deshacer. Lo que sobra va a la papelera.</p>
-        <div class="row"><span class="pill ok">Gratis</span><span class="pill">Pide permiso</span><span class="pill">Nada se borra</span><span class="pill">Con deshacer</span></div>
-      </div>
-
-    </div>
-    <div class="notice" style="margin-top:22px">
-      Las apps marcadas «en preparación» <strong>no se venden todavía</strong>: estamos cerrando el
-      empaquetado y las licencias de sus componentes antes de cobrar por ellas. Preferimos decirlo así
-      que venderte algo que aún no está redondo.
+      <div class="card"><h3>Dos paneles con pestañas</h3>
+        <p>Favoritos, recientes, árbol de carpetas y discos externos en la barra lateral. Teclado
+           de verdad, no un juguete.</p></div>
+      <div class="card"><h3>Búsqueda instantánea</h3>
+        <p>Índice SQLite FTS5 propio. Buscar no recorre el árbol: responde en milisegundos incluso
+           con miles de archivos.</p></div>
+      <div class="card"><h3>Copias que no se rompen</h3>
+        <p>Clon APFS cuando el destino lo permite, carriles por tamaño y reintento de lo que un
+           antivirus bloqueó a mitad.</p></div>
+      <div class="card"><h3>Organizar sin miedo</h3>
+        <p>Archivar solo mueve: journal, <em>undo</em> por lote y cola «por revisar» para los dudosos.
+           Nunca se borra nada al clasificar.</p></div>
+      <div class="card"><h3>Duplicados y rename</h3>
+        <p>Detección por tamaño y huella, renombrado en lote con vista previa y deshacer, etiquetas
+           del Finder.</p></div>
+      <div class="card"><h3>IA opcional</h3>
+        <p>Búsqueda semántica y clasificación con tu propia clave. Sin clave, todo funciona con
+           reglas locales. Nunca se envían archivos.</p></div>
     </div>
   </section>
 
-  <section id="estilos">
-    <h2>Cinco estilos, una sola suite</h2>
-    <p class="lead">El aspecto no es un adorno suelto: la paleta, la tipografía, los radios y hasta el
-      canto de la ventana salen del mismo sistema de diseño, así que el estilo que elijas viste
-      <strong>las nueve apps</strong>. Se cambia en el lanzador o en la barra de menús ▸ <em>Estilo</em>
-      de cualquiera de ellas, y se aplica al momento, sin reiniciar.</p>
-    <div class="styles">
-      <article class="style-card">
-        <div class="swatch" style="--c1:#0A0C12;--c2:#22D3EE;--c3:#E879F9"><span></span><span></span><span></span></div>
-        <h3>Neón</h3><p>Cyberpunk: negro, cian y magenta, con el canto girando de color.</p>
-      </article>
-      <article class="style-card">
-        <div class="swatch" style="--c1:#FFF5F8;--c2:#F472B6;--c3:#C4B5FD"><span></span><span></span><span></span></div>
-        <h3>Pinky</h3><p>Pasteles con el rosa de protagonista, formas redondeadas.</p>
-      </article>
-      <article class="style-card">
-        <div class="swatch" style="--c1:#F5F5F7;--c2:#0A84FF;--c3:#5E5CE6"><span></span><span></span><span></span></div>
-        <h3>Moderno</h3><p>macOS de hoy: superficies limpias, azul del sistema y aire.</p>
-      </article>
-      <article class="style-card">
-        <div class="swatch" style="--c1:#F6EFE3;--c2:#B4553A;--c3:#3F6152"><span></span><span></span><span></span></div>
-        <h3>Vintage</h3><p>Papel crema y tinta, titulares serif y esquinas casi rectas.</p>
-      </article>
-      <article class="style-card">
-        <div class="swatch" style="--c1:#EDF2F7;--c2:#3B82F6;--c3:#8B5CF6"><span></span><span></span><span></span></div>
-        <h3>Cristal</h3><p>Vidrio translúcido con desenfoque y luz especular.</p>
-      </article>
-    </div>
-    <p class="fine">Los colores de cada estilo son los del código, no una aproximación: la web y las
-      apps leen la misma paleta.</p>
-  </section>
-
-  <section>
-    <h2>El lanzador: gratis y sin trucos</h2>
+  <section id="modulos">
+    <h2>Una app. Varios módulos.</h2>
+    <p class="lead">El rail derecho cambia de módulo sin abrir otra ventana.</p>
     <div class="grid">
-      <div class="card"><h3>Descarga verificada</h3><p>Cada DMG se descarga desde GitHub Releases y se
-        comprueba su <strong>SHA256</strong> antes de instalarlo. Control de versiones por SemVer.</p></div>
-      <div class="card"><h3>Instalación sin arrastrar nada</h3><p>Al terminar la descarga, el lanzador
-        monta el DMG, comprueba el candado de macOS, cierra la copia anterior si hace falta (con tu
-        permiso) y deja la app en <strong>Applications</strong>. También puedes hacerlo a mano.</p></div>
-      <div class="card"><h3>Se actualiza solo</h3><p>El lanzador también está en su propio catálogo:
-        cuando hay una versión nueva te la ofrece, la descarga y la verifica, y al cerrarlo se
-        reemplaza a sí mismo. Tu copia anterior se guarda en la <strong>Papelera</strong>, nunca se
-        borra.</p></div>
-      <div class="card"><h3>Sin cuenta</h3><p>No hay registro obligatorio, ni correo, ni perfil. Es un
-        lanzador, no una plataforma.</p></div>
-      <div class="card"><h3>Sin telemetría</h3><p>No envía datos de uso a ningún sitio. Cuando existan
-        licencias, la clave será un fichero: funciona sin conexión.</p></div>
+      <div class="card"><h3>DESK</h3><p>Bandeja de Descargas, omnibox sobre el índice, clasificación
+        por taxonomía y «por revisar».</p></div>
+      <div class="card"><h3>PDF</h3><p>Unir, comprimir, exportar páginas a imágenes y crear PDF desde
+        imágenes, todo con PDFKit.</p></div>
+      <div class="card"><h3>Imagen</h3><p>Convertir a PNG/JPEG y redimensionar al 50 % creando
+        ficheros nuevos, sin sobrescribir.</p></div>
+      <div class="card"><h3>Vista previa</h3><p>Quick Look, miniaturas y metadatos del fichero
+        seleccionado.</p></div>
     </div>
   </section>
 
-  <section>
-    <h2>Lo que <em>no</em> vas a encontrar</h2>
-    <table>
-      <thead><tr><th>Lo habitual en otras suites</th><th>Aquí</th></tr></thead>
-      <tbody>
-        <tr><td>Suscripción obligatoria</td><td>Pago único; la app no deja de funcionar si no renuevas</td></tr>
-        <tr><td>Telemetría y cuentas</td><td>Nada: ni cuenta, ni servidores nuestros, ni datos de uso</td></tr>
-        <tr><td>Cobrar por lo que ya era gratis</td><td>Lo que hoy es gratis sigue gratis para siempre</td></tr>
-        <tr><td>Funciones que borran sin preguntar</td><td>Nada destructivo sin tu permiso explícito</td></tr>
-        <tr><td>Prometer lo que no existe</td><td>Las apps sin cerrar se anuncian «en preparación», no se venden</td></tr>
-        <tr><td>Operaciones que te bloquean el Mac</td><td>Un borrado de 300 GB va por lotes, con progreso, y se cancela al instante</td></tr>
-      </tbody>
-    </table>
+  <section id="privacidad">
+    <h2>Privacidad por diseño</h2>
+    <div class="notice">
+      <strong>Todo pasa en tu Mac.</strong> Just4Folders no tiene telemetría, no pide cuenta y no sube tus
+      archivos. Solo accede a las carpetas que tú concedes. La IA es opt-in, usa tu clave y envía
+      texto truncado, nunca documentos.
+    </div>
+  </section>
+
+  <section id="appstore">
+    <h2>App Store</h2>
+    <p class="lead">Just4Folders está en preparación para la Mac App Store: sandbox, sin procesos externos y
+      sin trucos. La ficha se publicará aquí en cuanto Apple la apruebe.</p>
+    <div class="notice">
+      <strong>Nota honesta:</strong> la versión de App Store no escribe en discos NTFS ni ejecuta
+      comandos de Terminal: el sandbox no lo permite. Para eso hace falta una herramienta externa.
+    </div>
+  </section>
+
+  <section id="apoyar">
+    <h2>Apoyar</h2>
+    <p class="lead">Just4Folders es gratis. Si te resulta útil, puedes invitar a un café desde la web.</p>
+    <div class="cta-bar">
+      <a class="btn primary" href="https://ko-fi.com/amgprotech" rel="noopener">☕ Invitar a un café</a>
+      <a class="btn" href="mailto:hola@amgprotech.com?subject=Just4Folders">Escribir al equipo</a>
+    </div>
   </section>
 
   <section id="faq">
     <h2>Dudas frecuentes</h2>
-    <details><summary>¿Es gratis de verdad?</summary><p>Sí: el lanzador y el plan gratuito de cada app,
-      para uso personal y sin límite de tiempo. En JUST4FOLDERS eso incluye la escritura NTFS.</p></details>
-    <details><summary>¿Cuándo se podrá comprar?</summary><p>Cuando estén resueltas dos cosas que no
-      dependen del código: la licencia comercial del driver NTFS y el cobro. Hasta entonces no hay
-      precios ni botones de compra en esta web —no vamos a poner un botón que no compre nada—: si
-      quieres, te aviso por correo. Y cuando abramos, será pago único con 12 meses de actualizaciones y
-      30 días de reembolso.</p></details>
-    <details><summary>¿Qué pasa con mis datos?</summary><p>Nada sale de tu Mac. Los índices son locales,
-      las funciones de IA solo se activan cuando las usas (con tu clave o una cuota), y no hay telemetría.</p></details>
-    <details><summary>¿Por qué algunas apps no están en la App Store?</summary><p>Porque la App Store
-      obliga a *sandbox* y algunas funciones (escribir en NTFS, buscar en todo el disco) no caben ahí.
-      Preferimos la función a la tienda; las apps que sí pueden irán llegando.</p></details>
-    <details><summary>¿Por qué pide una versión concreta de macOS?</summary><p>Cada versión que publicamos
-      se compila para la versión de macOS del momento y solo funciona en ella: hoy, <strong>macOS
-      26.6</strong>. Si actualizas macOS, necesitas la versión nueva. Es a propósito —así cada copia que
-      circula es la build de su macOS y no un binario de hace años sin mantenimiento— y también tiene un
-      coste que decimos claro: una actualización de macOS deja la versión antigua sin arrancar. Cuando
-      pasa, la app lo explica y te lleva a la descarga; nunca se queda colgada en silencio.</p></details>
-    <details><summary>¿Puedo pedir el reembolso?</summary><p>Cuando haya compra, sí: 30 días sin
-      preguntas. Hoy no hay nada que comprar, así que no hay nada que devolver.</p></details>
-    <details><summary>¿Puedo ayudar si aún no se puede comprar?</summary><p>Sí: el proyecto lo mantiene
-      una sola persona y el siguiente paso caro es la cuenta de desarrollador de Apple (99 €/año, la
-      que quita los avisos al instalar). Puedes
-      <a href="#apoyar">invitarme a un café</a>; es un donativo, no una compra.</p></details>
-    <details><summary>¿En qué idiomas está?</summary><p>Hoy en español, con soporte en español. El inglés
-      es lo primero de la lista para el mercado internacional.</p></details>
-  </section>
-
-  <section id="apoyar">
-    <h2>¿Cuánto cuesta? Hoy, nada</h2>
-    <p class="lead">Las apps son <strong>gratis para uso personal</strong>: sin cuenta, sin publicidad y
-      sin límite de tiempo. Y no hay nada a la venta todavía —cuando lo haya será un <strong>pago
-      único</strong>, nunca suscripción—, porque antes tienen que resolverse la licencia comercial del
-      driver NTFS y el sistema de cobro. Por eso aquí no vas a encontrar precios ni botones de compra
-      que no funcionen.</p>
-    <p>Detrás hay una sola persona. Si las apps te resultan útiles y quieres que llegue el día del
-      lanzamiento, puedes invitarme a un café: el primer dinero va a la cuenta de desarrollador de Apple
-      (99 €/año), que es lo que quita los avisos al instalar.</p>
-    <p>
-      <!-- TODO(donativos): sustituir por la URL real de la cuenta (Ko-fi / Buy Me a Coffee / GitHub Sponsors). -->
-      <a class="btn primary" href="https://ko-fi.com/amgprotech" rel="noopener">☕ Invítame a un café</a>
-      <a class="btn" href="mailto:hola@amgprotech.com?subject=JUST4ALL%20-%20avisadme%20del%20lanzamiento">Avísame del lanzamiento</a>
-    </p>
-    <p class="fine">Un donativo <strong>no</strong> es una compra: no da licencias, ni soporte prioritario,
-      ni funciones extra. El producto es idéntico para quien aporta y para quien no puede permitírselo.
-      Cuando exista el Pro será de pago único con 12 meses de actualizaciones y 30 días de reembolso, tal
-      como estaba anunciado.</p>
+    <div class="grid">
+      <div class="card"><h3>¿Cuánto cuesta?</h3><p>Nada. Es gratuita en la App Store, sin compras
+        dentro de la app ni suscripciones.</p></div>
+      <div class="card"><h3>¿Qué necesito?</h3><p>Un Mac con macOS 14 o posterior. Funciona en Apple
+        Silicon e Intel.</p></div>
+      <div class="card"><h3>¿Sirve para NTFS?</h3><p>Lee discos NTFS, pero la versión de App Store no
+        puede escribir en ellos: el sandbox no permite instalar drivers.</p></div>
+      <div class="card"><h3>¿Sube mis archivos?</h3><p>No. La app es local. La IA, si la activas, solo
+        envía texto truncado con tu clave.</p></div>
+    </div>
   </section>
 
 </main>
 
-<footer>
-  <div class="wrap">
-    <p><strong>JUST4ALL</strong> — apps nativas para macOS.
-      · <a href="index.html">JUST4FOLDERS</a>
-      · <a href="https://github.com/DMX83/JUST4ALL/releases">Descargas y versiones</a>
-      · <a href="#apoyar">Apoyar</a>
-      · <a href="#faq">Dudas</a></p>
-    <p><a href="legal/terminos.html">Licencia de uso</a>
-      · <a href="legal/privacidad.html">Privacidad</a>
-      · <a href="legal/terceros.html">Licencias de terceros</a>
-      · <a href="mailto:hola@amgprotech.com">Soporte</a></p>
-    <p>Sin cookies de seguimiento en esta página. AMG ProTech LLC · Miami Beach, FL.</p>
-  </div>
+<footer class="wrap" style="padding:40px 0;opacity:.8">
+  <p>© 2026 Everon LLC · Just4Folders</p>
+  <p>
+    <a href="legal/terminos.html">Licencia</a> ·
+    <a href="legal/privacidad.html">Privacidad</a> ·
+    <a href="legal/terceros.html">Terceros</a> ·
+    <a href="legal/terms.html">English</a> ·
+    <a href="mailto:hola@amgprotech.com">Soporte</a>
+  </p>
 </footer>
 
 </body>

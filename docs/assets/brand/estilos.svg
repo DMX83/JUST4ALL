@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 904 1352" width="904" height="1352" role="img" aria-label="Los cinco estilos de JUST4ALL">
-  <!-- Generado por scripts/make_brand_assets.py. Los valores salen de
-       PACKAGES/J4STYLE/Sources/J4Style/J4Theme.swift (J4Palette). Es el color de la
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 904 1352" width="904" height="1352" role="img" aria-label="Los cinco estilos de Just4Folders">
+  <!-- Lamina de los cinco estilos. Los valores salen de
+       Sources/J4Style/J4Theme.swift (J4Palette). Es el color de la
        INTERFAZ: no es la identidad de la marca, que es fija (ver BRAND.md). -->
   <rect width="100%" height="100%" fill="#0b0d12"/>
   <text x="40" y="46" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" font-size="26" fill="#e9ecf3">Los cinco estilos de la interfaz (J4Palette)</text>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="Just4Folders">
+  <rect width="1200" height="630" fill="#0b0d12"/>
+  <g transform="translate(90 215) scale(3.125)" fill="none" stroke-width="4" stroke-linejoin="round">
+    <rect x="12" y="12" width="17" height="17" rx="4" stroke="#4c8dff"/>
+    <rect x="35" y="12" width="17" height="17" rx="4" stroke="#4c8dff"/>
+    <rect x="12" y="35" width="17" height="17" rx="4" stroke="#7fb4ff"/>
+    <rect x="35" y="35" width="17" height="17" rx="4" stroke="#7fb4ff"/>
+  </g>
+  <text x="360" y="345" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="100" font-weight="700" letter-spacing="-3" fill="#e9ecf3">Just4Folders</text>
+  <text x="362" y="405" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif" font-size="38" font-weight="500" letter-spacing="4" fill="#7fb4ff">tu Mac, ordenado</text>
+  <text x="362" y="465" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif" font-size="28" font-weight="400" letter-spacing="1" fill="#9aa3b8">Gestor de archivos para macOS</text>
+</svg>
