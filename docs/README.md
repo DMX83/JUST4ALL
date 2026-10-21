@@ -23,6 +23,6 @@ Variables de GitHub Pages: `source: /docs`, CNAME `app.amgprotech.com`, HTTPS fo
 
 ## Reglas
 
-- Sin enlaces de compra o donación dentro de la app; la web sí puede enlazar Ko-fi.
+- Sin enlaces de compra o donación dentro de la app; la web sí puede enlazar Buy Me a Coffee.
 - Sin promesas de funciones que el sandbox no permite (NTFS, Terminal).
 - Las capturas y textos deben corresponder a la versión publicada.
